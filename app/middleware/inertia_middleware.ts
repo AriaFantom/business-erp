@@ -1,7 +1,17 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
-import UserTransformer from '#transformers/user_transformer'
+import type User from '#models/user'
 import BaseInertiaMiddleware from '@adonisjs/inertia/inertia_middleware'
+
+function serializeUser(user: User) {
+  return {
+    id: user.id,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    isOwner: user.isOwner,
+  }
+}
 
 export default class InertiaMiddleware extends BaseInertiaMiddleware {
   share(ctx: HttpContext) {
@@ -31,7 +41,7 @@ export default class InertiaMiddleware extends BaseInertiaMiddleware {
         error,
         success,
       }),
-      user: ctx.inertia.always(auth?.user ? UserTransformer.transform(auth.user) : undefined),
+      user: ctx.inertia.always(auth?.user ? serializeUser(auth.user) : undefined),
     }
   }
 

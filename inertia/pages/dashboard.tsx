@@ -1,11 +1,4 @@
-import {
-  Activity,
-  DollarSign,
-  MoreHorizontal,
-  Plus,
-  TrendingUp,
-  Users,
-} from 'lucide-react'
+import { Activity, DollarSign, MoreHorizontal, Plus, TrendingUp, Users } from 'lucide-react'
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -169,10 +162,7 @@ const invites: Invite[] = [
   },
 ]
 
-const statusVariant: Record<
-  ActivityStatus,
-  'default' | 'secondary' | 'outline' | 'destructive'
-> = {
+const statusVariant: Record<ActivityStatus, 'default' | 'secondary' | 'outline' | 'destructive'> = {
   success: 'default',
   info: 'secondary',
   pending: 'outline',
@@ -201,17 +191,12 @@ export default function Dashboard() {
           return (
             <Card key={stat.label}>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardDescription className="text-sm">
-                  {stat.label}
-                </CardDescription>
+                <CardDescription className="text-sm">{stat.label}</CardDescription>
                 <Icon className="size-4 text-muted-foreground" />
               </CardHeader>
               <CardContent className="flex flex-col gap-2">
                 <div className="text-2xl font-semibold">{stat.value}</div>
-                <Badge
-                  variant={stat.trend === 'down' ? 'outline' : 'secondary'}
-                  className="w-fit"
-                >
+                <Badge variant={stat.trend === 'down' ? 'outline' : 'secondary'} className="w-fit">
                   {stat.change}
                 </Badge>
               </CardContent>
@@ -224,9 +209,7 @@ export default function Dashboard() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Recent activity</CardTitle>
-            <CardDescription>
-              Latest events across your workspace
-            </CardDescription>
+            <CardDescription>Latest events across your workspace</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
@@ -249,17 +232,11 @@ export default function Dashboard() {
                         <span className="font-medium">{row.name}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {row.action}
-                    </TableCell>
+                    <TableCell className="text-muted-foreground">{row.action}</TableCell>
                     <TableCell>
-                      <Badge variant={statusVariant[row.status]}>
-                        {row.statusLabel}
-                      </Badge>
+                      <Badge variant={statusVariant[row.status]}>{row.statusLabel}</Badge>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {row.time}
-                    </TableCell>
+                    <TableCell className="text-muted-foreground">{row.time}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -274,21 +251,14 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="space-y-3">
             {invites.map((invite) => (
-              <div
-                key={invite.id}
-                className="flex items-center justify-between gap-2"
-              >
+              <div key={invite.id} className="flex items-center justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-3">
                   <Avatar>
                     <AvatarFallback>{invite.initials}</AvatarFallback>
                   </Avatar>
                   <div className="flex min-w-0 flex-col">
-                    <span className="truncate text-sm font-medium">
-                      {invite.email}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {invite.role}
-                    </span>
+                    <span className="truncate text-sm font-medium">{invite.email}</span>
+                    <span className="text-xs text-muted-foreground">{invite.role}</span>
                   </div>
                 </div>
                 <DropdownMenu>
@@ -300,9 +270,7 @@ export default function Dashboard() {
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem>Resend</DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem variant="destructive">
-                      Revoke
-                    </DropdownMenuItem>
+                    <DropdownMenuItem variant="destructive">Revoke</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>

@@ -1,14 +1,43 @@
-import { UserSchema } from '#database/schema'
-import hash from '@adonisjs/core/services/hash'
+// app/models/user.ts
+import { BaseModel, column } from '@adonisjs/lucid/orm'
 import { compose } from '@adonisjs/core/helpers'
 import { withAuthFinder } from '@adonisjs/auth/mixins/lucid'
+import hash from '@adonisjs/core/services/hash'
+import { withRoles } from '#mixins/with_roles'
+import Role from '#models/role'
+import { DateTime } from 'luxon'
 
-export default class User extends compose(UserSchema, withAuthFinder(hash)) {
-  get initials() {
-    const [first, last] = this.fullName ? this.fullName.split(' ') : this.email.split('@')
-    if (first && last) {
-      return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase()
-    }
-    return `${first.slice(0, 2)}`.toUpperCase()
-  }
+const AuthFinder = withAuthFinder(() => hash.use('scrypt'), {
+  uids: ['email'],
+  passwordColumnName: 'password',
+})
+
+export default class User extends compose(
+  BaseModel,
+  AuthFinder,
+  withRoles({ roleModel: () => Role, pivotTable: 'user_roles' })
+) {
+  @column({ isPrimary: true })
+  declare id: number
+
+  @column()
+  declare email: string
+
+  @column({ serializeAs: null })
+  declare password: string
+
+  @column()
+  declare firstName: string | null
+
+  @column()
+  declare lastName: string | null
+
+  @column()
+  declare isOwner: boolean
+
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
 }

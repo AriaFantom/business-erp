@@ -1,32 +1,26 @@
+import { Bouncer } from '@adonisjs/bouncer'
 import * as abilities from '#abilities/main'
 import { policies } from '#generated/policies'
-
-import { Bouncer } from '@adonisjs/bouncer'
+import { permissions } from '#start/permissions'
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
 
 /**
- * Init bouncer middleware is used to create a bouncer instance
- * during an HTTP request
+ * Merge hand-written abilities with the auto-generated ones from
+ * permissions.abilities(). Computed once at import time and cached.
  */
+const allAbilities = {
+  ...abilities,
+  ...permissions.abilities(),
+}
+
 export default class InitializeBouncerMiddleware {
   async handle(ctx: HttpContext, next: NextFn) {
-    /**
-     * Create bouncer instance for the ongoing HTTP request.
-     * We will pull the user from the HTTP context.
-     */
     ctx.bouncer = new Bouncer(
       () => ctx.auth.user || null,
-      abilities,
+      allAbilities,
       policies
     ).setContainerResolver(ctx.containerResolver)
-
-    /**
-     * Share bouncer helpers with Edge templates.
-     */
-    if ('view' in ctx) {
-      ctx.view.share(ctx.bouncer.edgeHelpers)
-    }
 
     return next()
   }
@@ -36,7 +30,7 @@ declare module '@adonisjs/core/http' {
   export interface HttpContext {
     bouncer: Bouncer<
       Exclude<HttpContext['auth']['user'], undefined>,
-      typeof abilities,
+      typeof allAbilities,
       typeof policies
     >
   }

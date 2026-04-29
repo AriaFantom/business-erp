@@ -94,8 +94,7 @@ export default function Invitation() {
     setEmail('')
   }
 
-  const acceptDisabled =
-    !agreed || fullName.trim().length === 0 || password.length === 0
+  const acceptDisabled = !agreed || fullName.trim().length === 0 || password.length === 0
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-10 sm:py-16">
@@ -122,10 +121,7 @@ export default function Invitation() {
                   onChange={(e) => setEmail(e.target.value)}
                   className="flex-1"
                 />
-                <Select
-                  value={role}
-                  onValueChange={(value) => setRole(value as InviteRole)}
-                >
+                <Select value={role} onValueChange={(value) => setRole(value as InviteRole)}>
                   <SelectTrigger className="w-full sm:w-36">
                     <SelectValue placeholder="Role" />
                   </SelectTrigger>
@@ -166,50 +162,30 @@ export default function Invitation() {
                   <TableBody>
                     {invites.map((invite) => (
                       <TableRow key={invite.id}>
-                        <TableCell className="font-medium">
-                          {invite.email}
-                        </TableCell>
+                        <TableCell className="font-medium">{invite.email}</TableCell>
                         <TableCell>
-                          <Badge
-                            variant={
-                              invite.role === 'Admin' ? 'default' : 'secondary'
-                            }
-                          >
+                          <Badge variant={invite.role === 'Admin' ? 'default' : 'secondary'}>
                             {invite.role}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {invite.sent}
-                        </TableCell>
+                        <TableCell className="text-muted-foreground">{invite.sent}</TableCell>
                         <TableCell>
-                          <Badge
-                            variant={
-                              invite.status === 'Pending' ? 'outline' : 'default'
-                            }
-                          >
+                          <Badge variant={invite.status === 'Pending' ? 'outline' : 'default'}>
                             {invite.status}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                aria-label="Open invite actions"
-                              >
+                              <Button variant="ghost" size="icon" aria-label="Open invite actions">
                                 <MoreHorizontal />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem>Resend invite</DropdownMenuItem>
-                              <DropdownMenuItem>
-                                Copy invite link
-                              </DropdownMenuItem>
+                              <DropdownMenuItem>Copy invite link</DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem variant="destructive">
-                                Revoke
-                              </DropdownMenuItem>
+                              <DropdownMenuItem variant="destructive">Revoke</DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -231,9 +207,7 @@ export default function Invitation() {
                 </Avatar>
                 <div className="flex flex-col">
                   <CardTitle>Jane Doe invited you</CardTitle>
-                  <CardDescription>
-                    Join Layerdreams Workspace
-                  </CardDescription>
+                  <CardDescription>Join Layerdreams Workspace</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -270,11 +244,7 @@ export default function Invitation() {
               </form>
             </CardContent>
             <CardFooter className="flex flex-col items-stretch gap-3 sm:items-center">
-              <Button
-                type="button"
-                disabled={acceptDisabled}
-                className="w-full sm:w-auto"
-              >
+              <Button type="button" disabled={acceptDisabled} className="w-full sm:w-auto">
                 Accept &amp; create account
               </Button>
               <button
