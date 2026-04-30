@@ -1,4 +1,5 @@
 import db from '@adonisjs/lucid/services/db'
+import cache from '@adonisjs/cache/services/main'
 import Role from '#models/role'
 import type User from '#models/user'
 
@@ -190,4 +191,26 @@ export function cycleCheck(
   if (newParentId === null) return false
   if (newParentId === roleId) return true
   return new Set(getDescendants(roleId, tree)).has(newParentId)
+}
+
+// --- Cache layer ---
+
+const TREE_CACHE_KEY = 'roles:tree'
+
+export async function getTree(): Promise<RoleTree> {
+  const rows = await cache.getOrSet({
+    key: TREE_CACHE_KEY,
+    ttl: '1h',
+    factory: async () => {
+      const result = await db
+        .from('roles')
+        .select('id', 'parent_role_id', 'name')
+      return result as RoleRow[]
+    },
+  })
+  return buildTree(rows)
+}
+
+export async function invalidateTreeCache(): Promise<void> {
+  await cache.delete({ key: TREE_CACHE_KEY })
 }
