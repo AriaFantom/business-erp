@@ -1,0 +1,96 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: layerdreams-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3333
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: dev
+      DB_PASSWORD: dev
+      DB_DATABASE: dev
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: dev
+      AWS_ACCESS_KEY_ID: devminio
+      AWS_SECRET_ACCESS_KEY: devminio
+      AWS_REGION: us-east-1
+      S3_BUCKET: layerdreams
+    ports:
+      - '3333:3333'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - backend
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: layerdreams-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: dev
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U dev -d dev']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend
+
+  redis:
+    image: redis:7-alpine
+    container_name: layerdreams-redis
+    restart: unless-stopped
+    command: ['redis-server', '--requirepass', 'dev']
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', 'dev', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend
+
+  minio:
+    image: minio/minio:latest
+    container_name: layerdreams-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: devminio
+      MINIO_ROOT_PASSWORD: devminio
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+
+networks:
+  backend:
+    driver: bridge
