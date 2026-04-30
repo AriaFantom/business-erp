@@ -50,6 +50,10 @@ const bodyParserConfig = defineConfig({
   multipart: {
     /**
      * Automatically process uploaded files into the system tmp directory.
+     *
+     * Avatar uploads validate via VineJS file rules in updateAvatarValidator;
+     * keeping autoProcess global is acceptable because all upload routes sit
+     * behind the auth middleware.
      */
     autoProcess: true,
 

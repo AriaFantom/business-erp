@@ -32,6 +32,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
+import { userInitials } from '@/lib/user'
 import type { InertiaProps } from '@/types'
 
 type RoleOption = {
@@ -65,20 +66,6 @@ type DashboardProps = {
 }
 
 type RoleNode = RoleOption & { depth: number }
-
-function initialsFor(email: string | null): string {
-  if (!email) return '?'
-  const local = email.split('@')[0] ?? ''
-  return local.slice(0, 2).toUpperCase() || '?'
-}
-
-function userInitials(firstName?: string | null, lastName?: string | null, email?: string | null) {
-  const first = firstName?.trim().charAt(0) ?? ''
-  const last = lastName?.trim().charAt(0) ?? ''
-  const combined = `${first}${last}`.toUpperCase()
-  if (combined) return combined
-  return initialsFor(email ?? null)
-}
 
 function groupPermissions(catalog: PermissionOption[]): Array<[string, PermissionOption[]]> {
   const groups: Record<string, PermissionOption[]> = {}
@@ -388,6 +375,9 @@ export default function Dashboard({
                 )}
               </span>
             </div>
+            <Button variant="outline" size="sm" onClick={() => router.visit('/profile')}>
+              Profile
+            </Button>
             <Form action="/logout" method="post">
               {({ processing }) => (
                 <Button type="submit" variant="outline" size="sm" disabled={processing}>
@@ -481,7 +471,7 @@ export default function Dashboard({
               <div key={invite.id} className="flex items-center justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-3">
                   <Avatar>
-                    <AvatarFallback>{initialsFor(invite.email)}</AvatarFallback>
+                    <AvatarFallback>{userInitials(null, null, invite.email)}</AvatarFallback>
                   </Avatar>
                   <div className="flex min-w-0 flex-col">
                     <span className="truncate text-sm font-medium">

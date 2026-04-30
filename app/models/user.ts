@@ -33,6 +33,9 @@ export default class User extends compose(
   declare lastName: string | null
 
   @column()
+  declare avatarKey: string | null
+
+  @column()
   declare isOwner: boolean
 
   @column.dateTime({ autoCreate: true })

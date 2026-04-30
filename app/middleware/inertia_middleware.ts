@@ -1,6 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
 import type User from '#models/user'
+import drive from '@adonisjs/drive/services/main'
 import BaseInertiaMiddleware from '@adonisjs/inertia/inertia_middleware'
 
 async function serializeUser(user: User) {
@@ -8,11 +9,13 @@ async function serializeUser(user: User) {
   // the union of permissions across their assigned roles.
   const userPermissions = user.isOwner ? ['*'] : await user.getPermissions()
   const roles = user.isOwner ? [] : await user.getRoles()
+  const avatarUrl = user.avatarKey ? await drive.use().getUrl(user.avatarKey) : null
   return {
     id: user.id,
     email: user.email,
     firstName: user.firstName,
     lastName: user.lastName,
+    avatarUrl,
     isOwner: user.isOwner,
     permissions: userPermissions,
     roleIds: roles.map((r) => r.id),

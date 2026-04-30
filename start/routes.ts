@@ -15,6 +15,7 @@ const InvitationsController = () => import('#controllers/invitations_controller'
 const AcceptInvitationController = () => import('#controllers/auth/invitations_controller')
 const DashboardController = () => import('#controllers/dashboard_controller')
 const RolesController = () => import('#controllers/roles_controller')
+const ProfileController = () => import('#controllers/profile_controller')
 
 router.on('/').renderInertia('home', {}).use(middleware.firstUserSetup()).as('home')
 
@@ -40,5 +41,11 @@ router
       .as('invitations.revoke')
     router.post('roles', [RolesController, 'store']).as('roles.store')
     router.post('roles/:id/delete', [RolesController, 'destroy']).as('roles.destroy')
+    router.get('profile', [ProfileController, 'show']).as('profile.show')
+    router.post('profile', [ProfileController, 'update']).as('profile.update')
+    router.post('profile/avatar', [ProfileController, 'updateAvatar']).as('profile.avatar.update')
+    router
+      .post('profile/avatar/delete', [ProfileController, 'destroyAvatar'])
+      .as('profile.avatar.destroy')
   })
   .use(middleware.auth())

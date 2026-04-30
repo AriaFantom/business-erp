@@ -96,8 +96,10 @@ export class UserRoleSchema extends BaseModel {
 }
 
 export class UserSchema extends BaseModel {
-  static $columns = ['createdAt', 'email', 'firstName', 'fullName', 'id', 'isOwner', 'lastName', 'password', 'updatedAt'] as const
+  static $columns = ['avatarKey', 'createdAt', 'email', 'firstName', 'fullName', 'id', 'isOwner', 'lastName', 'password', 'updatedAt'] as const
   $columns = UserSchema.$columns
+  @column()
+  declare avatarKey: string | null
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column()
