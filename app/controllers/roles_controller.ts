@@ -67,10 +67,15 @@ export default class RolesController {
         parentRoleId: parent.id,
       })
     } catch (err) {
-      session.flash('errors', {
-        parentRoleId: err instanceof Error ? err.message : 'Could not create role.',
-      })
-      return response.redirect().back()
+      // Only handle the Role beforeSave cycle guard. Anything else
+      // (DB constraint, cache failure, etc.) should bubble up so the
+      // user sees a proper error rather than a misleading parent-role flash.
+      const msg = err instanceof Error ? err.message : ''
+      if (/own parent|Cycle detected in role hierarchy/.test(msg)) {
+        session.flash('errors', { parentRoleId: msg })
+        return response.redirect().back()
+      }
+      throw err
     }
     await role.syncPermissions(validPermissions)
 

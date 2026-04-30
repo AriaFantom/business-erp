@@ -23,8 +23,9 @@ export default class Role extends compose(BaseModel, withPermissions()) {
   declare isSystem: boolean
 
   /**
-   * Parent in the role tree. Null = root. Hierarchy is enforced via
-   * recursive CTE checks in `app/services/role_hierarchy.ts`.
+   * Parent in the role tree. Null = root. Cycles are blocked by the
+   * `preventCycle` beforeSave hook below, which runs `cycleCheck` over
+   * the cached tree from `app/services/role_hierarchy.ts`.
    */
   @column()
   declare parentRoleId: number | null
