@@ -57,13 +57,21 @@ export default class RolesController {
       }
     }
 
-    const role = await Role.create({
-      name: payload.name,
-      displayName: payload.displayName,
-      description: payload.description ?? null,
-      isSystem: false,
-      parentRoleId: parent.id,
-    })
+    let role: Role
+    try {
+      role = await Role.create({
+        name: payload.name,
+        displayName: payload.displayName,
+        description: payload.description ?? null,
+        isSystem: false,
+        parentRoleId: parent.id,
+      })
+    } catch (err) {
+      session.flash('errors', {
+        parentRoleId: err instanceof Error ? err.message : 'Could not create role.',
+      })
+      return response.redirect().back()
+    }
     await role.syncPermissions(validPermissions)
 
     session.flash('success', `Role "${payload.displayName}" created.`)
