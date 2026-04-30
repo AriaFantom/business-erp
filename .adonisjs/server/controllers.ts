@@ -4,5 +4,12 @@
  */
 
 export const controllers = {
+  auth: {
+    Invitations: () => import('#controllers/auth/invitations_controller'),
+  },
+  Dashboard: () => import('#controllers/dashboard_controller'),
+  Invitations: () => import('#controllers/invitations_controller'),
+  Roles: () => import('#controllers/roles_controller'),
   Session: () => import('#controllers/session_controller'),
+  Users: () => import('#controllers/users_controller'),
 }

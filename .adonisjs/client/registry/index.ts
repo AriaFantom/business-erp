@@ -12,18 +12,6 @@ const routes = {
     tokens: [{"old":"/","type":0,"val":"/","end":""}],
     types: placeholder as Registry['home']['types'],
   },
-  'new_account.create': {
-    methods: ["GET","HEAD"],
-    pattern: '/signup',
-    tokens: [{"old":"/signup","type":0,"val":"signup","end":""}],
-    types: placeholder as Registry['new_account.create']['types'],
-  },
-  'new_account.store': {
-    methods: ["POST"],
-    pattern: '/signup',
-    tokens: [{"old":"/signup","type":0,"val":"signup","end":""}],
-    types: placeholder as Registry['new_account.store']['types'],
-  },
   'session.create': {
     methods: ["GET","HEAD"],
     pattern: '/login',
@@ -36,11 +24,59 @@ const routes = {
     tokens: [{"old":"/login","type":0,"val":"login","end":""}],
     types: placeholder as Registry['session.store']['types'],
   },
+  'invitation.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/invite/:token',
+    tokens: [{"old":"/invite/:token","type":0,"val":"invite","end":""},{"old":"/invite/:token","type":1,"val":"token","end":""}],
+    types: placeholder as Registry['invitation.show']['types'],
+  },
+  'invitation.store': {
+    methods: ["POST"],
+    pattern: '/invite/:token',
+    tokens: [{"old":"/invite/:token","type":0,"val":"invite","end":""},{"old":"/invite/:token","type":1,"val":"token","end":""}],
+    types: placeholder as Registry['invitation.store']['types'],
+  },
   'session.destroy': {
     methods: ["POST"],
     pattern: '/logout',
     tokens: [{"old":"/logout","type":0,"val":"logout","end":""}],
     types: placeholder as Registry['session.destroy']['types'],
+  },
+  'dashboard': {
+    methods: ["GET","HEAD"],
+    pattern: '/dashboard',
+    tokens: [{"old":"/dashboard","type":0,"val":"dashboard","end":""}],
+    types: placeholder as Registry['dashboard']['types'],
+  },
+  'invitations.store': {
+    methods: ["POST"],
+    pattern: '/invitations',
+    tokens: [{"old":"/invitations","type":0,"val":"invitations","end":""}],
+    types: placeholder as Registry['invitations.store']['types'],
+  },
+  'invitations.resend': {
+    methods: ["POST"],
+    pattern: '/invitations/:id/resend',
+    tokens: [{"old":"/invitations/:id/resend","type":0,"val":"invitations","end":""},{"old":"/invitations/:id/resend","type":1,"val":"id","end":""},{"old":"/invitations/:id/resend","type":0,"val":"resend","end":""}],
+    types: placeholder as Registry['invitations.resend']['types'],
+  },
+  'invitations.revoke': {
+    methods: ["POST"],
+    pattern: '/invitations/:id/revoke',
+    tokens: [{"old":"/invitations/:id/revoke","type":0,"val":"invitations","end":""},{"old":"/invitations/:id/revoke","type":1,"val":"id","end":""},{"old":"/invitations/:id/revoke","type":0,"val":"revoke","end":""}],
+    types: placeholder as Registry['invitations.revoke']['types'],
+  },
+  'roles.store': {
+    methods: ["POST"],
+    pattern: '/roles',
+    tokens: [{"old":"/roles","type":0,"val":"roles","end":""}],
+    types: placeholder as Registry['roles.store']['types'],
+  },
+  'roles.destroy': {
+    methods: ["POST"],
+    pattern: '/roles/:id/delete',
+    tokens: [{"old":"/roles/:id/delete","type":0,"val":"roles","end":""},{"old":"/roles/:id/delete","type":1,"val":"id","end":""},{"old":"/roles/:id/delete","type":0,"val":"delete","end":""}],
+    types: placeholder as Registry['roles.destroy']['types'],
   },
 } as const satisfies Record<string, AdonisEndpoint>
 

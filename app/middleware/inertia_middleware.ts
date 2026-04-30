@@ -2,19 +2,30 @@ import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
 import type User from '#models/user'
 import BaseInertiaMiddleware from '@adonisjs/inertia/inertia_middleware'
+import { effectivePriority } from '#services/role_hierarchy'
 
-function serializeUser(user: User) {
+// Sentinel used on the wire for owners (effectivePriority returns +Infinity,
+// which doesn't survive JSON.stringify).
+export const OWNER_PRIORITY = Number.MAX_SAFE_INTEGER
+
+async function serializeUser(user: User) {
+  // Owners implicitly hold every active permission; everyone else gets
+  // the union of permissions across their assigned roles.
+  const userPermissions = user.isOwner ? ['*'] : await user.getPermissions()
+  const priority = user.isOwner ? OWNER_PRIORITY : await effectivePriority(user)
   return {
     id: user.id,
     email: user.email,
     firstName: user.firstName,
     lastName: user.lastName,
     isOwner: user.isOwner,
+    permissions: userPermissions,
+    priority,
   }
 }
 
 export default class InertiaMiddleware extends BaseInertiaMiddleware {
-  share(ctx: HttpContext) {
+  async share(ctx: HttpContext) {
     /**
      * The share method is called everytime an Inertia page is rendered. In
      * certain cases, a page may get rendered before the session middleware
@@ -31,6 +42,8 @@ export default class InertiaMiddleware extends BaseInertiaMiddleware {
     const error = session?.flashMessages.get('error') as string
     const success = session?.flashMessages.get('success') as string
 
+    const user = auth?.user ? await serializeUser(auth.user) : undefined
+
     /**
      * Data shared with all Inertia pages. Make sure you are using
      * transformers for rich data-types like Models.
@@ -41,7 +54,7 @@ export default class InertiaMiddleware extends BaseInertiaMiddleware {
         error,
         success,
       }),
-      user: ctx.inertia.always(auth?.user ? serializeUser(auth.user) : undefined),
+      user: ctx.inertia.always(user),
     }
   }
 

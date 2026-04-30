@@ -20,6 +20,13 @@ export default class Role extends compose(BaseModel, withPermissions()) {
   @column()
   declare isSystem: boolean
 
+  /**
+   * Hierarchy weight. Higher = more privileged. Owners are treated as
+   * +Infinity at runtime; the seeded system roles are 100/50/10.
+   */
+  @column()
+  declare priority: number
+
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
 

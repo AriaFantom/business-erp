@@ -58,7 +58,7 @@ export class ResourceGrantSchema extends BaseModel {
 }
 
 export class RoleSchema extends BaseModel {
-  static $columns = ['createdAt', 'description', 'displayName', 'id', 'isSystem', 'name', 'permissions', 'updatedAt'] as const
+  static $columns = ['createdAt', 'description', 'displayName', 'id', 'isSystem', 'name', 'permissions', 'priority', 'updatedAt'] as const
   $columns = RoleSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime | null
@@ -74,6 +74,8 @@ export class RoleSchema extends BaseModel {
   declare name: string
   @column()
   declare permissions: string
+  @column()
+  declare priority: number
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
 }
