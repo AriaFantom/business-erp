@@ -15,8 +15,6 @@ async function serializeUser(user: User) {
     lastName: user.lastName,
     isOwner: user.isOwner,
     permissions: userPermissions,
-    // The frontend uses this to label the user with their roles and to
-    // pick a sensible default parent in the create-role form.
     roleIds: roles.map((r) => r.id),
     roleNames: roles.map((r) => r.displayName),
   }

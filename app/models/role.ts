@@ -1,5 +1,13 @@
 // app/models/role.ts
-import { BaseModel, afterDelete, afterSave, beforeSave, belongsTo, column, hasMany } from '@adonisjs/lucid/orm'
+import {
+  BaseModel,
+  afterDelete,
+  afterSave,
+  beforeSave,
+  belongsTo,
+  column,
+  hasMany,
+} from '@adonisjs/lucid/orm'
 import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 import { compose } from '@adonisjs/core/helpers'
 import { withPermissions } from '#mixins/with_permissions'
@@ -22,11 +30,6 @@ export default class Role extends compose(BaseModel, withPermissions()) {
   @column()
   declare isSystem: boolean
 
-  /**
-   * Parent in the role tree. Null = root. Cycles are blocked by the
-   * `preventCycle` beforeSave hook below, which runs `cycleCheck` over
-   * the cached tree from `app/services/role_hierarchy.ts`.
-   */
   @column()
   declare parentRoleId: number | null
 
@@ -50,10 +53,8 @@ export default class Role extends compose(BaseModel, withPermissions()) {
       throw new Error('Role cannot be its own parent')
     }
 
-    // Brand-new rows have no id and no children — no cycle is possible.
     if (role.id === undefined) return
 
-    // Skip the tree fetch when parent didn't change.
     if (role.$dirty.parentRoleId === undefined) return
 
     const tree = await getTree()
