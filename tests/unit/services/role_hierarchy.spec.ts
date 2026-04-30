@@ -56,7 +56,7 @@ test.group('role_hierarchy: getDescendants', () => {
     assert.deepEqual(getDescendants(999, tree), [])
   })
 
-  test('does not infinite-loop when children references a missing id', ({ assert }) => {
+  test('filters out children entries that reference a missing id', ({ assert }) => {
     const tree = buildTree(ROWS)
     tree.get(2)!.children.push(12345)
     assert.deepEqual(getDescendants(2, tree).sort(), [3])

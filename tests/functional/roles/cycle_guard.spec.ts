@@ -6,11 +6,10 @@ import { getTree, invalidateTreeCache } from '#services/role_hierarchy'
 test.group('Role cycle guard + cache invalidation', (group) => {
   group.each.setup(async () => {
     await invalidateTreeCache()
+    return testUtils.db().withGlobalTransaction()
   })
 
   group.each.teardown(() => testUtils.db().truncate())
-
-  group.each.setup(() => testUtils.db().withGlobalTransaction())
 
   test('creating a fresh role under an existing parent succeeds', async ({ assert }) => {
     const root = await Role.create({
@@ -57,14 +56,18 @@ test.group('Role cycle guard + cache invalidation', (group) => {
   })
 
   test('afterSave invalidates the cached tree', async ({ assert }) => {
+    // Pre-populate the cache so the post-create getTree() can only see
+    // the new row if afterSave actually fired and cleared the snapshot.
+    const treeBefore = await getTree()
     const r = await Role.create({
       name: 'cache_test',
       displayName: 'Cache Test',
       isSystem: false,
       parentRoleId: null,
     })
-    const tree = await getTree()
-    assert.isTrue(tree.has(r.id))
+    assert.isFalse(treeBefore.has(r.id))
+    const treeAfter = await getTree()
+    assert.isTrue(treeAfter.has(r.id))
   })
 
   test('afterDelete invalidates the cached tree', async ({ assert }) => {
