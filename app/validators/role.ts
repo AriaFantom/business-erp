@@ -12,7 +12,7 @@ export const createRoleValidator = vine.compile(
     name: slugRule,
     displayName: vine.string().trim().minLength(1).maxLength(80),
     description: vine.string().trim().maxLength(280).optional(),
-    priority: vine.number().min(0).max(99),
+    parentRoleId: vine.number().positive(),
     permissions: vine.array(vine.string().trim()).optional(),
   })
 )

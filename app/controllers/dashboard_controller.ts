@@ -3,24 +3,26 @@ import Role from '#models/role'
 import Invitation from '#models/invitation'
 import { DateTime } from 'luxon'
 import { permissions } from '#start/permissions'
-import { effectivePriority } from '#services/role_hierarchy'
+import { assignableRoleIds } from '#services/role_hierarchy'
 
 export default class DashboardController {
   async index({ inertia, auth }: HttpContext) {
     const user = auth.user!
-    const myPriority = await effectivePriority(user)
     const myPermissions = user.isOwner
       ? new Set(permissions.active())
       : new Set(await user.getPermissions())
 
-    const [roles, pendingInvitations] = await Promise.all([
-      Role.query().orderBy('priority', 'desc').orderBy('name', 'asc'),
+    const [roles, pendingInvitations, assignable] = await Promise.all([
+      Role.query().orderBy('name', 'asc'),
       Invitation.query()
         .where('status', 'pending')
         .where('expires_at', '>', DateTime.now().toSQL()!)
         .preload('role')
         .orderBy('created_at', 'desc'),
+      assignableRoleIds(user),
     ])
+
+    const assignableSet = new Set(assignable)
 
     return inertia.render('dashboard', {
       roles: roles.map((r) => ({
@@ -29,11 +31,11 @@ export default class DashboardController {
         displayName: r.displayName,
         description: r.description,
         isSystem: r.isSystem,
-        priority: r.priority,
+        parentRoleId: r.parentRoleId,
         permissions: r.permissions ?? [],
-        // The owner role is reserved and never assignable from the UI;
-        // everything else must be strictly below the current user's level.
-        assignable: r.name !== 'owner' && r.priority < myPriority,
+        // Precomputed by the recursive CTE on the server, so the UI never
+        // needs to second-guess hierarchy rules.
+        assignable: assignableSet.has(r.id),
       })),
       pendingInvitations: pendingInvitations.map((i) => ({
         id: i.id,

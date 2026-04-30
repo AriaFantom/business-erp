@@ -6,7 +6,7 @@ import { DateTime } from 'luxon'
 import string from '@adonisjs/core/helpers/string'
 import mail from '@adonisjs/mail/services/main'
 import InvitationNotification from '#mails/invitation_notification'
-import { effectivePriority } from '#services/role_hierarchy'
+import { canAssignRole } from '#services/role_hierarchy'
 
 export default class InvitationsController {
   /** POST /invitations — owner/admin invites a new user */
@@ -24,17 +24,12 @@ export default class InvitationsController {
       return response.redirect().back()
     }
 
-    // The owner role is reserved for the initial setup invitation; nobody —
-    // including other owners — can hand it out through the regular invite flow.
-    if (role.name === 'owner') {
-      session.flash('errors', { roleId: 'The owner role cannot be assigned.' })
-      return response.redirect().back()
-    }
-
-    // Hierarchy: only allow assigning roles strictly below the inviter's level.
-    const myPriority = await effectivePriority(auth.user!)
-    if (role.priority >= myPriority) {
-      session.flash('errors', { roleId: 'You cannot assign a role at or above your own.' })
+    // Hierarchy: only roles in the inviter's subtree are assignable.
+    // canAssignRole also enforces the "owner is reserved" rule.
+    if (!(await canAssignRole(auth.user!, role))) {
+      session.flash('errors', {
+        roleId: 'You cannot assign this role — it is at or above your own level.',
+      })
       return response.redirect().back()
     }
 

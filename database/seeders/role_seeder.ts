@@ -11,10 +11,10 @@ export default class extends BaseSeeder {
         displayName: 'Owner',
         isSystem: true,
         description: 'Full access',
-        priority: 100,
+        parentRoleId: null,
       }
     )
-    await owner.syncPermissions(permissions.active()) // every active key
+    await owner.syncPermissions(permissions.active())
 
     const admin = await Role.updateOrCreate(
       { name: 'admin' },
@@ -23,7 +23,7 @@ export default class extends BaseSeeder {
         displayName: 'Admin',
         isSystem: true,
         description: 'Manage users and invitations',
-        priority: 50,
+        parentRoleId: owner.id,
       }
     )
     await admin.syncPermissions(permissions.active().filter((k) => !k.startsWith('roles.')))
@@ -35,7 +35,7 @@ export default class extends BaseSeeder {
         displayName: 'Member',
         isSystem: true,
         description: 'Read-only access',
-        priority: 10,
+        parentRoleId: admin.id,
       }
     )
     await member.syncPermissions(permissions.active().filter((k) => k.endsWith('.view')))

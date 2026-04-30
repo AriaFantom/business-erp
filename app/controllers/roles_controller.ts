@@ -3,7 +3,7 @@ import Role from '#models/role'
 import Invitation from '#models/invitation'
 import { createRoleValidator } from '#validators/role'
 import { permissions } from '#start/permissions'
-import { effectivePriority } from '#services/role_hierarchy'
+import { canAssignRole } from '#services/role_hierarchy'
 
 const RESERVED_NAMES = new Set(['owner'])
 
@@ -25,14 +25,23 @@ export default class RolesController {
       return response.redirect().back()
     }
 
-    // Hierarchy: a creator can only define a role strictly below their own level.
-    const myPriority = await effectivePriority(auth.user!)
-    if (payload.priority >= myPriority) {
+    // The new role must hang off a parent the user is allowed to extend.
+    // "Allowed to extend" = the parent must be assignable to the user, which
+    // covers descendants of their own roles (and excludes 'owner').
+    const parent = await Role.find(payload.parentRoleId)
+    if (!parent) {
+      session.flash('errors', { parentRoleId: 'Parent role not found.' })
+      return response.redirect().back()
+    }
+    if (!(await canAssignRole(auth.user!, parent)) && !auth.user!.isOwner) {
       session.flash('errors', {
-        priority: 'Role priority must be below your own.',
+        parentRoleId: 'You can only attach new roles below your own.',
       })
       return response.redirect().back()
     }
+    // Owners can attach anywhere except under the reserved 'owner' role itself
+    // wait — they CAN attach under owner; that's exactly how the seeded admin
+    // role is structured. So no extra owner-side restriction.
 
     const validPermissions = permissions.filterKeys(payload.permissions ?? [])
 
@@ -53,7 +62,7 @@ export default class RolesController {
       displayName: payload.displayName,
       description: payload.description ?? null,
       isSystem: false,
-      priority: payload.priority,
+      parentRoleId: parent.id,
     })
     await role.syncPermissions(validPermissions)
 
@@ -75,9 +84,8 @@ export default class RolesController {
       return response.redirect().back()
     }
 
-    const myPriority = await effectivePriority(auth.user!)
-    if (role.priority >= myPriority) {
-      session.flash('error', 'You cannot delete a role at or above your own.')
+    if (!(await canAssignRole(auth.user!, role))) {
+      session.flash('error', 'You can only delete roles below your own.')
       return response.redirect().back()
     }
 
@@ -92,6 +100,9 @@ export default class RolesController {
       return response.redirect().back()
     }
 
+    // FK on parent_role_id is ON DELETE SET NULL, so children get reparented
+    // to the forest root. Callers should be aware of this; the system roles
+    // are protected above.
     await role.delete()
     session.flash('success', `Role "${role.displayName}" deleted.`)
     return response.redirect().back()

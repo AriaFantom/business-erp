@@ -2,17 +2,12 @@ import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
 import type User from '#models/user'
 import BaseInertiaMiddleware from '@adonisjs/inertia/inertia_middleware'
-import { effectivePriority } from '#services/role_hierarchy'
-
-// Sentinel used on the wire for owners (effectivePriority returns +Infinity,
-// which doesn't survive JSON.stringify).
-export const OWNER_PRIORITY = Number.MAX_SAFE_INTEGER
 
 async function serializeUser(user: User) {
   // Owners implicitly hold every active permission; everyone else gets
   // the union of permissions across their assigned roles.
   const userPermissions = user.isOwner ? ['*'] : await user.getPermissions()
-  const priority = user.isOwner ? OWNER_PRIORITY : await effectivePriority(user)
+  const roles = user.isOwner ? [] : await user.getRoles()
   return {
     id: user.id,
     email: user.email,
@@ -20,7 +15,10 @@ async function serializeUser(user: User) {
     lastName: user.lastName,
     isOwner: user.isOwner,
     permissions: userPermissions,
-    priority,
+    // The frontend uses this to label the user with their roles and to
+    // pick a sensible default parent in the create-role form.
+    roleIds: roles.map((r) => r.id),
+    roleNames: roles.map((r) => r.displayName),
   }
 }
 

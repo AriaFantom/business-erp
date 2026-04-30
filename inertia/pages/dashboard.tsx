@@ -40,17 +40,9 @@ type RoleOption = {
   displayName: string
   description: string | null
   isSystem: boolean
-  priority: number
+  parentRoleId: number | null
   permissions: string[]
   assignable: boolean
-}
-
-// Wire sentinel matching OWNER_PRIORITY in the inertia middleware.
-const OWNER_PRIORITY = Number.MAX_SAFE_INTEGER
-
-function priorityLabel(priority: number): string {
-  if (priority >= OWNER_PRIORITY) return 'Owner ∞'
-  return `Lvl ${priority}`
 }
 
 type PendingInvitation = {
@@ -71,6 +63,8 @@ type DashboardProps = {
   pendingInvitations: PendingInvitation[]
   permissionCatalog: PermissionOption[]
 }
+
+type RoleNode = RoleOption & { depth: number }
 
 function initialsFor(email: string | null): string {
   if (!email) return '?'
@@ -96,19 +90,56 @@ function groupPermissions(catalog: PermissionOption[]): Array<[string, Permissio
   return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b))
 }
 
+/**
+ * Flatten the role forest into a depth-first list with `depth` annotations,
+ * matching how the server walks the recursive CTE. Roots are sorted by
+ * displayName; within a parent, children sort the same way.
+ */
+function flattenRoleTree(roles: RoleOption[]): RoleNode[] {
+  const byParent = new Map<number | null, RoleOption[]>()
+  for (const role of roles) {
+    const parentKey = role.parentRoleId
+    if (!byParent.has(parentKey)) byParent.set(parentKey, [])
+    byParent.get(parentKey)!.push(role)
+  }
+  for (const list of byParent.values()) {
+    list.sort((a, b) => a.displayName.localeCompare(b.displayName))
+  }
+  const out: RoleNode[] = []
+  const knownIds = new Set(roles.map((r) => r.id))
+  const visit = (parent: number | null, depth: number) => {
+    const children = byParent.get(parent) ?? []
+    for (const child of children) {
+      out.push({ ...child, depth })
+      visit(child.id, depth + 1)
+    }
+  }
+  visit(null, 0)
+  // Any role whose parent is not in the visible set (e.g. parent role hidden
+  // by visibility scoping) is shown as a root so it isn't dropped silently.
+  for (const role of roles) {
+    if (role.parentRoleId !== null && !knownIds.has(role.parentRoleId)) {
+      if (!out.find((r) => r.id === role.id)) {
+        out.push({ ...role, depth: 0 })
+      }
+    }
+  }
+  return out
+}
+
 function CreateRoleCard({
   permissionCatalog,
-  maxPriority,
+  parentChoices,
 }: {
   permissionCatalog: PermissionOption[]
-  maxPriority: number
+  parentChoices: RoleOption[]
 }) {
-  const cap = Math.min(maxPriority - 1, 99)
+  const defaultParent = parentChoices[0]?.id ?? 0
   const { data, setData, post, processing, errors, reset } = useForm({
     name: '',
     displayName: '',
     description: '',
-    priority: Math.max(0, Math.min(10, cap)),
+    parentRoleId: defaultParent,
     permissions: [] as string[],
   })
 
@@ -132,7 +163,9 @@ function CreateRoleCard({
     <Card>
       <CardHeader>
         <CardTitle>Create role</CardTitle>
-        <CardDescription>Define a new role and pick the permissions it grants.</CardDescription>
+        <CardDescription>
+          Pick a parent in the role tree, then choose what the new role can do.
+        </CardDescription>
       </CardHeader>
       <form
         onSubmit={(e) => {
@@ -175,8 +208,8 @@ function CreateRoleCard({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="flex flex-col gap-2 sm:col-span-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-2">
               <Label htmlFor="role-description">Description</Label>
               <Input
                 id="role-description"
@@ -190,22 +223,28 @@ function CreateRoleCard({
               )}
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="role-priority">Priority</Label>
-              <Input
-                id="role-priority"
-                name="priority"
-                type="number"
-                min={0}
-                max={cap}
-                value={data.priority}
-                onChange={(e) => setData('priority', Number(e.target.value))}
-                aria-invalid={errors.priority ? true : undefined}
-              />
+              <Label htmlFor="role-parent">Parent role</Label>
+              <Select
+                value={data.parentRoleId ? String(data.parentRoleId) : ''}
+                onValueChange={(v) => setData('parentRoleId', Number(v))}
+              >
+                <SelectTrigger id="role-parent" className="w-full">
+                  <SelectValue placeholder="Pick a parent" />
+                </SelectTrigger>
+                <SelectContent>
+                  {parentChoices.map((p) => (
+                    <SelectItem key={p.id} value={String(p.id)}>
+                      {p.displayName}{' '}
+                      <span className="ml-1 text-xs text-muted-foreground">{p.name}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <span className="text-xs text-muted-foreground">
-                0–{cap}. Lower than your level.
+                The new role inherits hierarchy below this parent.
               </span>
-              {errors.priority && (
-                <p className="text-sm text-destructive">{errors.priority}</p>
+              {errors.parentRoleId && (
+                <p className="text-sm text-destructive">{errors.parentRoleId}</p>
               )}
             </div>
           </div>
@@ -222,7 +261,6 @@ function CreateRoleCard({
               {grouped.map(([resource, items], index) => {
                 const groupKeys = items.map((i) => i.key)
                 const allChecked = groupKeys.every((k) => data.permissions.includes(k))
-                const someChecked = !allChecked && groupKeys.some((k) => data.permissions.includes(k))
                 return (
                   <div key={resource} className="flex flex-col gap-2">
                     {index > 0 && <Separator />}
@@ -233,7 +271,7 @@ function CreateRoleCard({
                         className="text-xs text-muted-foreground hover:text-foreground"
                         onClick={() => toggleGroup(groupKeys, !allChecked)}
                       >
-                        {allChecked ? 'Clear' : someChecked ? 'Select all' : 'Select all'}
+                        {allChecked ? 'Clear' : 'Select all'}
                       </button>
                     </div>
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -271,7 +309,7 @@ function CreateRoleCard({
           </div>
         </CardContent>
         <CardFooter className="flex justify-end">
-          <Button type="submit" disabled={processing}>
+          <Button type="submit" disabled={processing || parentChoices.length === 0}>
             <Plus />
             {processing ? 'Creating…' : 'Create role'}
           </Button>
@@ -287,9 +325,19 @@ export default function Dashboard({
   permissionCatalog,
 }: DashboardProps) {
   const { user } = usePage<InertiaProps<DashboardProps>>().props
-  const myPriority = user?.priority ?? 0
+  const userRoleNames = user?.roleNames ?? []
   const assignableRoles = roles.filter((r) => r.assignable)
   const defaultRoleId = assignableRoles[0]?.id ? String(assignableRoles[0].id) : ''
+  const flatTree = useMemo(() => flattenRoleTree(roles), [roles])
+  const rolesById = useMemo(() => new Map(roles.map((r) => [r.id, r])), [roles])
+  // Owners and users in the user's subtree are valid parents for new roles —
+  // i.e. the user's own roles plus everything assignable to them.
+  const parentChoices = useMemo(() => {
+    if (!user) return []
+    if (user.isOwner) return roles
+    const ownIds = new Set(user.roleIds ?? [])
+    return roles.filter((r) => ownIds.has(r.id) || r.assignable)
+  }, [roles, user])
   const fullName = user
     ? [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || user.email
     : null
@@ -321,16 +369,22 @@ export default function Dashboard({
             </Avatar>
             <div className="flex min-w-0 flex-col">
               <span className="truncate text-sm font-medium">{fullName}</span>
-              <span className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
                 <span className="truncate">{user.email}</span>
                 {user.isOwner ? (
                   <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
                     Owner
                   </Badge>
-                ) : (
+                ) : userRoleNames.length === 0 ? (
                   <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
-                    {priorityLabel(myPriority)}
+                    no role
                   </Badge>
+                ) : (
+                  userRoleNames.map((name) => (
+                    <Badge key={name} variant="outline" className="px-1.5 py-0 text-[10px]">
+                      {name}
+                    </Badge>
+                  ))
                 )}
               </span>
             </div>
@@ -375,14 +429,21 @@ export default function Dashboard({
                         <SelectValue placeholder="Pick a role" />
                       </SelectTrigger>
                       <SelectContent>
-                        {assignableRoles.map((role) => (
-                          <SelectItem key={role.id} value={String(role.id)}>
-                            {role.displayName}{' '}
-                            <span className="ml-1 text-xs text-muted-foreground">
-                              {priorityLabel(role.priority)}
-                            </span>
-                          </SelectItem>
-                        ))}
+                        {assignableRoles.map((role) => {
+                          const parent = role.parentRoleId
+                            ? rolesById.get(role.parentRoleId)
+                            : null
+                          return (
+                            <SelectItem key={role.id} value={String(role.id)}>
+                              {role.displayName}
+                              {parent && (
+                                <span className="ml-1 text-xs text-muted-foreground">
+                                  under {parent.displayName}
+                                </span>
+                              )}
+                            </SelectItem>
+                          )
+                        })}
                       </SelectContent>
                     </Select>
                     {errors.roleId && (
@@ -393,8 +454,8 @@ export default function Dashboard({
                 <CardFooter className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">
                     {assignableRoles.length === 0
-                      ? 'No roles below your level — create one first.'
-                      : `${assignableRoles.length} role${assignableRoles.length === 1 ? '' : 's'} available to assign.`}
+                      ? 'No roles below your subtree — create one first.'
+                      : `${assignableRoles.length} role${assignableRoles.length === 1 ? '' : 's'} in your subtree.`}
                   </span>
                   <Button type="submit" disabled={processing || assignableRoles.length === 0}>
                     <Send />
@@ -491,34 +552,44 @@ export default function Dashboard({
           <div className="lg:col-span-2">
             <CreateRoleCard
               permissionCatalog={permissionCatalog}
-              maxPriority={myPriority}
+              parentChoices={parentChoices}
             />
           </div>
         )}
 
         <Card className={canCreateRole ? '' : 'lg:col-span-3'}>
           <CardHeader>
-            <CardTitle>Roles</CardTitle>
+            <CardTitle>Role tree</CardTitle>
             <CardDescription>
-              {roles.length} role{roles.length === 1 ? '' : 's'} configured.
+              {roles.length} role{roles.length === 1 ? '' : 's'} configured. Each row's
+              indent shows its place in the hierarchy.
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            {roles.map((role) => (
+          <CardContent className="flex flex-col gap-2">
+            {flatTree.map((role) => (
               <div
                 key={role.id}
                 className="flex items-start justify-between gap-3 rounded-md border border-border p-3"
+                style={{ marginLeft: role.depth * 16 }}
               >
                 <div className="flex min-w-0 flex-col gap-1">
                   <div className="flex flex-wrap items-center gap-2">
+                    {role.depth > 0 && (
+                      <span
+                        aria-hidden
+                        className="text-muted-foreground"
+                      >{'└'.padStart(role.depth, ' ')}</span>
+                    )}
                     <span className="text-sm font-medium">{role.displayName}</span>
                     <span className="font-mono text-xs text-muted-foreground">{role.name}</span>
-                    <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
-                      {priorityLabel(role.priority)}
-                    </Badge>
                     {role.isSystem && (
                       <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
                         system
+                      </Badge>
+                    )}
+                    {role.assignable && (
+                      <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
+                        in your subtree
                       </Badge>
                     )}
                   </div>
@@ -530,7 +601,7 @@ export default function Dashboard({
                     {role.permissions.length === 1 ? '' : 's'}
                   </span>
                 </div>
-                {canDeleteRole && !role.isSystem && role.priority < myPriority && (
+                {canDeleteRole && !role.isSystem && role.assignable && (
                   <Button
                     type="button"
                     variant="ghost"
