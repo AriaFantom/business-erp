@@ -117,3 +117,77 @@ export async function visibleRoleIds(user: User): Promise<number[]> {
   const desc = await descendantRoleIds(own)
   return [...new Set([...own, ...desc])]
 }
+
+// --- Pure tree utilities (no DB, no cache) ---
+
+export type RoleRow = {
+  id: number
+  parent_role_id: number | null
+  name: string
+}
+
+export type RoleNode = {
+  id: number
+  parentRoleId: number | null
+  name: string
+  children: number[]
+}
+
+export type RoleTree = Map<number, RoleNode>
+
+export function buildTree(rows: RoleRow[]): RoleTree {
+  const tree: RoleTree = new Map()
+  for (const r of rows) {
+    tree.set(r.id, {
+      id: r.id,
+      parentRoleId: r.parent_role_id,
+      name: r.name,
+      children: [],
+    })
+  }
+  for (const node of tree.values()) {
+    if (node.parentRoleId !== null) {
+      tree.get(node.parentRoleId)?.children.push(node.id)
+    }
+  }
+  return tree
+}
+
+export function getDescendants(roleId: number, tree: RoleTree): number[] {
+  const result = new Set<number>()
+  const stack = [roleId]
+  while (stack.length) {
+    const current = stack.pop()!
+    const node = tree.get(current)
+    if (!node) continue
+    for (const child of node.children) {
+      if (!result.has(child) && tree.has(child)) {
+        result.add(child)
+        stack.push(child)
+      }
+    }
+  }
+  return [...result]
+}
+
+export function getAncestors(roleId: number, tree: RoleTree): number[] {
+  const result: number[] = []
+  const seen = new Set<number>([roleId])
+  let cursor = tree.get(roleId)?.parentRoleId ?? null
+  while (cursor !== null && !seen.has(cursor)) {
+    result.push(cursor)
+    seen.add(cursor)
+    cursor = tree.get(cursor)?.parentRoleId ?? null
+  }
+  return result
+}
+
+export function cycleCheck(
+  roleId: number,
+  newParentId: number | null,
+  tree: RoleTree
+): boolean {
+  if (newParentId === null) return false
+  if (newParentId === roleId) return true
+  return new Set(getDescendants(roleId, tree)).has(newParentId)
+}
