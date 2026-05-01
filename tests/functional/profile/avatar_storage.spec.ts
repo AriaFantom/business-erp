@@ -85,6 +85,7 @@ test.group('avatar_storage', (group) => {
       password: 'password123',
       firstName: 'D',
       lastName: 'E',
+      avatarKey: null,
       isOwner: false,
     })
     await removeAvatar(user)

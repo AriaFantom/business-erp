@@ -9,7 +9,11 @@ async function serializeUser(user: User) {
   // the union of permissions across their assigned roles.
   const userPermissions = user.isOwner ? ['*'] : await user.getPermissions()
   const roles = user.isOwner ? [] : await user.getRoles()
-  const avatarUrl = user.avatarKey ? await drive.use().getUrl(user.avatarKey) : null
+  // Bucket is private, so a signed URL is required for the browser to load
+  // the avatar. One hour is plenty for a single page render.
+  const avatarUrl = user.avatarKey
+    ? await drive.use().getSignedUrl(user.avatarKey, { expiresIn: '1 hour' })
+    : null
   return {
     id: user.id,
     email: user.email,

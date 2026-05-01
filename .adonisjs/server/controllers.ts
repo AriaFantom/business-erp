@@ -9,6 +9,7 @@ export const controllers = {
   },
   Dashboard: () => import('#controllers/dashboard_controller'),
   Invitations: () => import('#controllers/invitations_controller'),
+  Profile: () => import('#controllers/profile_controller'),
   Roles: () => import('#controllers/roles_controller'),
   Session: () => import('#controllers/session_controller'),
   Users: () => import('#controllers/users_controller'),

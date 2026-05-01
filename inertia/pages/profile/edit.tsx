@@ -113,25 +113,35 @@ function AvatarCard({
 }) {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const { setData, post, processing, errors, reset } = useForm<{ avatar: File | null }>({
-    avatar: null,
-  })
+  const [processing, setProcessing] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
 
   const onFileChosen = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null
     if (!file) return
 
-    setData('avatar', file)
     setPreviewUrl(URL.createObjectURL(file))
+    setUploadError(null)
+    setProcessing(true)
 
-    post('/profile/avatar', {
-      preserveScroll: true,
-      forceFormData: true,
-      onFinish: () => {
-        reset('avatar')
-        if (fileInputRef.current) fileInputRef.current.value = ''
-      },
-    })
+    router.post(
+      '/profile/avatar',
+      { avatar: file },
+      {
+        preserveScroll: true,
+        forceFormData: true,
+        onError: (errors) => {
+          const message =
+            (errors.avatar as string | undefined) ?? 'Upload failed. Please try again.'
+          setUploadError(message)
+          setPreviewUrl(null)
+        },
+        onFinish: () => {
+          setProcessing(false)
+          if (fileInputRef.current) fileInputRef.current.value = ''
+        },
+      }
+    )
   }
 
   const onRemove = () => {
@@ -184,7 +194,7 @@ function AvatarCard({
               </Button>
             )}
           </div>
-          {errors.avatar && <p className="text-sm text-destructive">{errors.avatar}</p>}
+          {uploadError && <p className="text-sm text-destructive">{uploadError}</p>}
         </div>
       </CardContent>
     </Card>

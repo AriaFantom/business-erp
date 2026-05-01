@@ -22,4 +22,12 @@ export interface ApiDefinition {
     store: typeof routes['roles.store']
     destroy: typeof routes['roles.destroy']
   }
+  profile: {
+    show: typeof routes['profile.show']
+    update: typeof routes['profile.update']
+    avatar: {
+      update: typeof routes['profile.avatar.update']
+      destroy: typeof routes['profile.avatar.destroy']
+    }
+  }
 }

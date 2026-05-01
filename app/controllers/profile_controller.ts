@@ -5,7 +5,7 @@ import { storeAvatar, removeAvatar } from '#services/avatar_storage'
 export default class ProfileController {
   /** GET /profile */
   async show({ inertia }: HttpContext) {
-    return inertia.render('profile/edit')
+    return inertia.render('profile/edit', {})
   }
 
   /** POST /profile — update first/last name */

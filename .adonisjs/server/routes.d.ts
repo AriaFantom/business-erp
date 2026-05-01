@@ -16,18 +16,24 @@ export type ScannedRoutes = {
     'invitations.revoke': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'roles.store': { paramsTuple?: []; params?: {} }
     'roles.destroy': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'profile.show': { paramsTuple?: []; params?: {} }
+    'profile.update': { paramsTuple?: []; params?: {} }
+    'profile.avatar.update': { paramsTuple?: []; params?: {} }
+    'profile.avatar.destroy': { paramsTuple?: []; params?: {} }
   }
   GET: {
     'home': { paramsTuple?: []; params?: {} }
     'session.create': { paramsTuple?: []; params?: {} }
     'invitation.show': { paramsTuple: [ParamValue]; params: {'token': ParamValue} }
     'dashboard': { paramsTuple?: []; params?: {} }
+    'profile.show': { paramsTuple?: []; params?: {} }
   }
   HEAD: {
     'home': { paramsTuple?: []; params?: {} }
     'session.create': { paramsTuple?: []; params?: {} }
     'invitation.show': { paramsTuple: [ParamValue]; params: {'token': ParamValue} }
     'dashboard': { paramsTuple?: []; params?: {} }
+    'profile.show': { paramsTuple?: []; params?: {} }
   }
   POST: {
     'session.store': { paramsTuple?: []; params?: {} }
@@ -38,6 +44,9 @@ export type ScannedRoutes = {
     'invitations.revoke': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'roles.store': { paramsTuple?: []; params?: {} }
     'roles.destroy': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'profile.update': { paramsTuple?: []; params?: {} }
+    'profile.avatar.update': { paramsTuple?: []; params?: {} }
+    'profile.avatar.destroy': { paramsTuple?: []; params?: {} }
   }
 }
 declare module '@adonisjs/core/types/http' {

@@ -78,6 +78,30 @@ const routes = {
     tokens: [{"old":"/roles/:id/delete","type":0,"val":"roles","end":""},{"old":"/roles/:id/delete","type":1,"val":"id","end":""},{"old":"/roles/:id/delete","type":0,"val":"delete","end":""}],
     types: placeholder as Registry['roles.destroy']['types'],
   },
+  'profile.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/profile',
+    tokens: [{"old":"/profile","type":0,"val":"profile","end":""}],
+    types: placeholder as Registry['profile.show']['types'],
+  },
+  'profile.update': {
+    methods: ["POST"],
+    pattern: '/profile',
+    tokens: [{"old":"/profile","type":0,"val":"profile","end":""}],
+    types: placeholder as Registry['profile.update']['types'],
+  },
+  'profile.avatar.update': {
+    methods: ["POST"],
+    pattern: '/profile/avatar',
+    tokens: [{"old":"/profile/avatar","type":0,"val":"profile","end":""},{"old":"/profile/avatar","type":0,"val":"avatar","end":""}],
+    types: placeholder as Registry['profile.avatar.update']['types'],
+  },
+  'profile.avatar.destroy': {
+    methods: ["POST"],
+    pattern: '/profile/avatar/delete',
+    tokens: [{"old":"/profile/avatar/delete","type":0,"val":"profile","end":""},{"old":"/profile/avatar/delete","type":0,"val":"avatar","end":""},{"old":"/profile/avatar/delete","type":0,"val":"delete","end":""}],
+    types: placeholder as Registry['profile.avatar.destroy']['types'],
+  },
 } as const satisfies Record<string, AdonisEndpoint>
 
 export { routes }

@@ -16,7 +16,12 @@ const driveConfig = defineConfig({
       },
       region: env.get('AWS_REGION'),
       bucket: env.get('S3_BUCKET'),
-      visibility: 'public',
+      // S3-compatible providers (MinIO in dev) need a custom endpoint and
+      // path-style addressing because their host doesn't support
+      // virtual-hosted bucket subdomains.
+      endpoint: env.get('S3_ENDPOINT'),
+      forcePathStyle: env.get('S3_FORCE_PATH_STYLE'),
+      visibility: 'private',
     }),
   },
 })
