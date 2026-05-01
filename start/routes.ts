@@ -16,6 +16,7 @@ const AcceptInvitationController = () => import('#controllers/auth/invitations_c
 const DashboardController = () => import('#controllers/dashboard_controller')
 const RolesController = () => import('#controllers/roles_controller')
 const ProfileController = () => import('#controllers/profile_controller')
+const UsersController = () => import('#controllers/users_controller')
 
 router.on('/').renderInertia('home', {}).use(middleware.firstUserSetup()).as('home')
 
@@ -32,6 +33,16 @@ router
   .group(() => {
     router.post('logout', [controllers.Session, 'destroy']).as('session.destroy')
     router.get('dashboard', [DashboardController, 'index']).as('dashboard')
+
+    // System area: nav links from the sidebar resolve here. Each route is
+    // gated server-side by the same permission as its sidebar nav item.
+    router.get('system/roles', [RolesController, 'index']).as('system.roles')
+    router.get('system/invitations', [InvitationsController, 'index']).as('system.invitations')
+    router.get('system/users', [UsersController, 'index']).as('system.users')
+    router
+      .post('system/users/:id/roles', [UsersController, 'updateRoles'])
+      .as('system.users.update_roles')
+
     router.post('invitations', [InvitationsController, 'store']).as('invitations.store')
     router
       .post('invitations/:id/resend', [InvitationsController, 'resend'])

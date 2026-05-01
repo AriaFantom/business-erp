@@ -48,6 +48,30 @@ const routes = {
     tokens: [{"old":"/dashboard","type":0,"val":"dashboard","end":""}],
     types: placeholder as Registry['dashboard']['types'],
   },
+  'system.roles': {
+    methods: ["GET","HEAD"],
+    pattern: '/system/roles',
+    tokens: [{"old":"/system/roles","type":0,"val":"system","end":""},{"old":"/system/roles","type":0,"val":"roles","end":""}],
+    types: placeholder as Registry['system.roles']['types'],
+  },
+  'system.invitations': {
+    methods: ["GET","HEAD"],
+    pattern: '/system/invitations',
+    tokens: [{"old":"/system/invitations","type":0,"val":"system","end":""},{"old":"/system/invitations","type":0,"val":"invitations","end":""}],
+    types: placeholder as Registry['system.invitations']['types'],
+  },
+  'system.users': {
+    methods: ["GET","HEAD"],
+    pattern: '/system/users',
+    tokens: [{"old":"/system/users","type":0,"val":"system","end":""},{"old":"/system/users","type":0,"val":"users","end":""}],
+    types: placeholder as Registry['system.users']['types'],
+  },
+  'system.users.update_roles': {
+    methods: ["POST"],
+    pattern: '/system/users/:id/roles',
+    tokens: [{"old":"/system/users/:id/roles","type":0,"val":"system","end":""},{"old":"/system/users/:id/roles","type":0,"val":"users","end":""},{"old":"/system/users/:id/roles","type":1,"val":"id","end":""},{"old":"/system/users/:id/roles","type":0,"val":"roles","end":""}],
+    types: placeholder as Registry['system.users.update_roles']['types'],
+  },
   'invitations.store': {
     methods: ["POST"],
     pattern: '/invitations',

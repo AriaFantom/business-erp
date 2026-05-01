@@ -4,10 +4,18 @@ import Invitation from '#models/invitation'
 import { createRoleValidator } from '#validators/role'
 import { permissions } from '#start/permissions'
 import { canAssignRole } from '#services/role_hierarchy'
+import { getRolesViewModel } from '#services/dashboard_view_models'
 
 const RESERVED_NAMES = new Set(['owner'])
 
 export default class RolesController {
+  /** GET /system/roles — role tree + create-role form */
+  async index({ inertia, auth, bouncer }: HttpContext) {
+    await bouncer.authorize('roles.view' as never)
+    const data = await getRolesViewModel(auth.user!)
+    return inertia.render('system/roles', data)
+  }
+
   /** POST /roles */
   async store({ request, auth, bouncer, response, session }: HttpContext) {
     await bouncer.authorize('roles.create' as never)

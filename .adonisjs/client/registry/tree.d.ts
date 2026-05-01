@@ -13,6 +13,13 @@ export interface ApiDefinition {
     store: typeof routes['invitation.store']
   }
   dashboard: typeof routes['dashboard']
+  system: {
+    roles: typeof routes['system.roles']
+    invitations: typeof routes['system.invitations']
+    users: typeof routes['system.users'] & {
+      updateRoles: typeof routes['system.users.update_roles']
+    }
+  }
   invitations: {
     store: typeof routes['invitations.store']
     resend: typeof routes['invitations.resend']

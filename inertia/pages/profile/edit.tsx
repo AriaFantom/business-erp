@@ -1,4 +1,4 @@
-import { useRef, useState, type ChangeEvent } from 'react'
+import { useRef, useState, type ChangeEvent, type ReactElement } from 'react'
 import { router, useForm, usePage } from '@inertiajs/react'
 import { ArrowLeft, Trash2, Upload } from 'lucide-react'
 
@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import DashboardLayout from '@/layouts/dashboard-layout'
 import { userInitials } from '@/lib/user'
 import type { InertiaProps } from '@/types'
 
@@ -200,3 +201,6 @@ function AvatarCard({
     </Card>
   )
 }
+
+ProfileEdit.layout = (page: ReactElement) => <DashboardLayout>{page}</DashboardLayout>
+

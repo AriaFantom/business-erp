@@ -91,6 +91,54 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/dashboard_controller').default['index']>>>
     }
   }
+  'system.roles': {
+    methods: ["GET","HEAD"]
+    pattern: '/system/roles'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/roles_controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/roles_controller').default['index']>>>
+    }
+  }
+  'system.invitations': {
+    methods: ["GET","HEAD"]
+    pattern: '/system/invitations'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/invitations_controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/invitations_controller').default['index']>>>
+    }
+  }
+  'system.users': {
+    methods: ["GET","HEAD"]
+    pattern: '/system/users'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/users_controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/users_controller').default['index']>>>
+    }
+  }
+  'system.users.update_roles': {
+    methods: ["POST"]
+    pattern: '/system/users/:id/roles'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/users').updateUserRolesValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#validators/users').updateUserRolesValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/users_controller').default['updateRoles']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/users_controller').default['updateRoles']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
   'invitations.store': {
     methods: ["POST"]
     pattern: '/invitations'

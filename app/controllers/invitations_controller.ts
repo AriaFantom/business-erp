@@ -7,8 +7,17 @@ import string from '@adonisjs/core/helpers/string'
 import mail from '@adonisjs/mail/services/main'
 import InvitationNotification from '#mails/invitation_notification'
 import { canAssignRole } from '#services/role_hierarchy'
+import { getInvitationsViewModel } from '#services/dashboard_view_models'
 
 export default class InvitationsController {
+  /** GET /system/invitations — invite form + pending invitations */
+  async index({ inertia, auth, bouncer }: HttpContext) {
+    // Same gate as the sidebar nav link to avoid mismatched visibility.
+    await bouncer.authorize('users.invite' as never)
+    const data = await getInvitationsViewModel(auth.user!)
+    return inertia.render('system/invitations', data)
+  }
+
   /** POST /invitations — owner/admin invites a new user */
   async store({ request, auth, bouncer, response, session }: HttpContext) {
     // RBAC check: needs the users.invite permission.

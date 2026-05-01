@@ -7,12 +7,10 @@ const slugRule = vine
   .maxLength(48)
   .regex(/^[a-z][a-z0-9_-]*$/)
 
-export const createRoleValidator = vine.compile(
-  vine.object({
-    name: slugRule,
-    displayName: vine.string().trim().minLength(1).maxLength(80),
-    description: vine.string().trim().maxLength(280).optional(),
-    parentRoleId: vine.number().positive(),
-    permissions: vine.array(vine.string().trim()).optional(),
-  })
-)
+export const createRoleValidator = vine.create({
+  name: slugRule,
+  displayName: vine.string().trim().minLength(1).maxLength(80),
+  description: vine.string().trim().maxLength(280).optional(),
+  parentRoleId: vine.number().positive(),
+  permissions: vine.array(vine.string().trim()).optional(),
+})

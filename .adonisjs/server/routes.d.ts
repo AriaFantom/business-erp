@@ -11,6 +11,10 @@ export type ScannedRoutes = {
     'invitation.store': { paramsTuple: [ParamValue]; params: {'token': ParamValue} }
     'session.destroy': { paramsTuple?: []; params?: {} }
     'dashboard': { paramsTuple?: []; params?: {} }
+    'system.roles': { paramsTuple?: []; params?: {} }
+    'system.invitations': { paramsTuple?: []; params?: {} }
+    'system.users': { paramsTuple?: []; params?: {} }
+    'system.users.update_roles': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'invitations.store': { paramsTuple?: []; params?: {} }
     'invitations.resend': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'invitations.revoke': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
@@ -26,6 +30,9 @@ export type ScannedRoutes = {
     'session.create': { paramsTuple?: []; params?: {} }
     'invitation.show': { paramsTuple: [ParamValue]; params: {'token': ParamValue} }
     'dashboard': { paramsTuple?: []; params?: {} }
+    'system.roles': { paramsTuple?: []; params?: {} }
+    'system.invitations': { paramsTuple?: []; params?: {} }
+    'system.users': { paramsTuple?: []; params?: {} }
     'profile.show': { paramsTuple?: []; params?: {} }
   }
   HEAD: {
@@ -33,12 +40,16 @@ export type ScannedRoutes = {
     'session.create': { paramsTuple?: []; params?: {} }
     'invitation.show': { paramsTuple: [ParamValue]; params: {'token': ParamValue} }
     'dashboard': { paramsTuple?: []; params?: {} }
+    'system.roles': { paramsTuple?: []; params?: {} }
+    'system.invitations': { paramsTuple?: []; params?: {} }
+    'system.users': { paramsTuple?: []; params?: {} }
     'profile.show': { paramsTuple?: []; params?: {} }
   }
   POST: {
     'session.store': { paramsTuple?: []; params?: {} }
     'invitation.store': { paramsTuple: [ParamValue]; params: {'token': ParamValue} }
     'session.destroy': { paramsTuple?: []; params?: {} }
+    'system.users.update_roles': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'invitations.store': { paramsTuple?: []; params?: {} }
     'invitations.resend': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'invitations.revoke': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
