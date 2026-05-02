@@ -1,0 +1,39 @@
+import type { HttpContext } from '@adonisjs/core/http'
+import { adjustInventoryValidator } from '#validators/catalog'
+import { getInventoryViewModel } from '#services/catalog_view_models'
+import { adjustStock } from '#services/inventory_service'
+import { DomainError } from '#services/domain_errors'
+
+export default class InventoryController {
+  async index({ inertia, bouncer }: HttpContext) {
+    await bouncer.authorize('inventory.view' as never)
+    const data = await getInventoryViewModel()
+    return inertia.render('inventory/index', data)
+  }
+
+  /** POST /inventory/adjustments — manual stock correction */
+  async adjust({ request, auth, bouncer, response, session }: HttpContext) {
+    await bouncer.authorize('inventory.adjust' as never)
+    const payload = await request.validateUsing(adjustInventoryValidator)
+
+    try {
+      await adjustStock({
+        itemKind: payload.itemKind,
+        itemId: payload.itemId,
+        qtyDelta: payload.qtyDelta,
+        unitCost: payload.unitCost,
+        note: payload.note,
+        actor: auth.user!,
+      })
+    } catch (err) {
+      if (err instanceof DomainError) {
+        session.flash('error', err.message)
+        return response.redirect().back()
+      }
+      throw err
+    }
+
+    session.flash('success', 'Inventory adjusted.')
+    return response.redirect().back()
+  }
+}

@@ -28,9 +28,7 @@ export async function ancestorRoleIds(roleId: number): Promise<number[]> {
 export async function assignableRoleIds(user: User): Promise<number[]> {
   const tree = await getTree()
   if (user.isOwner) {
-    return [...tree.values()]
-      .filter((n) => n.name !== OWNER_ROLE_NAME)
-      .map((n) => n.id)
+    return [...tree.values()].filter((n) => n.name !== OWNER_ROLE_NAME).map((n) => n.id)
   }
   const ownIds = await userRoleIds(user)
   const out = new Set<number>()
@@ -130,11 +128,7 @@ export function getAncestors(roleId: number, tree: RoleTree): number[] {
   return result
 }
 
-export function cycleCheck(
-  roleId: number,
-  newParentId: number | null,
-  tree: RoleTree
-): boolean {
+export function cycleCheck(roleId: number, newParentId: number | null, tree: RoleTree): boolean {
   if (newParentId === null) return false
   if (newParentId === roleId) return true
   return new Set(getDescendants(roleId, tree)).has(newParentId)
@@ -149,9 +143,7 @@ export async function getTree(): Promise<RoleTree> {
     key: TREE_CACHE_KEY,
     ttl: '1h',
     factory: async () => {
-      const result = await db
-        .from('roles')
-        .select('id', 'parent_role_id', 'name')
+      const result = await db.from('roles').select('id', 'parent_role_id', 'name')
       return result as RoleRow[]
     },
   })

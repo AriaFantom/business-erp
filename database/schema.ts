@@ -7,6 +7,132 @@
 import { BaseModel, column } from '@adonisjs/lucid/orm'
 import { DateTime } from 'luxon'
 
+export class AuditEventSchema extends BaseModel {
+  static $columns = ['action', 'actorUserId', 'id', 'occurredAt', 'payload', 'targetId', 'targetType'] as const
+  $columns = AuditEventSchema.$columns
+  @column()
+  declare action: string
+  @column()
+  declare actorUserId: number | null
+  @column({ isPrimary: true })
+  declare id: number
+  @column.dateTime()
+  declare occurredAt: DateTime
+  @column()
+  declare payload: any | null
+  @column()
+  declare targetId: number | null
+  @column()
+  declare targetType: string | null
+}
+
+export class ComponentSchema extends BaseModel {
+  static $columns = ['createdAt', 'defaultSupplierId', 'defaultUnitCost', 'id', 'isActive', 'name', 'reorderThresholdQty', 'sku', 'unit', 'updatedAt'] as const
+  $columns = ComponentSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare defaultSupplierId: number | null
+  @column()
+  declare defaultUnitCost: string
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare isActive: boolean
+  @column()
+  declare name: string
+  @column()
+  declare reorderThresholdQty: number | null
+  @column()
+  declare sku: string
+  @column()
+  declare unit: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
+export class CustomerSchema extends BaseModel {
+  static $columns = ['billingAddress', 'createdAt', 'email', 'gstin', 'id', 'isActive', 'name', 'phone', 'shippingAddress', 'updatedAt'] as const
+  $columns = CustomerSchema.$columns
+  @column()
+  declare billingAddress: string | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare email: string | null
+  @column()
+  declare gstin: string | null
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare isActive: boolean
+  @column()
+  declare name: string
+  @column()
+  declare phone: string | null
+  @column()
+  declare shippingAddress: string | null
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
+export class DocSequenceSchema extends BaseModel {
+  static $columns = ['createdAt', 'id', 'lastNumber', 'scope', 'updatedAt', 'year'] as const
+  $columns = DocSequenceSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare lastNumber: bigint | number
+  @column()
+  declare scope: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare year: number
+}
+
+export class IdempotencyKeySchema extends BaseModel {
+  static $columns = ['actorUserId', 'createdAt', 'expiresAt', 'id', 'key', 'responseBody', 'responseStatus', 'route'] as const
+  $columns = IdempotencyKeySchema.$columns
+  @column()
+  declare actorUserId: number
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime()
+  declare expiresAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare key: string
+  @column()
+  declare responseBody: any | null
+  @column()
+  declare responseStatus: number
+  @column()
+  declare route: string
+}
+
+export class InventorySchema extends BaseModel {
+  static $columns = ['avgUnitCost', 'createdAt', 'id', 'itemId', 'itemKind', 'qty', 'updatedAt'] as const
+  $columns = InventorySchema.$columns
+  @column()
+  declare avgUnitCost: string
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare itemId: number
+  @column()
+  declare itemKind: string
+  @column()
+  declare qty: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
 export class InvitationSchema extends BaseModel {
   static $columns = ['acceptedAt', 'createdAt', 'email', 'expiresAt', 'id', 'invitedBy', 'roleId', 'status', 'token', 'type', 'updatedAt'] as const
   $columns = InvitationSchema.$columns
@@ -32,6 +158,397 @@ export class InvitationSchema extends BaseModel {
   declare type: string
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
+}
+
+export class InvoiceItemSchema extends BaseModel {
+  static $columns = ['createdAt', 'description', 'id', 'invoiceId', 'lineSubtotal', 'lineTax', 'lineTotal', 'productId', 'qty', 'taxRatePct', 'unitPrice', 'updatedAt'] as const
+  $columns = InvoiceItemSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare description: string
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare invoiceId: number
+  @column()
+  declare lineSubtotal: string
+  @column()
+  declare lineTax: string
+  @column()
+  declare lineTotal: string
+  @column()
+  declare productId: number | null
+  @column()
+  declare qty: number
+  @column()
+  declare taxRatePct: string
+  @column()
+  declare unitPrice: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
+export class InvoicePaymentSchema extends BaseModel {
+  static $columns = ['amount', 'createdAt', 'id', 'invoiceId', 'method', 'paidAt', 'recordedByUserId', 'reference', 'updatedAt'] as const
+  $columns = InvoicePaymentSchema.$columns
+  @column()
+  declare amount: string
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare invoiceId: number
+  @column()
+  declare method: string
+  @column.dateTime()
+  declare paidAt: DateTime
+  @column()
+  declare recordedByUserId: number | null
+  @column()
+  declare reference: string | null
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
+export class InvoiceSchema extends BaseModel {
+  static $columns = ['createdAt', 'createdByUserId', 'customerId', 'dueAt', 'id', 'issuedAt', 'number', 'paidTotal', 'pdfKey', 'replacesInvoiceId', 'saleId', 'status', 'subtotal', 'taxTotal', 'total', 'updatedAt'] as const
+  $columns = InvoiceSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare createdByUserId: number | null
+  @column()
+  declare customerId: number
+  @column.dateTime()
+  declare dueAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column.dateTime()
+  declare issuedAt: DateTime
+  @column()
+  declare number: string
+  @column()
+  declare paidTotal: string
+  @column()
+  declare pdfKey: string | null
+  @column()
+  declare replacesInvoiceId: number | null
+  @column()
+  declare saleId: number
+  @column()
+  declare status: string
+  @column()
+  declare subtotal: string
+  @column()
+  declare taxTotal: string
+  @column()
+  declare total: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
+export class JobExpenseSchema extends BaseModel {
+  static $columns = ['amount', 'createdAt', 'createdByUserId', 'description', 'id', 'incurredAt', 'jobId', 'kind', 'updatedAt'] as const
+  $columns = JobExpenseSchema.$columns
+  @column()
+  declare amount: string
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare createdByUserId: number | null
+  @column()
+  declare description: string
+  @column({ isPrimary: true })
+  declare id: number
+  @column.dateTime()
+  declare incurredAt: DateTime
+  @column()
+  declare jobId: number
+  @column()
+  declare kind: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
+export class JobMaterialConsumptionSchema extends BaseModel {
+  static $columns = ['createdAt', 'createdByUserId', 'id', 'itemId', 'itemKind', 'jobId', 'lineCost', 'qtyConsumed', 'qtyWasted', 'reason', 'unitCostAtConsume'] as const
+  $columns = JobMaterialConsumptionSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare createdByUserId: number | null
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare itemId: number
+  @column()
+  declare itemKind: string
+  @column()
+  declare jobId: number
+  @column()
+  declare lineCost: string
+  @column()
+  declare qtyConsumed: string
+  @column()
+  declare qtyWasted: string
+  @column()
+  declare reason: string
+  @column()
+  declare unitCostAtConsume: string
+}
+
+export class MaterialSchema extends BaseModel {
+  static $columns = ['createdAt', 'defaultSupplierId', 'defaultUnitCost', 'id', 'isActive', 'name', 'reorderThresholdG', 'sku', 'type', 'unit', 'updatedAt'] as const
+  $columns = MaterialSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare defaultSupplierId: number | null
+  @column()
+  declare defaultUnitCost: string
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare isActive: boolean
+  @column()
+  declare name: string
+  @column()
+  declare reorderThresholdG: string | null
+  @column()
+  declare sku: string
+  @column()
+  declare type: string
+  @column()
+  declare unit: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
+export class ProductCategorySchema extends BaseModel {
+  static $columns = ['createdAt', 'defaultProfitPct', 'id', 'name', 'taxRatePct', 'updatedAt'] as const
+  $columns = ProductCategorySchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare defaultProfitPct: string | null
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare name: string
+  @column()
+  declare taxRatePct: string | null
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
+export class ProductionJobSchema extends BaseModel {
+  static $columns = ['completedAt', 'createdAt', 'createdByUserId', 'id', 'note', 'number', 'parentJobId', 'plannedQty', 'producedQty', 'productId', 'startedAt', 'status', 'totalComponentCost', 'totalCost', 'totalExpense', 'totalMaterialCost', 'unitCost', 'updatedAt'] as const
+  $columns = ProductionJobSchema.$columns
+  @column.dateTime()
+  declare completedAt: DateTime | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare createdByUserId: number | null
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare note: string | null
+  @column()
+  declare number: string
+  @column()
+  declare parentJobId: number | null
+  @column()
+  declare plannedQty: number
+  @column()
+  declare producedQty: number
+  @column()
+  declare productId: number
+  @column.dateTime()
+  declare startedAt: DateTime | null
+  @column()
+  declare status: string
+  @column()
+  declare totalComponentCost: string
+  @column()
+  declare totalCost: string
+  @column()
+  declare totalExpense: string
+  @column()
+  declare totalMaterialCost: string
+  @column()
+  declare unitCost: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
+export class ProductSchema extends BaseModel {
+  static $columns = ['categoryId', 'createdAt', 'defaultProfitPct', 'description', 'id', 'imageKey', 'isActive', 'name', 'sku', 'taxRatePct', 'updatedAt'] as const
+  $columns = ProductSchema.$columns
+  @column()
+  declare categoryId: number | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare defaultProfitPct: string | null
+  @column()
+  declare description: string | null
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare imageKey: string | null
+  @column()
+  declare isActive: boolean
+  @column()
+  declare name: string
+  @column()
+  declare sku: string
+  @column()
+  declare taxRatePct: string | null
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
+export class PurchaseItemSchema extends BaseModel {
+  static $columns = ['createdAt', 'id', 'itemId', 'itemKind', 'lineSubtotal', 'lineTax', 'lineTotal', 'purchaseId', 'qty', 'taxRatePct', 'unitCost', 'updatedAt'] as const
+  $columns = PurchaseItemSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare itemId: number
+  @column()
+  declare itemKind: string
+  @column()
+  declare lineSubtotal: string
+  @column()
+  declare lineTax: string
+  @column()
+  declare lineTotal: string
+  @column()
+  declare purchaseId: number
+  @column()
+  declare qty: string
+  @column()
+  declare taxRatePct: string
+  @column()
+  declare unitCost: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
+export class PurchaseSchema extends BaseModel {
+  static $columns = ['attachmentKey', 'cancelledAt', 'cancelledByUserId', 'confirmedAt', 'confirmedByUserId', 'createdAt', 'createdByUserId', 'id', 'note', 'number', 'purchasedAt', 'status', 'subtotal', 'supplierId', 'taxTotal', 'total', 'updatedAt'] as const
+  $columns = PurchaseSchema.$columns
+  @column()
+  declare attachmentKey: string | null
+  @column.dateTime()
+  declare cancelledAt: DateTime | null
+  @column()
+  declare cancelledByUserId: number | null
+  @column.dateTime()
+  declare confirmedAt: DateTime | null
+  @column()
+  declare confirmedByUserId: number | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare createdByUserId: number | null
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare note: string | null
+  @column()
+  declare number: string
+  @column.dateTime()
+  declare purchasedAt: DateTime
+  @column()
+  declare status: string
+  @column()
+  declare subtotal: string
+  @column()
+  declare supplierId: number
+  @column()
+  declare taxTotal: string
+  @column()
+  declare total: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
+export class QuotationItemSchema extends BaseModel {
+  static $columns = ['createdAt', 'description', 'id', 'lineSubtotal', 'lineTax', 'lineTotal', 'productId', 'profitPctUsed', 'qty', 'quotationId', 'taxRatePct', 'unitPrice', 'updatedAt'] as const
+  $columns = QuotationItemSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare description: string
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare lineSubtotal: string
+  @column()
+  declare lineTax: string
+  @column()
+  declare lineTotal: string
+  @column()
+  declare productId: number | null
+  @column()
+  declare profitPctUsed: string | null
+  @column()
+  declare qty: number
+  @column()
+  declare quotationId: number
+  @column()
+  declare taxRatePct: string
+  @column()
+  declare unitPrice: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
+export class QuotationSchema extends BaseModel {
+  static $columns = ['acceptedAt', 'convertedToSaleId', 'createdAt', 'createdByUserId', 'customerId', 'id', 'issuedAt', 'note', 'number', 'pdfKey', 'rejectedAt', 'sentAt', 'status', 'subtotal', 'taxTotal', 'total', 'updatedAt', 'validUntil'] as const
+  $columns = QuotationSchema.$columns
+  @column.dateTime()
+  declare acceptedAt: DateTime | null
+  @column()
+  declare convertedToSaleId: number | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare createdByUserId: number | null
+  @column()
+  declare customerId: number
+  @column({ isPrimary: true })
+  declare id: number
+  @column.dateTime()
+  declare issuedAt: DateTime
+  @column()
+  declare note: string | null
+  @column()
+  declare number: string
+  @column()
+  declare pdfKey: string | null
+  @column.dateTime()
+  declare rejectedAt: DateTime | null
+  @column.dateTime()
+  declare sentAt: DateTime | null
+  @column()
+  declare status: string
+  @column()
+  declare subtotal: string
+  @column()
+  declare taxTotal: string
+  @column()
+  declare total: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column.dateTime()
+  declare validUntil: DateTime
 }
 
 export class ResourceGrantSchema extends BaseModel {
@@ -78,6 +595,116 @@ export class RoleSchema extends BaseModel {
   declare permissions: string
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
+}
+
+export class SaleItemSchema extends BaseModel {
+  static $columns = ['createdAt', 'description', 'id', 'lineSubtotal', 'lineTax', 'lineTotal', 'productId', 'qty', 'saleId', 'taxRatePct', 'unitPrice', 'updatedAt'] as const
+  $columns = SaleItemSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare description: string
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare lineSubtotal: string
+  @column()
+  declare lineTax: string
+  @column()
+  declare lineTotal: string
+  @column()
+  declare productId: number | null
+  @column()
+  declare qty: number
+  @column()
+  declare saleId: number
+  @column()
+  declare taxRatePct: string
+  @column()
+  declare unitPrice: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
+export class SaleSchema extends BaseModel {
+  static $columns = ['confirmedAt', 'createdAt', 'createdByUserId', 'customerId', 'id', 'note', 'number', 'quotationId', 'status', 'subtotal', 'taxTotal', 'total', 'updatedAt'] as const
+  $columns = SaleSchema.$columns
+  @column.dateTime()
+  declare confirmedAt: DateTime | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare createdByUserId: number | null
+  @column()
+  declare customerId: number
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare note: string | null
+  @column()
+  declare number: string
+  @column()
+  declare quotationId: number | null
+  @column()
+  declare status: string
+  @column()
+  declare subtotal: string
+  @column()
+  declare taxTotal: string
+  @column()
+  declare total: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
+export class StockMovementSchema extends BaseModel {
+  static $columns = ['createdAt', 'createdByUserId', 'id', 'itemId', 'itemKind', 'note', 'qty', 'reason', 'referenceId', 'referenceType', 'unitCost'] as const
+  $columns = StockMovementSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare createdByUserId: number | null
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare itemId: number
+  @column()
+  declare itemKind: string
+  @column()
+  declare note: string | null
+  @column()
+  declare qty: string
+  @column()
+  declare reason: string
+  @column()
+  declare referenceId: number | null
+  @column()
+  declare referenceType: string | null
+  @column()
+  declare unitCost: string
+}
+
+export class SupplierSchema extends BaseModel {
+  static $columns = ['address', 'createdAt', 'email', 'gstin', 'id', 'isActive', 'name', 'phone', 'updatedAt'] as const
+  $columns = SupplierSchema.$columns
+  @column()
+  declare address: string | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare email: string | null
+  @column()
+  declare gstin: string | null
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare isActive: boolean
+  @column()
+  declare name: string
+  @column()
+  declare phone: string | null
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
 }
 
 export class UserRoleSchema extends BaseModel {

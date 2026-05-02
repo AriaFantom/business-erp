@@ -1,0 +1,225 @@
+import { type ReactElement, useState } from 'react'
+import { useForm } from '@inertiajs/react'
+import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
+import DashboardLayout from '@/layouts/dashboard-layout'
+
+type Row = {
+  id: number
+  name: string
+  gstin: string | null
+  email: string | null
+  phone: string | null
+  isActive: boolean
+}
+
+type PageProps = { suppliers: Row[] }
+
+function NewSupplierDialog() {
+  const [open, setOpen] = useState(false)
+  const { data, setData, post, processing, errors, reset } = useForm({
+    name: '',
+    gstin: '',
+    email: '',
+    phone: '',
+    address: '',
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button>New supplier</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Create supplier</DialogTitle>
+        </DialogHeader>
+        <form
+          className="flex flex-col gap-3"
+          onSubmit={(e) => {
+            e.preventDefault()
+            post('/suppliers', {
+              preserveScroll: true,
+              onSuccess: () => {
+                reset()
+                setOpen(false)
+              },
+            })
+          }}
+        >
+          <Field
+            label="Name"
+            value={data.name}
+            error={errors.name}
+            onChange={(v) => setData('name', v)}
+          />
+          <Field
+            label="GSTIN"
+            value={data.gstin}
+            error={errors.gstin}
+            onChange={(v) => setData('gstin', v)}
+          />
+          <Field
+            label="Email"
+            type="email"
+            value={data.email}
+            error={errors.email}
+            onChange={(v) => setData('email', v)}
+          />
+          <Field
+            label="Phone"
+            value={data.phone}
+            error={errors.phone}
+            onChange={(v) => setData('phone', v)}
+          />
+          <Field
+            label="Address"
+            value={data.address}
+            error={errors.address}
+            onChange={(v) => setData('address', v)}
+          />
+          <DialogFooter>
+            <Button type="submit" disabled={processing}>
+              {processing ? 'Saving…' : 'Create'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function Field({
+  label,
+  value,
+  error,
+  onChange,
+  type = 'text',
+}: {
+  label: string
+  value: string
+  error?: string
+  onChange: (v: string) => void
+  type?: string
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <Label>{label}</Label>
+      <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} />
+      {error && <span className="text-xs text-destructive">{error}</span>}
+    </div>
+  )
+}
+
+export default function SuppliersIndex({ suppliers }: PageProps) {
+  return (
+    <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-8">
+      <div className="flex items-end justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Suppliers</h1>
+          <p className="text-sm text-muted-foreground">{suppliers.length} suppliers</p>
+        </div>
+        <NewSupplierDialog />
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>All suppliers</CardTitle>
+          <CardDescription>Vendors that supply your materials and components.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {suppliers.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No suppliers yet.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>GSTIN</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-32 text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {suppliers.map((s) => (
+                  <TableRow key={s.id}>
+                    <TableCell className="font-medium">{s.name}</TableCell>
+                    <TableCell className="font-mono text-xs">{s.gstin ?? '—'}</TableCell>
+                    <TableCell>{s.email ?? '—'}</TableCell>
+                    <TableCell>{s.phone ?? '—'}</TableCell>
+                    <TableCell>
+                      {s.isActive ? (
+                        <Badge variant="outline">Active</Badge>
+                      ) : (
+                        <Badge variant="secondary">Archived</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {s.isActive && (
+                        <ArchiveAction
+                          path={`/suppliers/${s.id}/archive`}
+                          confirmText={`Archive ${s.name}?`}
+                        />
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+function ArchiveAction({
+  path,
+  confirmText,
+}: {
+  path: string
+  confirmText: string
+}) {
+  const { post, processing } = useForm()
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      disabled={processing}
+      onClick={() => {
+        if (window.confirm(confirmText)) post(path, { preserveScroll: true })
+      }}
+    >
+      Archive
+    </Button>
+  )
+}
+
+SuppliersIndex.layout = (page: ReactElement) => <DashboardLayout>{page}</DashboardLayout>

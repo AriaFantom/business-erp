@@ -81,6 +81,7 @@
     "@aws-sdk/s3-request-presigner": "^3.1038.0",
     "@fontsource-variable/inter": "^5.2.8",
     "@inertiajs/react": "^2.3.18",
+    "@react-pdf/renderer": "^4.5.1",
     "@tailwindcss/vite": "^4.2.4",
     "@tuyau/core": "^1.2.2",
     "@vinejs/vine": "^4.3.1",
