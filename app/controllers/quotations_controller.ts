@@ -1,5 +1,4 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import { DateTime } from 'luxon'
 import {
   createQuotationValidator,
   suggestPriceValidator,
@@ -37,7 +36,7 @@ export default class QuotationsController {
     try {
       const q = await createQuotation({
         customerId: payload.customerId,
-        validUntil: DateTime.fromJSDate(payload.validUntil),
+        validUntil: payload.validUntil,
         note: payload.note ?? null,
         items: payload.items.map((i) => ({
           productId: i.productId ?? null,

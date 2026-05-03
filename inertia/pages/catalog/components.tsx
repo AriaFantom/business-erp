@@ -46,7 +46,7 @@ type PageProps = { components: Row[]; suppliers: SupplierOpt[] }
 
 function NewComponentDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
   const [open, setOpen] = useState(false)
-  const { data, setData, post, processing, errors, reset } = useForm({
+  const { data, setData, post, processing, errors, reset, transform } = useForm({
     sku: '',
     name: '',
     defaultSupplierId: '',
@@ -67,20 +67,19 @@ function NewComponentDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
           className="flex flex-col gap-3"
           onSubmit={(e) => {
             e.preventDefault()
-            const body = {
-              sku: data.sku,
-              name: data.name,
-              defaultSupplierId: data.defaultSupplierId
-                ? Number(data.defaultSupplierId)
+            transform((d) => ({
+              sku: d.sku,
+              name: d.name,
+              defaultSupplierId: d.defaultSupplierId
+                ? Number(d.defaultSupplierId)
                 : undefined,
-              defaultUnitCost: data.defaultUnitCost,
-              reorderThresholdQty: data.reorderThresholdQty
-                ? Number(data.reorderThresholdQty)
+              defaultUnitCost: d.defaultUnitCost,
+              reorderThresholdQty: d.reorderThresholdQty
+                ? Number(d.reorderThresholdQty)
                 : undefined,
-            }
+            }))
             post('/catalog/components', {
               preserveScroll: true,
-              data: body as never,
               onSuccess: () => {
                 reset()
                 setOpen(false)

@@ -47,7 +47,7 @@ type PageProps = { materials: Row[]; suppliers: SupplierOpt[] }
 
 function NewMaterialDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
   const [open, setOpen] = useState(false)
-  const { data, setData, post, processing, errors, reset } = useForm({
+  const { data, setData, post, processing, errors, reset, transform } = useForm({
     sku: '',
     name: '',
     type: 'filament',
@@ -69,21 +69,20 @@ function NewMaterialDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
           className="flex flex-col gap-3"
           onSubmit={(e) => {
             e.preventDefault()
-            const body = {
-              sku: data.sku,
-              name: data.name,
-              type: data.type,
-              defaultSupplierId: data.defaultSupplierId
-                ? Number(data.defaultSupplierId)
+            transform((d) => ({
+              sku: d.sku,
+              name: d.name,
+              type: d.type,
+              defaultSupplierId: d.defaultSupplierId
+                ? Number(d.defaultSupplierId)
                 : undefined,
-              defaultUnitCost: data.defaultUnitCost,
-              reorderThresholdG: data.reorderThresholdG
-                ? Number(data.reorderThresholdG)
+              defaultUnitCost: d.defaultUnitCost,
+              reorderThresholdG: d.reorderThresholdG
+                ? Number(d.reorderThresholdG)
                 : undefined,
-            }
+            }))
             post('/catalog/materials', {
               preserveScroll: true,
-              data: body as never,
               onSuccess: () => {
                 reset()
                 setOpen(false)

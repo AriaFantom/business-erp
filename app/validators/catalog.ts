@@ -150,8 +150,7 @@ export const adjustInventoryValidator = vine.compile(
     qtyDelta: vine
       .number()
       .min(-999_999_999)
-      .max(999_999_999)
-      .notIn([0]),
+      .max(999_999_999),
     unitCost: moneyRule.optional(),
     note: vine.string().trim().minLength(3).maxLength(500),
   })

@@ -1,5 +1,4 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import { DateTime } from 'luxon'
 import { recordPaymentValidator } from '#validators/sales'
 import {
   getInvoiceShowViewModel,
@@ -29,7 +28,7 @@ export default class InvoicesController {
         invoiceId: Number(params.id),
         amount: payload.amount,
         method: payload.method,
-        paidAt: payload.paidAt ? DateTime.fromJSDate(payload.paidAt) : undefined,
+        paidAt: payload.paidAt ?? undefined,
         reference: payload.reference ?? null,
         actor: auth.user!,
       })

@@ -33,7 +33,7 @@ type PageProps = { categories: Row[] }
 
 function NewCategoryDialog() {
   const [open, setOpen] = useState(false)
-  const { data, setData, post, processing, errors, reset } = useForm({
+  const { data, setData, post, processing, errors, reset, transform } = useForm({
     name: '',
     defaultProfitPct: '',
     taxRatePct: '',
@@ -52,16 +52,15 @@ function NewCategoryDialog() {
           className="flex flex-col gap-3"
           onSubmit={(e) => {
             e.preventDefault()
-            const body = {
-              name: data.name,
-              defaultProfitPct: data.defaultProfitPct
-                ? Number(data.defaultProfitPct)
+            transform((d) => ({
+              name: d.name,
+              defaultProfitPct: d.defaultProfitPct
+                ? Number(d.defaultProfitPct)
                 : undefined,
-              taxRatePct: data.taxRatePct ? Number(data.taxRatePct) : undefined,
-            }
+              taxRatePct: d.taxRatePct ? Number(d.taxRatePct) : undefined,
+            }))
             post('/catalog/categories', {
               preserveScroll: true,
-              data: body as never,
               onSuccess: () => {
                 reset()
                 setOpen(false)

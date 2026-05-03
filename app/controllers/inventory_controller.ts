@@ -16,6 +16,11 @@ export default class InventoryController {
     await bouncer.authorize('inventory.adjust' as never)
     const payload = await request.validateUsing(adjustInventoryValidator)
 
+    if (payload.qtyDelta === 0) {
+      session.flash('error', 'Adjustment cannot be zero.')
+      return response.redirect().back()
+    }
+
     try {
       await adjustStock({
         itemKind: payload.itemKind,

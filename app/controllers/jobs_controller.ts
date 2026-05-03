@@ -1,5 +1,4 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import { DateTime } from 'luxon'
 import {
   addExpenseValidator,
   completeJobValidator,
@@ -93,9 +92,7 @@ export default class JobsController {
         kind: payload.kind,
         description: payload.description,
         amount: payload.amount,
-        incurredAt: payload.incurredAt
-          ? DateTime.fromJSDate(payload.incurredAt)
-          : undefined,
+        incurredAt: payload.incurredAt ?? undefined,
         actor: auth.user!,
       })
       session.flash('success', 'Expense added.')

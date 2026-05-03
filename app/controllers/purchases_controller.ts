@@ -32,9 +32,7 @@ export default class PurchasesController {
     try {
       const purchase = await createPurchase({
         supplierId: payload.supplierId,
-        purchasedAt: payload.purchasedAt
-          ? DateTime.fromJSDate(payload.purchasedAt)
-          : DateTime.now(),
+        purchasedAt: payload.purchasedAt ?? DateTime.now(),
         note: payload.note ?? null,
         items: payload.items,
         actor: auth.user!,

@@ -24,6 +24,66 @@ export type ScannedRoutes = {
     'profile.update': { paramsTuple?: []; params?: {} }
     'profile.avatar.update': { paramsTuple?: []; params?: {} }
     'profile.avatar.destroy': { paramsTuple?: []; params?: {} }
+    'suppliers.index': { paramsTuple?: []; params?: {} }
+    'suppliers.store': { paramsTuple?: []; params?: {} }
+    'suppliers.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'suppliers.archive': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'customers.index': { paramsTuple?: []; params?: {} }
+    'customers.store': { paramsTuple?: []; params?: {} }
+    'customers.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'customers.archive': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'materials.index': { paramsTuple?: []; params?: {} }
+    'materials.store': { paramsTuple?: []; params?: {} }
+    'materials.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'materials.archive': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'components.index': { paramsTuple?: []; params?: {} }
+    'components.store': { paramsTuple?: []; params?: {} }
+    'components.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'components.archive': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'products.index': { paramsTuple?: []; params?: {} }
+    'products.store': { paramsTuple?: []; params?: {} }
+    'products.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'products.archive': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'product_categories.index': { paramsTuple?: []; params?: {} }
+    'product_categories.store': { paramsTuple?: []; params?: {} }
+    'product_categories.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'product_categories.destroy': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'inventory.index': { paramsTuple?: []; params?: {} }
+    'inventory.adjust': { paramsTuple?: []; params?: {} }
+    'purchases.index': { paramsTuple?: []; params?: {} }
+    'purchases.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'purchases.store': { paramsTuple?: []; params?: {} }
+    'purchases.confirm': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'purchases.cancel': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'jobs.index': { paramsTuple?: []; params?: {} }
+    'jobs.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'jobs.store': { paramsTuple?: []; params?: {} }
+    'jobs.start': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'jobs.consume': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'jobs.expense': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'jobs.complete': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'jobs.fail': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'jobs.cancel': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'quotations.index': { paramsTuple?: []; params?: {} }
+    'quotations.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'quotations.store': { paramsTuple?: []; params?: {} }
+    'quotations.send': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'quotations.accept': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'quotations.reject': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'quotations.convert': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'quotations.suggest_price': { paramsTuple?: []; params?: {} }
+    'sales.index': { paramsTuple?: []; params?: {} }
+    'sales.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'sales.store': { paramsTuple?: []; params?: {} }
+    'sales.confirm': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'sales.cancel': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'invoices.index': { paramsTuple?: []; params?: {} }
+    'invoices.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'invoices.pay': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'invoices.void': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'reports.profit': { paramsTuple?: []; params?: {} }
+    'reports.inventory': { paramsTuple?: []; params?: {} }
+    'reports.jobs': { paramsTuple?: []; params?: {} }
   }
   GET: {
     'home': { paramsTuple?: []; params?: {} }
@@ -34,6 +94,26 @@ export type ScannedRoutes = {
     'system.invitations': { paramsTuple?: []; params?: {} }
     'system.users': { paramsTuple?: []; params?: {} }
     'profile.show': { paramsTuple?: []; params?: {} }
+    'suppliers.index': { paramsTuple?: []; params?: {} }
+    'customers.index': { paramsTuple?: []; params?: {} }
+    'materials.index': { paramsTuple?: []; params?: {} }
+    'components.index': { paramsTuple?: []; params?: {} }
+    'products.index': { paramsTuple?: []; params?: {} }
+    'product_categories.index': { paramsTuple?: []; params?: {} }
+    'inventory.index': { paramsTuple?: []; params?: {} }
+    'purchases.index': { paramsTuple?: []; params?: {} }
+    'purchases.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'jobs.index': { paramsTuple?: []; params?: {} }
+    'jobs.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'quotations.index': { paramsTuple?: []; params?: {} }
+    'quotations.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'sales.index': { paramsTuple?: []; params?: {} }
+    'sales.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'invoices.index': { paramsTuple?: []; params?: {} }
+    'invoices.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'reports.profit': { paramsTuple?: []; params?: {} }
+    'reports.inventory': { paramsTuple?: []; params?: {} }
+    'reports.jobs': { paramsTuple?: []; params?: {} }
   }
   HEAD: {
     'home': { paramsTuple?: []; params?: {} }
@@ -44,6 +124,26 @@ export type ScannedRoutes = {
     'system.invitations': { paramsTuple?: []; params?: {} }
     'system.users': { paramsTuple?: []; params?: {} }
     'profile.show': { paramsTuple?: []; params?: {} }
+    'suppliers.index': { paramsTuple?: []; params?: {} }
+    'customers.index': { paramsTuple?: []; params?: {} }
+    'materials.index': { paramsTuple?: []; params?: {} }
+    'components.index': { paramsTuple?: []; params?: {} }
+    'products.index': { paramsTuple?: []; params?: {} }
+    'product_categories.index': { paramsTuple?: []; params?: {} }
+    'inventory.index': { paramsTuple?: []; params?: {} }
+    'purchases.index': { paramsTuple?: []; params?: {} }
+    'purchases.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'jobs.index': { paramsTuple?: []; params?: {} }
+    'jobs.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'quotations.index': { paramsTuple?: []; params?: {} }
+    'quotations.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'sales.index': { paramsTuple?: []; params?: {} }
+    'sales.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'invoices.index': { paramsTuple?: []; params?: {} }
+    'invoices.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'reports.profit': { paramsTuple?: []; params?: {} }
+    'reports.inventory': { paramsTuple?: []; params?: {} }
+    'reports.jobs': { paramsTuple?: []; params?: {} }
   }
   POST: {
     'session.store': { paramsTuple?: []; params?: {} }
@@ -58,6 +158,46 @@ export type ScannedRoutes = {
     'profile.update': { paramsTuple?: []; params?: {} }
     'profile.avatar.update': { paramsTuple?: []; params?: {} }
     'profile.avatar.destroy': { paramsTuple?: []; params?: {} }
+    'suppliers.store': { paramsTuple?: []; params?: {} }
+    'suppliers.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'suppliers.archive': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'customers.store': { paramsTuple?: []; params?: {} }
+    'customers.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'customers.archive': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'materials.store': { paramsTuple?: []; params?: {} }
+    'materials.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'materials.archive': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'components.store': { paramsTuple?: []; params?: {} }
+    'components.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'components.archive': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'products.store': { paramsTuple?: []; params?: {} }
+    'products.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'products.archive': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'product_categories.store': { paramsTuple?: []; params?: {} }
+    'product_categories.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'product_categories.destroy': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'inventory.adjust': { paramsTuple?: []; params?: {} }
+    'purchases.store': { paramsTuple?: []; params?: {} }
+    'purchases.confirm': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'purchases.cancel': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'jobs.store': { paramsTuple?: []; params?: {} }
+    'jobs.start': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'jobs.consume': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'jobs.expense': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'jobs.complete': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'jobs.fail': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'jobs.cancel': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'quotations.store': { paramsTuple?: []; params?: {} }
+    'quotations.send': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'quotations.accept': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'quotations.reject': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'quotations.convert': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'quotations.suggest_price': { paramsTuple?: []; params?: {} }
+    'sales.store': { paramsTuple?: []; params?: {} }
+    'sales.confirm': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'sales.cancel': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'invoices.pay': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'invoices.void': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
   }
 }
 declare module '@adonisjs/core/types/http' {

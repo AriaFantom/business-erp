@@ -391,7 +391,7 @@ export async function totalChainCost(jobId: number): Promise<number> {
     if (++hops > MAX_REPRINT_CHAIN) {
       throw new Error(`Reprint chain exceeds ${MAX_REPRINT_CHAIN} hops; suspected cycle.`)
     }
-    const job = await ProductionJob.find(cursor)
+    const job: ProductionJob | null = await ProductionJob.find(cursor)
     if (!job) break
     total += Number(job.totalCost)
     cursor = job.parentJobId

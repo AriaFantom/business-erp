@@ -52,7 +52,7 @@ type PageProps = { products: Row[]; categories: CategoryOpt[] }
 
 function NewProductDialog({ categories }: { categories: CategoryOpt[] }) {
   const [open, setOpen] = useState(false)
-  const { data, setData, post, processing, errors, reset } = useForm({
+  const { data, setData, post, processing, errors, reset, transform } = useForm({
     sku: '',
     name: '',
     description: '',
@@ -74,19 +74,18 @@ function NewProductDialog({ categories }: { categories: CategoryOpt[] }) {
           className="flex flex-col gap-3"
           onSubmit={(e) => {
             e.preventDefault()
-            const body = {
-              sku: data.sku,
-              name: data.name,
-              description: data.description || undefined,
-              categoryId: data.categoryId ? Number(data.categoryId) : undefined,
-              defaultProfitPct: data.defaultProfitPct
-                ? Number(data.defaultProfitPct)
+            transform((d) => ({
+              sku: d.sku,
+              name: d.name,
+              description: d.description || undefined,
+              categoryId: d.categoryId ? Number(d.categoryId) : undefined,
+              defaultProfitPct: d.defaultProfitPct
+                ? Number(d.defaultProfitPct)
                 : undefined,
-              taxRatePct: data.taxRatePct ? Number(data.taxRatePct) : undefined,
-            }
+              taxRatePct: d.taxRatePct ? Number(d.taxRatePct) : undefined,
+            }))
             post('/catalog/products', {
               preserveScroll: true,
-              data: body as never,
               onSuccess: () => {
                 reset()
                 setOpen(false)

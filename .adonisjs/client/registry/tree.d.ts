@@ -37,4 +37,90 @@ export interface ApiDefinition {
       destroy: typeof routes['profile.avatar.destroy']
     }
   }
+  suppliers: {
+    index: typeof routes['suppliers.index']
+    store: typeof routes['suppliers.store']
+    update: typeof routes['suppliers.update']
+    archive: typeof routes['suppliers.archive']
+  }
+  customers: {
+    index: typeof routes['customers.index']
+    store: typeof routes['customers.store']
+    update: typeof routes['customers.update']
+    archive: typeof routes['customers.archive']
+  }
+  materials: {
+    index: typeof routes['materials.index']
+    store: typeof routes['materials.store']
+    update: typeof routes['materials.update']
+    archive: typeof routes['materials.archive']
+  }
+  components: {
+    index: typeof routes['components.index']
+    store: typeof routes['components.store']
+    update: typeof routes['components.update']
+    archive: typeof routes['components.archive']
+  }
+  products: {
+    index: typeof routes['products.index']
+    store: typeof routes['products.store']
+    update: typeof routes['products.update']
+    archive: typeof routes['products.archive']
+  }
+  productCategories: {
+    index: typeof routes['product_categories.index']
+    store: typeof routes['product_categories.store']
+    update: typeof routes['product_categories.update']
+    destroy: typeof routes['product_categories.destroy']
+  }
+  inventory: {
+    index: typeof routes['inventory.index']
+    adjust: typeof routes['inventory.adjust']
+  }
+  purchases: {
+    index: typeof routes['purchases.index']
+    show: typeof routes['purchases.show']
+    store: typeof routes['purchases.store']
+    confirm: typeof routes['purchases.confirm']
+    cancel: typeof routes['purchases.cancel']
+  }
+  jobs: {
+    index: typeof routes['jobs.index']
+    show: typeof routes['jobs.show']
+    store: typeof routes['jobs.store']
+    start: typeof routes['jobs.start']
+    consume: typeof routes['jobs.consume']
+    expense: typeof routes['jobs.expense']
+    complete: typeof routes['jobs.complete']
+    fail: typeof routes['jobs.fail']
+    cancel: typeof routes['jobs.cancel']
+  }
+  quotations: {
+    index: typeof routes['quotations.index']
+    show: typeof routes['quotations.show']
+    store: typeof routes['quotations.store']
+    send: typeof routes['quotations.send']
+    accept: typeof routes['quotations.accept']
+    reject: typeof routes['quotations.reject']
+    convert: typeof routes['quotations.convert']
+    suggestPrice: typeof routes['quotations.suggest_price']
+  }
+  sales: {
+    index: typeof routes['sales.index']
+    show: typeof routes['sales.show']
+    store: typeof routes['sales.store']
+    confirm: typeof routes['sales.confirm']
+    cancel: typeof routes['sales.cancel']
+  }
+  invoices: {
+    index: typeof routes['invoices.index']
+    show: typeof routes['invoices.show']
+    pay: typeof routes['invoices.pay']
+    void: typeof routes['invoices.void']
+  }
+  reports: {
+    profit: typeof routes['reports.profit']
+    inventory: typeof routes['reports.inventory']
+    jobs: typeof routes['reports.jobs']
+  }
 }

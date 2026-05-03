@@ -185,8 +185,8 @@ export async function reconcileInventory(): Promise<{
     .groupBy('item_kind', 'item_id')
 
   const inventory = await Inventory.query()
-  const invByKey = new Map(
-    inventory.map((i) => [`${i.itemKind}:${i.itemId}`, Number(i.qty)] as const)
+  const invByKey = new Map<string, number>(
+    inventory.map((i) => [`${i.itemKind}:${i.itemId}`, Number(i.qty)])
   )
 
   const movementByKey = new Map<string, number>()
