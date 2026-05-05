@@ -133,7 +133,7 @@ function NewQuotationDialog({
       <DialogTrigger asChild>
         <Button>New quotation</Button>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Create quotation</DialogTitle>
         </DialogHeader>
@@ -172,23 +172,25 @@ function NewQuotationDialog({
           </Field>
 
           <div className="rounded border p-3">
-            <div className="mb-2 flex items-center gap-2">
-              <span className="text-sm font-medium">Add line:</span>
-              <Select onValueChange={(v) => addProductLine(Number(v))}>
-                <SelectTrigger className="w-64">
-                  <SelectValue placeholder="From product…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {products.map((p) => (
-                    <SelectItem key={p.id} value={String(p.id)}>
-                      {p.name} ({p.sku})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button type="button" variant="outline" onClick={addCustomLine}>
-                Custom line
-              </Button>
+            <div className="mb-3 flex flex-col gap-2">
+              <span className="text-sm font-medium">Add line</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <Select onValueChange={(v) => addProductLine(Number(v))}>
+                  <SelectTrigger className="w-full sm:w-64">
+                    <SelectValue placeholder="From product…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {products.map((p) => (
+                      <SelectItem key={p.id} value={String(p.id)}>
+                        {p.name} ({p.sku})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button type="button" variant="outline" onClick={addCustomLine}>
+                  Custom line
+                </Button>
+              </div>
             </div>
 
             {data.items.length === 0 ? (

@@ -130,7 +130,7 @@ function NewPurchaseDialog({
       <DialogTrigger asChild>
         <Button>New purchase</Button>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Create purchase</DialogTitle>
         </DialogHeader>
@@ -169,37 +169,40 @@ function NewPurchaseDialog({
           </Field>
 
           <div className="rounded border p-3">
-            <div className="mb-2 flex items-center gap-2">
-              <span className="text-sm font-medium">Add line:</span>
-              <Select onValueChange={(v) => addLine('material', Number(v))}>
-                <SelectTrigger className="w-56">
-                  <SelectValue placeholder="Material…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {materials.map((m) => (
-                    <SelectItem key={m.id} value={String(m.id)}>
-                      {m.name} ({m.sku})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select onValueChange={(v) => addLine('component', Number(v))}>
-                <SelectTrigger className="w-56">
-                  <SelectValue placeholder="Component…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {components.map((c) => (
-                    <SelectItem key={c.id} value={String(c.id)}>
-                      {c.name} ({c.sku})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="mb-3 flex flex-col gap-2">
+              <span className="text-sm font-medium">Add line</span>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <Select onValueChange={(v) => addLine('material', Number(v))}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Add material…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {materials.map((m) => (
+                      <SelectItem key={m.id} value={String(m.id)}>
+                        {m.name} ({m.sku})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select onValueChange={(v) => addLine('component', Number(v))}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Add component…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {components.map((c) => (
+                      <SelectItem key={c.id} value={String(c.id)}>
+                        {c.name} ({c.sku})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {data.items.length === 0 ? (
               <p className="text-sm text-muted-foreground">No lines yet.</p>
             ) : (
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -267,6 +270,7 @@ function NewPurchaseDialog({
                   })}
                 </TableBody>
               </Table>
+              </div>
             )}
           </div>
 
