@@ -6,10 +6,7 @@ import {
   createJobValidator,
   failJobValidator,
 } from '#validators/jobs'
-import {
-  getJobShowViewModel,
-  getJobsIndexViewModel,
-} from '#services/jobs_view_models'
+import { getJobShowViewModel, getJobsIndexViewModel } from '#services/jobs_view_models'
 import {
   cancelJob,
   completeJob,
@@ -145,7 +142,11 @@ export default class JobsController {
     return response.redirect().back()
   }
 
-  private _domain(err: unknown, response: HttpContext['response'], session: HttpContext['session']) {
+  private _domain(
+    err: unknown,
+    response: HttpContext['response'],
+    session: HttpContext['session']
+  ) {
     if (err instanceof DomainError) {
       session.flash('error', err.message)
       return response.redirect().back()

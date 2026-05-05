@@ -38,21 +38,18 @@ export async function getJobsIndexViewModel() {
 
 export async function getJobShowViewModel(jobId: number) {
   const job = await ProductionJob.findOrFail(jobId)
-  const [product, consumptions, expenses, materials, components, inventory] =
-    await Promise.all([
-      Product.find(job.productId),
-      JobMaterialConsumption.query().where('job_id', jobId).orderBy('created_at', 'asc'),
-      JobExpense.query().where('job_id', jobId).orderBy('incurred_at', 'asc'),
-      Material.query().where('is_active', true).orderBy('name', 'asc'),
-      Component.query().where('is_active', true).orderBy('name', 'asc'),
-      Inventory.query(),
-    ])
+  const [product, consumptions, expenses, materials, components, inventory] = await Promise.all([
+    Product.find(job.productId),
+    JobMaterialConsumption.query().where('job_id', jobId).orderBy('created_at', 'asc'),
+    JobExpense.query().where('job_id', jobId).orderBy('incurred_at', 'asc'),
+    Material.query().where('is_active', true).orderBy('name', 'asc'),
+    Component.query().where('is_active', true).orderBy('name', 'asc'),
+    Inventory.query(),
+  ])
 
   const matById = new Map(materials.map((m) => [m.id, m]))
   const compById = new Map(components.map((c) => [c.id, c]))
-  const invByKey = new Map(
-    inventory.map((i) => [`${i.itemKind}:${i.itemId}`, i] as const)
-  )
+  const invByKey = new Map(inventory.map((i) => [`${i.itemKind}:${i.itemId}`, i] as const))
 
   const chainCost = await totalChainCost(jobId)
 
@@ -77,8 +74,7 @@ export async function getJobShowViewModel(jobId: number) {
       note: job.note,
     },
     consumptions: consumptions.map((c) => {
-      const item =
-        c.itemKind === 'material' ? matById.get(c.itemId) : compById.get(c.itemId)
+      const item = c.itemKind === 'material' ? matById.get(c.itemId) : compById.get(c.itemId)
       return {
         id: c.id,
         itemKind: c.itemKind,

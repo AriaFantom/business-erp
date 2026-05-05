@@ -1,4 +1,4 @@
-import { DateTime } from 'luxon'
+import { type DateTime } from 'luxon'
 import db from '@adonisjs/lucid/services/db'
 import Invoice from '#models/invoice'
 import Inventory from '#models/inventory'
@@ -23,10 +23,7 @@ export type ProfitReport = {
  * but useful — refined cost-attribution would tie sales to specific jobs,
  * which v1 deliberately skips.
  */
-export async function buildProfitReport(
-  from: DateTime,
-  to: DateTime
-): Promise<ProfitReport> {
+export async function buildProfitReport(from: DateTime, to: DateTime): Promise<ProfitReport> {
   const invoices = await Invoice.query()
     .where('issued_at', '>=', from.toSQL()!)
     .where('issued_at', '<=', to.toSQL()!)
@@ -97,11 +94,7 @@ export async function buildInventoryReport(): Promise<InventoryReport> {
     } else if (inv.itemKind === 'component') {
       compVal += valuation
       const c = compById.get(inv.itemId)
-      if (
-        c &&
-        c.reorderThresholdQty !== null &&
-        Number(inv.qty) < c.reorderThresholdQty
-      ) {
+      if (c && c.reorderThresholdQty !== null && Number(inv.qty) < c.reorderThresholdQty) {
         lowStock.push({
           itemKind: 'component',
           itemId: c.id,
@@ -131,10 +124,7 @@ export type JobsReportRow = {
 }
 
 /** Cost-per-product across all completed jobs in [from, to]. */
-export async function buildJobsReport(
-  from: DateTime,
-  to: DateTime
-): Promise<JobsReportRow[]> {
+export async function buildJobsReport(from: DateTime, to: DateTime): Promise<JobsReportRow[]> {
   const jobs = await ProductionJob.query()
     .where('status', 'completed')
     .where('completed_at', '>=', from.toSQL()!)

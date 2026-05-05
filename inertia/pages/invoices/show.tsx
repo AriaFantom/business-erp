@@ -61,7 +61,7 @@ type Payment = {
   id: number
   amount: string
   method: string
-  paidAt: string
+  paidAt: string | null
   reference: string | null
 }
 
@@ -301,7 +301,7 @@ export default function InvoiceShow({ invoice, items, payments }: PageProps) {
                 <TableBody>
                   {payments.map((p) => (
                     <TableRow key={p.id}>
-                      <TableCell>{p.paidAt.slice(0, 10)}</TableCell>
+                      <TableCell>{p.paidAt?.slice(0, 10) ?? '—'}</TableCell>
                       <TableCell>{p.method}</TableCell>
                       <TableCell className="text-right">{p.amount}</TableCell>
                       <TableCell>{p.reference ?? '—'}</TableCell>

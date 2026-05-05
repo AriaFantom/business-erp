@@ -39,12 +39,8 @@ export async function getQuotationShowViewModel(id: number) {
     QuotationItem.query().where('quotation_id', id).orderBy('id', 'asc'),
     Customer.find(q.customerId),
   ])
-  const productIds = items
-    .map((i) => i.productId)
-    .filter((x): x is number => typeof x === 'number')
-  const products = productIds.length
-    ? await Product.query().whereIn('id', productIds)
-    : []
+  const productIds = items.map((i) => i.productId).filter((x): x is number => typeof x === 'number')
+  const products = productIds.length ? await Product.query().whereIn('id', productIds) : []
   const productById = new Map(products.map((p) => [p.id, p]))
 
   return {
@@ -67,7 +63,7 @@ export async function getQuotationShowViewModel(id: number) {
     items: items.map((it) => ({
       id: it.id,
       productId: it.productId,
-      productName: it.productId ? productById.get(it.productId)?.name ?? '—' : null,
+      productName: it.productId ? (productById.get(it.productId)?.name ?? '—') : null,
       description: it.description,
       qty: it.qty,
       unitPrice: it.unitPrice,

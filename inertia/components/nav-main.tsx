@@ -42,9 +42,8 @@ function isActive(itemUrl: string, currentUrl: string): boolean {
 }
 
 export function NavMain() {
-  const { user, url } = usePage<Data.SharedProps>().props as unknown as {
+  const { user } = usePage<Data.SharedProps>().props as unknown as {
     user: SidebarUser | undefined
-    url: string
   }
   const currentUrl = usePage().url
 

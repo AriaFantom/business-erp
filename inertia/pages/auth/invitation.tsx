@@ -15,7 +15,7 @@ type InvitationProps = {
   token: string
   email: string | null
   emailLocked: boolean
-  type: 'setup' | 'invite'
+  type: string
   role: string
 }
 

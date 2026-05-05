@@ -29,10 +29,7 @@ export async function recomputeJobTotals(
   jobId: number,
   trx: TransactionClientContract
 ): Promise<void> {
-  const consumptions = await JobMaterialConsumption.query({ client: trx }).where(
-    'job_id',
-    jobId
-  )
+  const consumptions = await JobMaterialConsumption.query({ client: trx }).where('job_id', jobId)
   const expenses = await JobExpense.query({ client: trx }).where('job_id', jobId)
 
   let materialCost = 0

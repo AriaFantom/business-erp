@@ -15,9 +15,7 @@ export default class extends BaseSchema {
       table.unique(['item_kind', 'item_id'])
     })
     // Negative-stock guard at the DB layer
-    this.schema.raw(
-      `ALTER TABLE inventory ADD CONSTRAINT inventory_qty_nonneg CHECK (qty >= 0)`
-    )
+    this.schema.raw(`ALTER TABLE inventory ADD CONSTRAINT inventory_qty_nonneg CHECK (qty >= 0)`)
   }
 
   async down() {

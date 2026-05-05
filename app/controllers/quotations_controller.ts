@@ -1,8 +1,5 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import {
-  createQuotationValidator,
-  suggestPriceValidator,
-} from '#validators/quotations'
+import { createQuotationValidator, suggestPriceValidator } from '#validators/quotations'
 import {
   getQuotationShowViewModel,
   getQuotationsIndexViewModel,
@@ -109,7 +106,11 @@ export default class QuotationsController {
     return response.json({ data: breakdown })
   }
 
-  private _domain(err: unknown, response: HttpContext['response'], session: HttpContext['session']) {
+  private _domain(
+    err: unknown,
+    response: HttpContext['response'],
+    session: HttpContext['session']
+  ) {
     if (err instanceof DomainError) {
       session.flash('error', err.message)
       return response.redirect().back()

@@ -1,5 +1,6 @@
 import { type ReactElement, useState } from 'react'
-import { Link, useForm, router } from '@inertiajs/react'
+import { useForm, router } from '@inertiajs/react'
+import { Link } from '@adonisjs/inertia/react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {

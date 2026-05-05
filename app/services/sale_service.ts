@@ -102,10 +102,7 @@ export async function createSale(input: {
  * Convert an accepted quotation into a draft sale, copying lines and
  * marking the quotation as 'converted'. Done in a single transaction.
  */
-export async function convertQuotationToSale(
-  quotationId: number,
-  actor: User
-): Promise<Sale> {
+export async function convertQuotationToSale(quotationId: number, actor: User): Promise<Sale> {
   return db.transaction(async (trx) => {
     const q = await Quotation.query({ client: trx })
       .where('id', quotationId)
@@ -119,10 +116,7 @@ export async function convertQuotationToSale(
       })
     }
 
-    const items = await QuotationItem.query({ client: trx }).where(
-      'quotation_id',
-      quotationId
-    )
+    const items = await QuotationItem.query({ client: trx }).where('quotation_id', quotationId)
     const number = await nextDocNumber('SO', trx)
 
     const sale = new Sale()
@@ -175,10 +169,7 @@ export async function convertQuotationToSale(
  */
 export async function confirmSale(saleId: number, actor: User): Promise<Sale> {
   return db.transaction(async (trx) => {
-    const sale = await Sale.query({ client: trx })
-      .where('id', saleId)
-      .forUpdate()
-      .firstOrFail()
+    const sale = await Sale.query({ client: trx }).where('id', saleId).forUpdate().firstOrFail()
     if (sale.status !== 'draft') {
       throw new InvalidStateError({
         entity: 'sale',
@@ -206,10 +197,7 @@ export async function confirmSale(saleId: number, actor: User): Promise<Sale> {
 
 export async function cancelSale(saleId: number, actor: User): Promise<Sale> {
   return db.transaction(async (trx) => {
-    const sale = await Sale.query({ client: trx })
-      .where('id', saleId)
-      .forUpdate()
-      .firstOrFail()
+    const sale = await Sale.query({ client: trx }).where('id', saleId).forUpdate().firstOrFail()
     if (sale.status !== 'draft') {
       throw new InvalidStateError({
         entity: 'sale',

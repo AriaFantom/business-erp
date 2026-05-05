@@ -22,8 +22,7 @@ const CustomersController = () => import('#controllers/customers_controller')
 const MaterialsController = () => import('#controllers/materials_controller')
 const ComponentsController = () => import('#controllers/components_controller')
 const ProductsController = () => import('#controllers/products_controller')
-const ProductCategoriesController = () =>
-  import('#controllers/product_categories_controller')
+const ProductCategoriesController = () => import('#controllers/product_categories_controller')
 const InventoryController = () => import('#controllers/inventory_controller')
 const PurchasesController = () => import('#controllers/purchases_controller')
 const JobsController = () => import('#controllers/jobs_controller')
@@ -77,41 +76,31 @@ router
     router.get('suppliers', [SuppliersController, 'index']).as('suppliers.index')
     router.post('suppliers', [SuppliersController, 'store']).as('suppliers.store')
     router.post('suppliers/:id', [SuppliersController, 'update']).as('suppliers.update')
-    router
-      .post('suppliers/:id/archive', [SuppliersController, 'archive'])
-      .as('suppliers.archive')
+    router.post('suppliers/:id/archive', [SuppliersController, 'archive']).as('suppliers.archive')
 
     router.get('customers', [CustomersController, 'index']).as('customers.index')
     router.post('customers', [CustomersController, 'store']).as('customers.store')
     router.post('customers/:id', [CustomersController, 'update']).as('customers.update')
-    router
-      .post('customers/:id/archive', [CustomersController, 'archive'])
-      .as('customers.archive')
+    router.post('customers/:id/archive', [CustomersController, 'archive']).as('customers.archive')
 
     // ── Catalog ───────────────────────────────────────────────────────
     router.get('catalog/materials', [MaterialsController, 'index']).as('materials.index')
     router.post('catalog/materials', [MaterialsController, 'store']).as('materials.store')
-    router
-      .post('catalog/materials/:id', [MaterialsController, 'update'])
-      .as('materials.update')
+    router.post('catalog/materials/:id', [MaterialsController, 'update']).as('materials.update')
     router
       .post('catalog/materials/:id/archive', [MaterialsController, 'archive'])
       .as('materials.archive')
 
     router.get('catalog/components', [ComponentsController, 'index']).as('components.index')
     router.post('catalog/components', [ComponentsController, 'store']).as('components.store')
-    router
-      .post('catalog/components/:id', [ComponentsController, 'update'])
-      .as('components.update')
+    router.post('catalog/components/:id', [ComponentsController, 'update']).as('components.update')
     router
       .post('catalog/components/:id/archive', [ComponentsController, 'archive'])
       .as('components.archive')
 
     router.get('catalog/products', [ProductsController, 'index']).as('products.index')
     router.post('catalog/products', [ProductsController, 'store']).as('products.store')
-    router
-      .post('catalog/products/:id', [ProductsController, 'update'])
-      .as('products.update')
+    router.post('catalog/products/:id', [ProductsController, 'update']).as('products.update')
     router
       .post('catalog/products/:id/archive', [ProductsController, 'archive'])
       .as('products.archive')
@@ -131,29 +120,21 @@ router
 
     // ── Inventory ─────────────────────────────────────────────────────
     router.get('inventory', [InventoryController, 'index']).as('inventory.index')
-    router
-      .post('inventory/adjustments', [InventoryController, 'adjust'])
-      .as('inventory.adjust')
+    router.post('inventory/adjustments', [InventoryController, 'adjust']).as('inventory.adjust')
 
     // ── Purchases ─────────────────────────────────────────────────────
     router.get('purchases', [PurchasesController, 'index']).as('purchases.index')
     router.get('purchases/:id', [PurchasesController, 'show']).as('purchases.show')
     router.post('purchases', [PurchasesController, 'store']).as('purchases.store')
-    router
-      .post('purchases/:id/confirm', [PurchasesController, 'confirm'])
-      .as('purchases.confirm')
-    router
-      .post('purchases/:id/cancel', [PurchasesController, 'cancel'])
-      .as('purchases.cancel')
+    router.post('purchases/:id/confirm', [PurchasesController, 'confirm']).as('purchases.confirm')
+    router.post('purchases/:id/cancel', [PurchasesController, 'cancel']).as('purchases.cancel')
 
     // ── Production jobs ───────────────────────────────────────────────
     router.get('jobs', [JobsController, 'index']).as('jobs.index')
     router.get('jobs/:id', [JobsController, 'show']).as('jobs.show')
     router.post('jobs', [JobsController, 'store']).as('jobs.store')
     router.post('jobs/:id/start', [JobsController, 'start']).as('jobs.start')
-    router
-      .post('jobs/:id/consumptions', [JobsController, 'consume'])
-      .as('jobs.consume')
+    router.post('jobs/:id/consumptions', [JobsController, 'consume']).as('jobs.consume')
     router.post('jobs/:id/expenses', [JobsController, 'addExpense']).as('jobs.expense')
     router.post('jobs/:id/complete', [JobsController, 'complete']).as('jobs.complete')
     router.post('jobs/:id/fail', [JobsController, 'fail']).as('jobs.fail')
@@ -163,15 +144,9 @@ router
     router.get('quotations', [QuotationsController, 'index']).as('quotations.index')
     router.get('quotations/:id', [QuotationsController, 'show']).as('quotations.show')
     router.post('quotations', [QuotationsController, 'store']).as('quotations.store')
-    router
-      .post('quotations/:id/send', [QuotationsController, 'send'])
-      .as('quotations.send')
-    router
-      .post('quotations/:id/accept', [QuotationsController, 'accept'])
-      .as('quotations.accept')
-    router
-      .post('quotations/:id/reject', [QuotationsController, 'reject'])
-      .as('quotations.reject')
+    router.post('quotations/:id/send', [QuotationsController, 'send']).as('quotations.send')
+    router.post('quotations/:id/accept', [QuotationsController, 'accept']).as('quotations.accept')
+    router.post('quotations/:id/reject', [QuotationsController, 'reject']).as('quotations.reject')
     router
       .post('quotations/:id/convert', [QuotationsController, 'convert'])
       .as('quotations.convert')

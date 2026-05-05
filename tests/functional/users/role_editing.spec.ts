@@ -134,18 +134,14 @@ test.group('User role-editing security', (group) => {
     assert.isTrue(await editUserRoles.execute(actor, target))
   })
 
-  test('lead cannot edit a target whose role sits outside their subtree', async ({
-    assert,
-  }) => {
+  test('lead cannot edit a target whose role sits outside their subtree', async ({ assert }) => {
     const { lead, watcher } = await seedRoles()
     const actor = await makeUser({ email: 'a@x.test', roleIds: [lead.id] })
     const sibling = await makeUser({ email: 's@x.test', roleIds: [watcher.id] })
     assert.isFalse(await editUserRoles.execute(actor, sibling))
   })
 
-  test('lead cannot edit a target with no roles (only owner can bootstrap)', async ({
-    assert,
-  }) => {
+  test('lead cannot edit a target with no roles (only owner can bootstrap)', async ({ assert }) => {
     const { lead } = await seedRoles()
     const actor = await makeUser({ email: 'a@x.test', roleIds: [lead.id] })
     const orphan = await makeUser({ email: 'o@x.test' })
@@ -181,10 +177,7 @@ test.group('User role-editing security', (group) => {
   }) => {
     const { lead, watcher } = await seedRoles()
     const actor = await makeUser({ email: 'a@x.test', roleIds: [lead.id] })
-    await assert.rejects(
-      () => ensureRolesAssignable(actor, [watcher.id]),
-      /outside your subtree/
-    )
+    await assert.rejects(() => ensureRolesAssignable(actor, [watcher.id]), /outside your subtree/)
   })
 
   test('ensureRolesAssignable rejects unknown role ids', async ({ assert }) => {

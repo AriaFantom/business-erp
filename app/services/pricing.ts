@@ -66,9 +66,7 @@ export function computeUnitPrice(input: {
       unitPrice: applyRounding(input.manualUnitPrice, rounding),
       costPrice: input.costPrice,
       profitPctUsed: null,
-      taxRatePct: numberOrZero(
-        input.product.taxRatePct ?? input.category?.taxRatePct ?? null
-      ),
+      taxRatePct: numberOrZero(input.product.taxRatePct ?? input.category?.taxRatePct ?? null),
       basis: {
         profitFrom: 'manual',
         taxFrom: pickTaxBasis(input.product, input.category),
@@ -99,9 +97,7 @@ export function computeUnitPrice(input: {
     unitPrice,
     costPrice: input.costPrice,
     profitPctUsed: profitPct,
-    taxRatePct: numberOrZero(
-      input.product.taxRatePct ?? input.category?.taxRatePct ?? null
-    ),
+    taxRatePct: numberOrZero(input.product.taxRatePct ?? input.category?.taxRatePct ?? null),
     basis: {
       profitFrom,
       taxFrom: pickTaxBasis(input.product, input.category),
@@ -131,9 +127,7 @@ function numberOrZero(v: string | number | null | undefined): number {
  */
 export async function suggestPriceFor(productId: number): Promise<PriceBreakdown> {
   const product = await Product.findOrFail(productId)
-  const category = product.categoryId
-    ? await ProductCategory.find(product.categoryId)
-    : null
+  const category = product.categoryId ? await ProductCategory.find(product.categoryId) : null
   const cost = await latestProductCost(productId)
   return computeUnitPrice({
     costPrice: cost,

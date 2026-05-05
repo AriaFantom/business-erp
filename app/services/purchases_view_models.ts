@@ -75,8 +75,7 @@ export async function getPurchaseShowViewModel(id: number) {
       cancelledAt: purchase.cancelledAt?.toISO() ?? null,
     },
     items: items.map((it) => {
-      const item =
-        it.itemKind === 'material' ? matById.get(it.itemId) : compById.get(it.itemId)
+      const item = it.itemKind === 'material' ? matById.get(it.itemId) : compById.get(it.itemId)
       return {
         id: it.id,
         itemKind: it.itemKind,

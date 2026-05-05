@@ -25,12 +25,7 @@ export class InsufficientStockError extends DomainError {
   readonly itemKind: string
   readonly itemId: number
 
-  constructor(opts: {
-    itemKind: string
-    itemId: number
-    available: number
-    requested: number
-  }) {
+  constructor(opts: { itemKind: string; itemId: number; available: number; requested: number }) {
     super({
       code: 'INSUFFICIENT_STOCK',
       field: 'qtyConsumed',

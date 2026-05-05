@@ -1,10 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { DateTime } from 'luxon'
-import {
-  buildInventoryReport,
-  buildJobsReport,
-  buildProfitReport,
-} from '#services/reports_service'
+import { buildInventoryReport, buildJobsReport, buildProfitReport } from '#services/reports_service'
 
 function parseRange(qs: Record<string, unknown>): { from: DateTime; to: DateTime } {
   const from = qs.from
@@ -32,6 +28,10 @@ export default class ReportsController {
     await bouncer.authorize('reports.view' as never)
     const { from, to } = parseRange(request.qs())
     const rows = await buildJobsReport(from, to)
-    return inertia.render('reports/jobs', { rows, from: from.toISO(), to: to.toISO() })
+    return inertia.render('reports/jobs', {
+      rows,
+      from: from.toISO() ?? '',
+      to: to.toISO() ?? '',
+    })
   }
 }

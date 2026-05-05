@@ -69,7 +69,7 @@ type Expense = {
   kind: string
   description: string
   amount: string
-  incurredAt: string
+  incurredAt: string | null
 }
 
 type InventoryItem = {
@@ -552,7 +552,7 @@ export default function JobShow({
               <TableBody>
                 {expenses.map((e) => (
                   <TableRow key={e.id}>
-                    <TableCell>{e.incurredAt.slice(0, 10)}</TableCell>
+                    <TableCell>{e.incurredAt?.slice(0, 10) ?? '—'}</TableCell>
                     <TableCell>{e.kind}</TableCell>
                     <TableCell>{e.description}</TableCell>
                     <TableCell className="text-right">{e.amount}</TableCell>

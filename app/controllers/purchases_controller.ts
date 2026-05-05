@@ -5,11 +5,7 @@ import {
   getPurchasesIndexViewModel,
   getPurchaseShowViewModel,
 } from '#services/purchases_view_models'
-import {
-  cancelPurchase,
-  confirmPurchase,
-  createPurchase,
-} from '#services/purchase_service'
+import { cancelPurchase, confirmPurchase, createPurchase } from '#services/purchase_service'
 import { DomainError } from '#services/domain_errors'
 
 export default class PurchasesController {

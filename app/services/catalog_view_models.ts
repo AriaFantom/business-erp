@@ -25,9 +25,7 @@ export type MaterialRow = {
 }
 
 export async function getMaterialsViewModel() {
-  const materials = await Material.query()
-    .preload('defaultSupplier')
-    .orderBy('name', 'asc')
+  const materials = await Material.query().preload('defaultSupplier').orderBy('name', 'asc')
   return {
     materials: materials.map<MaterialRow>((m) => ({
       id: m.id,
@@ -56,9 +54,7 @@ export type ComponentRow = {
 }
 
 export async function getComponentsViewModel() {
-  const components = await Component.query()
-    .preload('defaultSupplier')
-    .orderBy('name', 'asc')
+  const components = await Component.query().preload('defaultSupplier').orderBy('name', 'asc')
   return {
     components: components.map<ComponentRow>((c) => ({
       id: c.id,
@@ -147,9 +143,7 @@ export async function getSuppliersViewModel() {
 }
 
 export async function listActiveSuppliers() {
-  const suppliers = await Supplier.query()
-    .where('is_active', true)
-    .orderBy('name', 'asc')
+  const suppliers = await Supplier.query().where('is_active', true).orderBy('name', 'asc')
   return suppliers.map((s) => ({ id: s.id, name: s.name }))
 }
 
@@ -193,9 +187,7 @@ export async function getInventoryViewModel() {
     Inventory.query(),
     Material.query(),
     Component.query(),
-    StockMovement.query()
-      .orderBy('created_at', 'desc')
-      .limit(50),
+    StockMovement.query().orderBy('created_at', 'desc').limit(50),
   ])
 
   const matById = new Map(materials.map((m) => [m.id, m]))
@@ -221,8 +213,7 @@ export async function getInventoryViewModel() {
     } else if (inv.itemKind === 'component') {
       const c = compById.get(inv.itemId)
       if (!c) continue
-      const threshold =
-        c.reorderThresholdQty !== null ? Number(c.reorderThresholdQty) : null
+      const threshold = c.reorderThresholdQty !== null ? Number(c.reorderThresholdQty) : null
       rows.push({
         itemKind: 'component',
         itemId: c.id,
@@ -231,8 +222,7 @@ export async function getInventoryViewModel() {
         qty: inv.qty,
         avgUnitCost: inv.avgUnitCost,
         unit: c.unit,
-        reorderThreshold:
-          c.reorderThresholdQty !== null ? String(c.reorderThresholdQty) : null,
+        reorderThreshold: c.reorderThresholdQty !== null ? String(c.reorderThresholdQty) : null,
         belowThreshold: threshold !== null && Number(inv.qty) < threshold,
       })
     }

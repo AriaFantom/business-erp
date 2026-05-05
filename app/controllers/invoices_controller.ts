@@ -1,9 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { recordPaymentValidator } from '#validators/sales'
-import {
-  getInvoiceShowViewModel,
-  getInvoicesIndexViewModel,
-} from '#services/sales_view_models'
+import { getInvoiceShowViewModel, getInvoicesIndexViewModel } from '#services/sales_view_models'
 import { recordPayment, voidInvoice } from '#services/invoice_service'
 import { DomainError } from '#services/domain_errors'
 

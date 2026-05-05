@@ -1,9 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import Component from '#models/component'
-import {
-  createComponentValidator,
-  updateComponentValidator,
-} from '#validators/catalog'
+import { createComponentValidator, updateComponentValidator } from '#validators/catalog'
 import { getComponentsViewModel } from '#services/catalog_view_models'
 import { audit } from '#services/audit'
 

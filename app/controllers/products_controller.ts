@@ -1,9 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import Product from '#models/product'
-import {
-  createProductValidator,
-  updateProductValidator,
-} from '#validators/catalog'
+import { createProductValidator, updateProductValidator } from '#validators/catalog'
 import { getProductsViewModel } from '#services/catalog_view_models'
 import { audit } from '#services/audit'
 

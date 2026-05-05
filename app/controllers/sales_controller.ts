@@ -1,9 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { createSaleValidator } from '#validators/sales'
-import {
-  getSaleShowViewModel,
-  getSalesIndexViewModel,
-} from '#services/sales_view_models'
+import { getSaleShowViewModel, getSalesIndexViewModel } from '#services/sales_view_models'
 import { cancelSale, confirmSale, createSale } from '#services/sale_service'
 import { DomainError } from '#services/domain_errors'
 

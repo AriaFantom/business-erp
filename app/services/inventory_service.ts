@@ -130,9 +130,7 @@ export async function applyMovement(input: MovementInput): Promise<StockMovement
     payload: {
       qty: input.qty,
       unitCost: input.unitCost,
-      reference: input.referenceType
-        ? { type: input.referenceType, id: input.referenceId }
-        : null,
+      reference: input.referenceType ? { type: input.referenceType, id: input.referenceId } : null,
     },
     trx,
   })
@@ -155,22 +153,23 @@ export async function adjustStock(opts: {
   if (opts.qtyDelta === 0) {
     throw new Error('adjustStock: qtyDelta must not be zero')
   }
-  const reason: MovementReason =
-    opts.qtyDelta > 0 ? 'adjustment_increase' : 'adjustment_decrease'
+  const reason: MovementReason = opts.qtyDelta > 0 ? 'adjustment_increase' : 'adjustment_decrease'
 
-  return db.transaction(async (trx) => {
-    const move = await applyMovement({
-      itemKind: opts.itemKind,
-      itemId: opts.itemId,
-      qty: opts.qtyDelta,
-      unitCost: opts.unitCost ?? 0,
-      reason,
-      note: opts.note,
-      actor: opts.actor,
-      trx,
+  return db
+    .transaction(async (trx) => {
+      const move = await applyMovement({
+        itemKind: opts.itemKind,
+        itemId: opts.itemId,
+        qty: opts.qtyDelta,
+        unitCost: opts.unitCost ?? 0,
+        reason,
+        note: opts.note,
+        actor: opts.actor,
+        trx,
+      })
+      return move
     })
-    return move
-  }).finally(() => invalidateSnapshotCache())
+    .finally(() => invalidateSnapshotCache())
 }
 
 // ── Snapshot cache ──────────────────────────────────────────────────────

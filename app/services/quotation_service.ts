@@ -32,9 +32,7 @@ async function buildLine(input: QuotationLineInput) {
 
   if (input.productId) {
     const product = await Product.findOrFail(input.productId)
-    const category = product.categoryId
-      ? await ProductCategory.find(product.categoryId)
-      : null
+    const category = product.categoryId ? await ProductCategory.find(product.categoryId) : null
     const cost = await latestProductCost(input.productId)
     const breakdown = computeUnitPrice({
       costPrice: cost,
@@ -144,10 +142,7 @@ async function transitionStatus(
   action: string
 ): Promise<Quotation> {
   return db.transaction(async (trx) => {
-    const q = await Quotation.query({ client: trx })
-      .where('id', id)
-      .forUpdate()
-      .firstOrFail()
+    const q = await Quotation.query({ client: trx }).where('id', id).forUpdate().firstOrFail()
     if (!expected.includes(q.status)) {
       throw new InvalidStateError({ entity: 'quotation', from: q.status, to: next })
     }

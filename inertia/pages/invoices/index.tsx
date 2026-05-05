@@ -1,5 +1,5 @@
 import { type ReactElement } from 'react'
-import { Link } from '@inertiajs/react'
+import { Link } from '@adonisjs/inertia/react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
