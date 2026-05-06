@@ -142,6 +142,13 @@ export const updateProductValidator = vine.compile(
   })
 )
 
+// ── Catalog image upload ────────────────────────────────────────────────
+export const uploadCatalogImageValidator = vine.compile(
+  vine.object({
+    image: vine.file({ size: '4mb', extnames: ['jpg', 'jpeg', 'png', 'webp'] }),
+  })
+)
+
 // ── Inventory adjustments ───────────────────────────────────────────────
 export const adjustInventoryValidator = vine.compile(
   vine.object({

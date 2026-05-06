@@ -391,6 +391,30 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/materials_controller').default['archive']>>>
     }
   }
+  'materials.image.update': {
+    methods: ["POST"]
+    pattern: '/catalog/materials/:id/image'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/catalog').uploadCatalogImageValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#validators/catalog').uploadCatalogImageValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/materials_controller').default['updateImage']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/materials_controller').default['updateImage']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'materials.image.destroy': {
+    methods: ["POST"]
+    pattern: '/catalog/materials/:id/image/delete'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/materials_controller').default['destroyImage']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/materials_controller').default['destroyImage']>>>
+    }
+  }
   'components.index': {
     methods: ["GET","HEAD"]
     pattern: '/catalog/components'
@@ -439,6 +463,30 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/components_controller').default['archive']>>>
     }
   }
+  'components.image.update': {
+    methods: ["POST"]
+    pattern: '/catalog/components/:id/image'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/catalog').uploadCatalogImageValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#validators/catalog').uploadCatalogImageValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/components_controller').default['updateImage']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/components_controller').default['updateImage']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'components.image.destroy': {
+    methods: ["POST"]
+    pattern: '/catalog/components/:id/image/delete'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/components_controller').default['destroyImage']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/components_controller').default['destroyImage']>>>
+    }
+  }
   'products.index': {
     methods: ["GET","HEAD"]
     pattern: '/catalog/products'
@@ -485,6 +533,30 @@ export interface Registry {
       query: {}
       response: ExtractResponse<Awaited<ReturnType<import('#controllers/products_controller').default['archive']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/products_controller').default['archive']>>>
+    }
+  }
+  'products.image.update': {
+    methods: ["POST"]
+    pattern: '/catalog/products/:id/image'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/catalog').uploadCatalogImageValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#validators/catalog').uploadCatalogImageValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/products_controller').default['updateImage']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/products_controller').default['updateImage']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'products.image.destroy': {
+    methods: ["POST"]
+    pattern: '/catalog/products/:id/image/delete'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/products_controller').default['destroyImage']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/products_controller').default['destroyImage']>>>
     }
   }
   'product_categories.index': {
@@ -929,6 +1001,30 @@ export interface Registry {
       query: {}
       response: ExtractResponse<Awaited<ReturnType<import('#controllers/invoices_controller').default['void']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/invoices_controller').default['void']>>>
+    }
+  }
+  'pos.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/pos'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/pos_controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/pos_controller').default['index']>>>
+    }
+  }
+  'pos.sell': {
+    methods: ["POST"]
+    pattern: '/pos/sell'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/pos').posSellValidator)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#validators/pos').posSellValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/pos_controller').default['sell']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/pos_controller').default['sell']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
   'reports.profit': {

@@ -9,10 +9,22 @@ import { cancelPurchase, confirmPurchase, createPurchase } from '#services/purch
 import { DomainError } from '#services/domain_errors'
 
 export default class PurchasesController {
-  async index({ inertia, bouncer }: HttpContext) {
+  async index({ request, inertia, bouncer }: HttpContext) {
     await bouncer.authorize('purchases.view' as never)
-    const data = await getPurchasesIndexViewModel()
-    return inertia.render('purchases/index', data)
+    const qs = request.qs()
+    const data = await getPurchasesIndexViewModel({
+      q: typeof qs.q === 'string' ? qs.q : undefined,
+      status: typeof qs.status === 'string' ? qs.status : undefined,
+      supplierId: qs.supplierId ? Number(qs.supplierId) : undefined,
+    })
+    return inertia.render('purchases/index', {
+      ...data,
+      filters: {
+        q: typeof qs.q === 'string' ? qs.q : '',
+        status: typeof qs.status === 'string' ? qs.status : 'all',
+        supplierId: qs.supplierId ? String(qs.supplierId) : 'all',
+      },
+    })
   }
 
   async show({ params, inertia, bouncer }: HttpContext) {

@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
+import { ListToolbar } from '@/components/catalog/list-toolbar'
 
 type InventoryRow = {
   itemKind: string
@@ -63,10 +64,13 @@ type AdjustableItem = {
   unit: string
 }
 
+type Filters = { q: string; itemKind: string; lowStock: boolean }
+
 type PageProps = {
   inventory: InventoryRow[]
   recentMovements: Movement[]
   adjustableItems: AdjustableItem[]
+  filters: Filters
 }
 
 function AdjustDialog({ items }: { items: AdjustableItem[] }) {
@@ -170,11 +174,12 @@ export default function InventoryPage({
   inventory,
   recentMovements,
   adjustableItems,
+  filters,
 }: PageProps) {
   const lowCount = inventory.filter((r) => r.belowThreshold).length
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-8">
-      <div className="flex items-end justify-between">
+    <div className="flex w-full flex-col gap-6 px-6 py-8">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Inventory</h1>
           <p className="text-sm text-muted-foreground">
@@ -183,6 +188,31 @@ export default function InventoryPage({
         </div>
         <AdjustDialog items={adjustableItems} />
       </div>
+
+      <ListToolbar
+        basePath="/inventory"
+        q={filters.q}
+        searchPlaceholder="Search by name or SKU…"
+        selects={[
+          {
+            name: 'itemKind',
+            value: filters.itemKind,
+            options: [
+              { value: 'all', label: 'All kinds' },
+              { value: 'material', label: 'Materials' },
+              { value: 'component', label: 'Components' },
+            ],
+          },
+          {
+            name: 'lowStock',
+            value: filters.lowStock ? '1' : 'all',
+            options: [
+              { value: 'all', label: 'All stock levels' },
+              { value: '1', label: 'Low stock only' },
+            ],
+          },
+        ]}
+      />
 
       <Card>
         <CardHeader>

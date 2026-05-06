@@ -28,6 +28,7 @@ declare module '@adonisjs/inertia/types' {
     'invoices/show': ExtractProps<(typeof import('../../inertia/pages/invoices/show.tsx'))['default']>
     'jobs/index': ExtractProps<(typeof import('../../inertia/pages/jobs/index.tsx'))['default']>
     'jobs/show': ExtractProps<(typeof import('../../inertia/pages/jobs/show.tsx'))['default']>
+    'pos/index': ExtractProps<(typeof import('../../inertia/pages/pos/index.tsx'))['default']>
     'profile/edit': ExtractProps<(typeof import('../../inertia/pages/profile/edit.tsx'))['default']>
     'purchases/index': ExtractProps<(typeof import('../../inertia/pages/purchases/index.tsx'))['default']>
     'purchases/show': ExtractProps<(typeof import('../../inertia/pages/purchases/show.tsx'))['default']>

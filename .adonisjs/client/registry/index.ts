@@ -198,6 +198,18 @@ const routes = {
     tokens: [{"old":"/catalog/materials/:id/archive","type":0,"val":"catalog","end":""},{"old":"/catalog/materials/:id/archive","type":0,"val":"materials","end":""},{"old":"/catalog/materials/:id/archive","type":1,"val":"id","end":""},{"old":"/catalog/materials/:id/archive","type":0,"val":"archive","end":""}],
     types: placeholder as Registry['materials.archive']['types'],
   },
+  'materials.image.update': {
+    methods: ["POST"],
+    pattern: '/catalog/materials/:id/image',
+    tokens: [{"old":"/catalog/materials/:id/image","type":0,"val":"catalog","end":""},{"old":"/catalog/materials/:id/image","type":0,"val":"materials","end":""},{"old":"/catalog/materials/:id/image","type":1,"val":"id","end":""},{"old":"/catalog/materials/:id/image","type":0,"val":"image","end":""}],
+    types: placeholder as Registry['materials.image.update']['types'],
+  },
+  'materials.image.destroy': {
+    methods: ["POST"],
+    pattern: '/catalog/materials/:id/image/delete',
+    tokens: [{"old":"/catalog/materials/:id/image/delete","type":0,"val":"catalog","end":""},{"old":"/catalog/materials/:id/image/delete","type":0,"val":"materials","end":""},{"old":"/catalog/materials/:id/image/delete","type":1,"val":"id","end":""},{"old":"/catalog/materials/:id/image/delete","type":0,"val":"image","end":""},{"old":"/catalog/materials/:id/image/delete","type":0,"val":"delete","end":""}],
+    types: placeholder as Registry['materials.image.destroy']['types'],
+  },
   'components.index': {
     methods: ["GET","HEAD"],
     pattern: '/catalog/components',
@@ -222,6 +234,18 @@ const routes = {
     tokens: [{"old":"/catalog/components/:id/archive","type":0,"val":"catalog","end":""},{"old":"/catalog/components/:id/archive","type":0,"val":"components","end":""},{"old":"/catalog/components/:id/archive","type":1,"val":"id","end":""},{"old":"/catalog/components/:id/archive","type":0,"val":"archive","end":""}],
     types: placeholder as Registry['components.archive']['types'],
   },
+  'components.image.update': {
+    methods: ["POST"],
+    pattern: '/catalog/components/:id/image',
+    tokens: [{"old":"/catalog/components/:id/image","type":0,"val":"catalog","end":""},{"old":"/catalog/components/:id/image","type":0,"val":"components","end":""},{"old":"/catalog/components/:id/image","type":1,"val":"id","end":""},{"old":"/catalog/components/:id/image","type":0,"val":"image","end":""}],
+    types: placeholder as Registry['components.image.update']['types'],
+  },
+  'components.image.destroy': {
+    methods: ["POST"],
+    pattern: '/catalog/components/:id/image/delete',
+    tokens: [{"old":"/catalog/components/:id/image/delete","type":0,"val":"catalog","end":""},{"old":"/catalog/components/:id/image/delete","type":0,"val":"components","end":""},{"old":"/catalog/components/:id/image/delete","type":1,"val":"id","end":""},{"old":"/catalog/components/:id/image/delete","type":0,"val":"image","end":""},{"old":"/catalog/components/:id/image/delete","type":0,"val":"delete","end":""}],
+    types: placeholder as Registry['components.image.destroy']['types'],
+  },
   'products.index': {
     methods: ["GET","HEAD"],
     pattern: '/catalog/products',
@@ -245,6 +269,18 @@ const routes = {
     pattern: '/catalog/products/:id/archive',
     tokens: [{"old":"/catalog/products/:id/archive","type":0,"val":"catalog","end":""},{"old":"/catalog/products/:id/archive","type":0,"val":"products","end":""},{"old":"/catalog/products/:id/archive","type":1,"val":"id","end":""},{"old":"/catalog/products/:id/archive","type":0,"val":"archive","end":""}],
     types: placeholder as Registry['products.archive']['types'],
+  },
+  'products.image.update': {
+    methods: ["POST"],
+    pattern: '/catalog/products/:id/image',
+    tokens: [{"old":"/catalog/products/:id/image","type":0,"val":"catalog","end":""},{"old":"/catalog/products/:id/image","type":0,"val":"products","end":""},{"old":"/catalog/products/:id/image","type":1,"val":"id","end":""},{"old":"/catalog/products/:id/image","type":0,"val":"image","end":""}],
+    types: placeholder as Registry['products.image.update']['types'],
+  },
+  'products.image.destroy': {
+    methods: ["POST"],
+    pattern: '/catalog/products/:id/image/delete',
+    tokens: [{"old":"/catalog/products/:id/image/delete","type":0,"val":"catalog","end":""},{"old":"/catalog/products/:id/image/delete","type":0,"val":"products","end":""},{"old":"/catalog/products/:id/image/delete","type":1,"val":"id","end":""},{"old":"/catalog/products/:id/image/delete","type":0,"val":"image","end":""},{"old":"/catalog/products/:id/image/delete","type":0,"val":"delete","end":""}],
+    types: placeholder as Registry['products.image.destroy']['types'],
   },
   'product_categories.index': {
     methods: ["GET","HEAD"],
@@ -467,6 +503,18 @@ const routes = {
     pattern: '/invoices/:id/void',
     tokens: [{"old":"/invoices/:id/void","type":0,"val":"invoices","end":""},{"old":"/invoices/:id/void","type":1,"val":"id","end":""},{"old":"/invoices/:id/void","type":0,"val":"void","end":""}],
     types: placeholder as Registry['invoices.void']['types'],
+  },
+  'pos.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/pos',
+    tokens: [{"old":"/pos","type":0,"val":"pos","end":""}],
+    types: placeholder as Registry['pos.index']['types'],
+  },
+  'pos.sell': {
+    methods: ["POST"],
+    pattern: '/pos/sell',
+    tokens: [{"old":"/pos/sell","type":0,"val":"pos","end":""},{"old":"/pos/sell","type":0,"val":"sell","end":""}],
+    types: placeholder as Registry['pos.sell']['types'],
   },
   'reports.profit': {
     methods: ["GET","HEAD"],

@@ -6,10 +6,20 @@ import { getCustomersViewModel } from '#services/catalog_view_models'
 import { audit } from '#services/audit'
 
 export default class CustomersController {
-  async index({ inertia, bouncer }: HttpContext) {
+  async index({ request, inertia, bouncer }: HttpContext) {
     await bouncer.authorize('customers.view' as never)
-    const data = await getCustomersViewModel()
-    return inertia.render('customers/index', data)
+    const qs = request.qs()
+    const data = await getCustomersViewModel({
+      q: typeof qs.q === 'string' ? qs.q : undefined,
+      status: typeof qs.status === 'string' ? qs.status : undefined,
+    })
+    return inertia.render('customers/index', {
+      ...data,
+      filters: {
+        q: typeof qs.q === 'string' ? qs.q : '',
+        status: typeof qs.status === 'string' ? qs.status : 'all',
+      },
+    })
   }
 
   async store({ request, auth, bouncer, response, session }: HttpContext) {

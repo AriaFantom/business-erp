@@ -4,9 +4,22 @@ import Supplier from '#models/supplier'
 import Material from '#models/material'
 import Component from '#models/component'
 
-export async function getPurchasesIndexViewModel() {
+export async function getPurchasesIndexViewModel(
+  filters: { q?: string; status?: string; supplierId?: number } = {}
+) {
+  const query = Purchase.query().orderBy('created_at', 'desc').limit(500)
+  if (filters.status && filters.status !== 'all') {
+    query.where('status', filters.status)
+  }
+  if (filters.supplierId) {
+    query.where('supplier_id', filters.supplierId)
+  }
+  if (filters.q) {
+    const needle = `%${filters.q.trim()}%`
+    query.whereILike('number', needle)
+  }
   const [purchases, suppliers, materials, components] = await Promise.all([
-    Purchase.query().orderBy('created_at', 'desc').limit(200),
+    query,
     Supplier.query().where('is_active', true).orderBy('name', 'asc'),
     Material.query().where('is_active', true).orderBy('name', 'asc'),
     Component.query().where('is_active', true).orderBy('name', 'asc'),

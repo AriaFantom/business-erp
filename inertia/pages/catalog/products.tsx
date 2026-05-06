@@ -1,5 +1,5 @@
 import { type ReactElement, useState } from 'react'
-import { useForm } from '@inertiajs/react'
+import { router, useForm } from '@inertiajs/react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -29,6 +29,8 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
+import { ImageUploader } from '@/components/catalog/image-uploader'
+import { ListToolbar } from '@/components/catalog/list-toolbar'
 
 type Row = {
   id: number
@@ -38,6 +40,7 @@ type Row = {
   category: { id: number; name: string } | null
   defaultProfitPct: string | null
   taxRatePct: string | null
+  imageUrl: string | null
   isActive: boolean
 }
 
@@ -48,7 +51,9 @@ type CategoryOpt = {
   taxRatePct: string | null
 }
 
-type PageProps = { products: Row[]; categories: CategoryOpt[] }
+type Filters = { q: string; status: string; categoryId: string }
+
+type PageProps = { products: Row[]; categories: CategoryOpt[]; filters: Filters }
 
 function NewProductDialog({ categories }: { categories: CategoryOpt[] }) {
   const [open, setOpen] = useState(false)
@@ -66,7 +71,7 @@ function NewProductDialog({ categories }: { categories: CategoryOpt[] }) {
       <DialogTrigger asChild>
         <Button>New product</Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Create product</DialogTitle>
         </DialogHeader>
@@ -122,22 +127,24 @@ function NewProductDialog({ categories }: { categories: CategoryOpt[] }) {
               </SelectContent>
             </Select>
           </Field>
-          <Field label="Default profit %" error={errors.defaultProfitPct}>
-            <Input
-              type="number"
-              step="0.01"
-              value={data.defaultProfitPct}
-              onChange={(e) => setData('defaultProfitPct', e.target.value)}
-            />
-          </Field>
-          <Field label="Tax rate %" error={errors.taxRatePct}>
-            <Input
-              type="number"
-              step="0.01"
-              value={data.taxRatePct}
-              onChange={(e) => setData('taxRatePct', e.target.value)}
-            />
-          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Default profit %" error={errors.defaultProfitPct}>
+              <Input
+                type="number"
+                step="0.01"
+                value={data.defaultProfitPct}
+                onChange={(e) => setData('defaultProfitPct', e.target.value)}
+              />
+            </Field>
+            <Field label="Tax rate %" error={errors.taxRatePct}>
+              <Input
+                type="number"
+                step="0.01"
+                value={data.taxRatePct}
+                onChange={(e) => setData('taxRatePct', e.target.value)}
+              />
+            </Field>
+          </div>
           <DialogFooter>
             <Button type="submit" disabled={processing}>
               {processing ? 'Saving…' : 'Create'}
@@ -183,10 +190,10 @@ function ArchiveAction({ path, name }: { path: string; name: string }) {
   )
 }
 
-export default function ProductsPage({ products, categories }: PageProps) {
+export default function ProductsPage({ products, categories, filters }: PageProps) {
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-8">
-      <div className="flex items-end justify-between">
+    <div className="flex w-full flex-col gap-6 px-6 py-8">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Products</h1>
           <p className="text-sm text-muted-foreground">
@@ -196,29 +203,58 @@ export default function ProductsPage({ products, categories }: PageProps) {
         <NewProductDialog categories={categories} />
       </div>
 
+      <ListToolbar
+        basePath="/catalog/products"
+        q={filters.q}
+        searchPlaceholder="Search by name or SKU…"
+        selects={[
+          {
+            name: 'status',
+            value: filters.status,
+            options: [
+              { value: 'all', label: 'All statuses' },
+              { value: 'active', label: 'Active' },
+              { value: 'archived', label: 'Archived' },
+            ],
+          },
+          {
+            name: 'categoryId',
+            value: filters.categoryId,
+            options: [
+              { value: 'all', label: 'All categories' },
+              ...categories.map((c) => ({ value: String(c.id), label: c.name })),
+            ],
+          },
+        ]}
+      />
+
       <Card>
         <CardHeader>
           <CardTitle>All products</CardTitle>
         </CardHeader>
         <CardContent>
           {products.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No products yet.</p>
+            <p className="text-sm text-muted-foreground">No products match the filters.</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-16">Image</TableHead>
                   <TableHead>SKU</TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Profit %</TableHead>
                   <TableHead>Tax %</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-32 text-right">Actions</TableHead>
+                  <TableHead className="w-48 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {products.map((p) => (
                   <TableRow key={p.id}>
+                    <TableCell>
+                      <Thumb url={p.imageUrl} alt={p.name} />
+                    </TableCell>
                     <TableCell className="font-mono text-xs">{p.sku}</TableCell>
                     <TableCell className="font-medium">{p.name}</TableCell>
                     <TableCell>{p.category?.name ?? '—'}</TableCell>
@@ -232,12 +268,19 @@ export default function ProductsPage({ products, categories }: PageProps) {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      {p.isActive && (
-                        <ArchiveAction
-                          path={`/catalog/products/${p.id}/archive`}
-                          name={p.name}
+                      <div className="flex justify-end gap-2">
+                        <ImageUploader
+                          uploadPath={`/catalog/products/${p.id}/image`}
+                          deletePath={`/catalog/products/${p.id}/image/delete`}
+                          hasImage={!!p.imageUrl}
                         />
-                      )}
+                        {p.isActive && (
+                          <ArchiveAction
+                            path={`/catalog/products/${p.id}/archive`}
+                            name={p.name}
+                          />
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -250,4 +293,23 @@ export default function ProductsPage({ products, categories }: PageProps) {
   )
 }
 
+function Thumb({ url, alt }: { url: string | null; alt: string }) {
+  if (!url)
+    return (
+      <div className="flex h-10 w-10 items-center justify-center rounded bg-muted text-[10px] text-muted-foreground">
+        —
+      </div>
+    )
+  return (
+    <img
+      src={url}
+      alt={alt}
+      className="h-10 w-10 rounded object-cover"
+      loading="lazy"
+    />
+  )
+}
+
 ProductsPage.layout = (page: ReactElement) => <DashboardLayout>{page}</DashboardLayout>
+// router import is implicit via <ListToolbar>; keep this so vite tree-shakes properly
+void router

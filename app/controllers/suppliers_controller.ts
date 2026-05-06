@@ -5,10 +5,20 @@ import { getSuppliersViewModel } from '#services/catalog_view_models'
 import { audit } from '#services/audit'
 
 export default class SuppliersController {
-  async index({ inertia, bouncer }: HttpContext) {
+  async index({ request, inertia, bouncer }: HttpContext) {
     await bouncer.authorize('suppliers.view' as never)
-    const data = await getSuppliersViewModel()
-    return inertia.render('suppliers/index', data)
+    const qs = request.qs()
+    const data = await getSuppliersViewModel({
+      q: typeof qs.q === 'string' ? qs.q : undefined,
+      status: typeof qs.status === 'string' ? qs.status : undefined,
+    })
+    return inertia.render('suppliers/index', {
+      ...data,
+      filters: {
+        q: typeof qs.q === 'string' ? qs.q : '',
+        status: typeof qs.status === 'string' ? qs.status : 'all',
+      },
+    })
   }
 
   async store({ request, auth, bouncer, response, session }: HttpContext) {

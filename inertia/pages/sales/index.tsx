@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
+import { ListToolbar } from '@/components/catalog/list-toolbar'
 
 type SaleRow = {
   id: number
@@ -45,10 +46,13 @@ type SaleRow = {
 type CustomerOpt = { id: number; name: string }
 type ProductOpt = { id: number; sku: string; name: string; taxRatePct: string | null }
 
+type Filters = { q: string; status: string; customerId: string }
+
 type PageProps = {
   sales: SaleRow[]
   customers: CustomerOpt[]
   products: ProductOpt[]
+  filters: Filters
 }
 
 type LineDraft = {
@@ -283,16 +287,42 @@ function Field({
   )
 }
 
-export default function SalesIndex({ sales, customers, products }: PageProps) {
+export default function SalesIndex({ sales, customers, products, filters }: PageProps) {
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-8">
-      <div className="flex items-end justify-between">
+    <div className="flex w-full flex-col gap-6 px-6 py-8">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Sales</h1>
           <p className="text-sm text-muted-foreground">{sales.length} sales.</p>
         </div>
         <NewSaleDialog customers={customers} products={products} />
       </div>
+
+      <ListToolbar
+        basePath="/sales"
+        q={filters.q}
+        searchPlaceholder="Search by number…"
+        selects={[
+          {
+            name: 'status',
+            value: filters.status,
+            options: [
+              { value: 'all', label: 'All statuses' },
+              { value: 'draft', label: 'Draft' },
+              { value: 'confirmed', label: 'Confirmed' },
+              { value: 'cancelled', label: 'Cancelled' },
+            ],
+          },
+          {
+            name: 'customerId',
+            value: filters.customerId,
+            options: [
+              { value: 'all', label: 'All customers' },
+              ...customers.map((c) => ({ value: String(c.id), label: c.name })),
+            ],
+          },
+        ]}
+      />
 
       <Card>
         <CardHeader>

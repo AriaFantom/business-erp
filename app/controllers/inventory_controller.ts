@@ -5,10 +5,22 @@ import { adjustStock } from '#services/inventory_service'
 import { DomainError } from '#services/domain_errors'
 
 export default class InventoryController {
-  async index({ inertia, bouncer }: HttpContext) {
+  async index({ request, inertia, bouncer }: HttpContext) {
     await bouncer.authorize('inventory.view' as never)
-    const data = await getInventoryViewModel()
-    return inertia.render('inventory/index', data)
+    const qs = request.qs()
+    const data = await getInventoryViewModel({
+      q: typeof qs.q === 'string' ? qs.q : undefined,
+      itemKind: typeof qs.itemKind === 'string' ? qs.itemKind : undefined,
+      lowStock: qs.lowStock === '1' || qs.lowStock === 'true',
+    })
+    return inertia.render('inventory/index', {
+      ...data,
+      filters: {
+        q: typeof qs.q === 'string' ? qs.q : '',
+        itemKind: typeof qs.itemKind === 'string' ? qs.itemKind : 'all',
+        lowStock: qs.lowStock === '1' || qs.lowStock === 'true',
+      },
+    })
   }
 
   /** POST /inventory/adjustments — manual stock correction */

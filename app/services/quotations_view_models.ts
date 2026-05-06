@@ -3,9 +3,15 @@ import QuotationItem from '#models/quotation_item'
 import Customer from '#models/customer'
 import Product from '#models/product'
 
-export async function getQuotationsIndexViewModel() {
+export async function getQuotationsIndexViewModel(
+  filters: { q?: string; status?: string; customerId?: number } = {}
+) {
+  const query = Quotation.query().orderBy('created_at', 'desc').limit(500)
+  if (filters.status && filters.status !== 'all') query.where('status', filters.status)
+  if (filters.customerId) query.where('customer_id', filters.customerId)
+  if (filters.q) query.whereILike('number', `%${filters.q.trim()}%`)
   const [quotations, customers, products] = await Promise.all([
-    Quotation.query().orderBy('created_at', 'desc').limit(200),
+    query,
     Customer.query().where('is_active', true).orderBy('name', 'asc'),
     Product.query().where('is_active', true).orderBy('name', 'asc'),
   ])

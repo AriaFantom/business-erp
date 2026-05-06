@@ -19,10 +19,22 @@ import {
 import { DomainError } from '#services/domain_errors'
 
 export default class JobsController {
-  async index({ inertia, bouncer }: HttpContext) {
+  async index({ request, inertia, bouncer }: HttpContext) {
     await bouncer.authorize('jobs.view' as never)
-    const data = await getJobsIndexViewModel()
-    return inertia.render('jobs/index', data)
+    const qs = request.qs()
+    const data = await getJobsIndexViewModel({
+      q: typeof qs.q === 'string' ? qs.q : undefined,
+      status: typeof qs.status === 'string' ? qs.status : undefined,
+      productId: qs.productId ? Number(qs.productId) : undefined,
+    })
+    return inertia.render('jobs/index', {
+      ...data,
+      filters: {
+        q: typeof qs.q === 'string' ? qs.q : '',
+        status: typeof qs.status === 'string' ? qs.status : 'all',
+        productId: qs.productId ? String(qs.productId) : 'all',
+      },
+    })
   }
 
   async show({ params, inertia, bouncer }: HttpContext) {

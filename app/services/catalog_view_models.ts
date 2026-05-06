@@ -6,12 +6,48 @@ import Supplier from '#models/supplier'
 import Customer from '#models/customer'
 import Inventory from '#models/inventory'
 import StockMovement from '#models/stock_movement'
+import { signCatalogImageUrl } from '#services/catalog_image_storage'
 
 /**
  * Lean read-only projections for Inertia pages. These don't depend on the
  * actor — every gating decision is enforced at the route/controller layer
  * via Bouncer, so the page either renders this data or 403s upstream.
  */
+
+type ListFilters = {
+  q?: string
+  status?: string // 'all' | 'active' | 'archived'
+}
+
+function applyStatus(
+  query: { where: (col: string, val: unknown) => unknown },
+  status: string | undefined
+) {
+  if (status === 'archived') {
+    query.where('is_active', false)
+  } else if (status !== 'all') {
+    query.where('is_active', true)
+  }
+}
+
+function applySearch(
+  query: { whereILike: (col: string, val: string) => unknown; where: (cb: unknown) => unknown },
+  q: string | undefined,
+  cols: string[]
+) {
+  if (!q) return
+  const needle = `%${q.trim()}%`
+  query.where((sub: unknown) => {
+    const s = sub as {
+      whereILike: (col: string, v: string) => unknown
+      orWhereILike: (col: string, v: string) => unknown
+    }
+    cols.forEach((c, i) => {
+      if (i === 0) s.whereILike(c, needle)
+      else s.orWhereILike(c, needle)
+    })
+  })
+}
 
 export type MaterialRow = {
   id: number
@@ -21,13 +57,21 @@ export type MaterialRow = {
   defaultUnitCost: string
   reorderThresholdG: string | null
   defaultSupplier: { id: number; name: string } | null
+  imageUrl: string | null
   isActive: boolean
 }
 
-export async function getMaterialsViewModel() {
-  const materials = await Material.query().preload('defaultSupplier').orderBy('name', 'asc')
+export async function getMaterialsViewModel(filters: ListFilters & { type?: string } = {}) {
+  const query = Material.query().preload('defaultSupplier').orderBy('name', 'asc')
+  applyStatus(query as never, filters.status)
+  applySearch(query as never, filters.q, ['name', 'sku'])
+  if (filters.type && filters.type !== 'all') {
+    query.where('type', filters.type)
+  }
+  const materials = await query
+  const signed = await Promise.all(materials.map((m) => signCatalogImageUrl(m.imageKey)))
   return {
-    materials: materials.map<MaterialRow>((m) => ({
+    materials: materials.map<MaterialRow>((m, idx) => ({
       id: m.id,
       sku: m.sku,
       name: m.name,
@@ -37,6 +81,7 @@ export async function getMaterialsViewModel() {
       defaultSupplier: m.defaultSupplier
         ? { id: m.defaultSupplier.id, name: m.defaultSupplier.name }
         : null,
+      imageUrl: signed[idx],
       isActive: m.isActive,
     })),
     suppliers: await listActiveSuppliers(),
@@ -50,13 +95,18 @@ export type ComponentRow = {
   defaultUnitCost: string
   reorderThresholdQty: number | null
   defaultSupplier: { id: number; name: string } | null
+  imageUrl: string | null
   isActive: boolean
 }
 
-export async function getComponentsViewModel() {
-  const components = await Component.query().preload('defaultSupplier').orderBy('name', 'asc')
+export async function getComponentsViewModel(filters: ListFilters = {}) {
+  const query = Component.query().preload('defaultSupplier').orderBy('name', 'asc')
+  applyStatus(query as never, filters.status)
+  applySearch(query as never, filters.q, ['name', 'sku'])
+  const components = await query
+  const signed = await Promise.all(components.map((c) => signCatalogImageUrl(c.imageKey)))
   return {
-    components: components.map<ComponentRow>((c) => ({
+    components: components.map<ComponentRow>((c, idx) => ({
       id: c.id,
       sku: c.sku,
       name: c.name,
@@ -65,6 +115,7 @@ export async function getComponentsViewModel() {
       defaultSupplier: c.defaultSupplier
         ? { id: c.defaultSupplier.id, name: c.defaultSupplier.name }
         : null,
+      imageUrl: signed[idx],
       isActive: c.isActive,
     })),
     suppliers: await listActiveSuppliers(),
@@ -79,16 +130,24 @@ export type ProductRow = {
   category: { id: number; name: string } | null
   defaultProfitPct: string | null
   taxRatePct: string | null
+  imageUrl: string | null
   isActive: boolean
 }
 
-export async function getProductsViewModel() {
+export async function getProductsViewModel(filters: ListFilters & { categoryId?: number } = {}) {
+  const query = Product.query().preload('category').orderBy('name', 'asc')
+  applyStatus(query as never, filters.status)
+  applySearch(query as never, filters.q, ['name', 'sku'])
+  if (filters.categoryId) {
+    query.where('category_id', filters.categoryId)
+  }
   const [products, categories] = await Promise.all([
-    Product.query().preload('category').orderBy('name', 'asc'),
+    query,
     ProductCategory.query().orderBy('name', 'asc'),
   ])
+  const signed = await Promise.all(products.map((p) => signCatalogImageUrl(p.imageKey)))
   return {
-    products: products.map<ProductRow>((p) => ({
+    products: products.map<ProductRow>((p, idx) => ({
       id: p.id,
       sku: p.sku,
       name: p.name,
@@ -96,6 +155,7 @@ export async function getProductsViewModel() {
       category: p.category ? { id: p.category.id, name: p.category.name } : null,
       defaultProfitPct: p.defaultProfitPct,
       taxRatePct: p.taxRatePct,
+      imageUrl: signed[idx],
       isActive: p.isActive,
     })),
     categories: categories.map((c) => ({
@@ -107,8 +167,10 @@ export async function getProductsViewModel() {
   }
 }
 
-export async function getProductCategoriesViewModel() {
-  const categories = await ProductCategory.query().orderBy('name', 'asc')
+export async function getProductCategoriesViewModel(filters: ListFilters = {}) {
+  const query = ProductCategory.query().orderBy('name', 'asc')
+  applySearch(query as never, filters.q, ['name'])
+  const categories = await query
   return {
     categories: categories.map((c) => ({
       id: c.id,
@@ -128,8 +190,11 @@ export type SupplierRow = {
   isActive: boolean
 }
 
-export async function getSuppliersViewModel() {
-  const suppliers = await Supplier.query().orderBy('name', 'asc')
+export async function getSuppliersViewModel(filters: ListFilters = {}) {
+  const query = Supplier.query().orderBy('name', 'asc')
+  applyStatus(query as never, filters.status)
+  applySearch(query as never, filters.q, ['name', 'email', 'phone', 'gstin'])
+  const suppliers = await query
   return {
     suppliers: suppliers.map<SupplierRow>((s) => ({
       id: s.id,
@@ -156,8 +221,11 @@ export type CustomerRow = {
   isActive: boolean
 }
 
-export async function getCustomersViewModel() {
-  const customers = await Customer.query().orderBy('name', 'asc')
+export async function getCustomersViewModel(filters: ListFilters = {}) {
+  const query = Customer.query().orderBy('name', 'asc')
+  applyStatus(query as never, filters.status)
+  applySearch(query as never, filters.q, ['name', 'email', 'phone', 'gstin'])
+  const customers = await query
   return {
     customers: customers.map<CustomerRow>((c) => ({
       id: c.id,
@@ -182,7 +250,9 @@ export type InventoryRow = {
   belowThreshold: boolean
 }
 
-export async function getInventoryViewModel() {
+export async function getInventoryViewModel(
+  filters: { q?: string; itemKind?: string; lowStock?: boolean } = {}
+) {
   const [inventory, materials, components, recentMovements] = await Promise.all([
     Inventory.query(),
     Material.query(),
@@ -228,13 +298,23 @@ export async function getInventoryViewModel() {
     }
   }
 
-  // Stable sort: kind, then name
-  rows.sort((a, b) => {
+  const filtered = rows.filter((r) => {
+    if (filters.itemKind && filters.itemKind !== 'all' && r.itemKind !== filters.itemKind)
+      return false
+    if (filters.lowStock && !r.belowThreshold) return false
+    if (filters.q) {
+      const needle = filters.q.trim().toLowerCase()
+      if (!r.itemName.toLowerCase().includes(needle) && !r.itemSku.toLowerCase().includes(needle))
+        return false
+    }
+    return true
+  })
+
+  filtered.sort((a, b) => {
     if (a.itemKind !== b.itemKind) return a.itemKind < b.itemKind ? -1 : 1
     return a.itemName < b.itemName ? -1 : 1
   })
 
-  // Items the actor can adjust against — both kinds, active rows only
   const adjustableItems = [
     ...materials
       .filter((m) => m.isActive)
@@ -257,7 +337,7 @@ export async function getInventoryViewModel() {
   ]
 
   return {
-    inventory: rows,
+    inventory: filtered,
     recentMovements: recentMovements.map((m) => ({
       id: m.id,
       itemKind: m.itemKind,

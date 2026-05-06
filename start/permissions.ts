@@ -103,6 +103,12 @@ export const permissions = definePermissions({
     void: 'Void an invoice',
   },
 
+  // ── POS (point-of-sale) ──────────────────────────────────────────────
+  pos: {
+    view: 'Open the point-of-sale terminal',
+    sell: 'Complete a POS sale (creates sale + invoice + payment)',
+  },
+
   // ── Reports ──────────────────────────────────────────────────────────
   reports: {
     view: 'View profit / inventory / job reports',

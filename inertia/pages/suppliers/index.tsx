@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
+import { ListToolbar } from '@/components/catalog/list-toolbar'
 
 type Row = {
   id: number
@@ -38,7 +39,9 @@ type Row = {
   isActive: boolean
 }
 
-type PageProps = { suppliers: Row[] }
+type Filters = { q: string; status: string }
+
+type PageProps = { suppliers: Row[]; filters: Filters }
 
 function NewSupplierDialog() {
   const [open, setOpen] = useState(false)
@@ -136,16 +139,33 @@ function Field({
   )
 }
 
-export default function SuppliersIndex({ suppliers }: PageProps) {
+export default function SuppliersIndex({ suppliers, filters }: PageProps) {
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-8">
-      <div className="flex items-end justify-between">
+    <div className="flex w-full flex-col gap-6 px-6 py-8">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Suppliers</h1>
           <p className="text-sm text-muted-foreground">{suppliers.length} suppliers</p>
         </div>
         <NewSupplierDialog />
       </div>
+
+      <ListToolbar
+        basePath="/suppliers"
+        q={filters.q}
+        searchPlaceholder="Search by name, email, phone, GSTIN…"
+        selects={[
+          {
+            name: 'status',
+            value: filters.status,
+            options: [
+              { value: 'all', label: 'All statuses' },
+              { value: 'active', label: 'Active' },
+              { value: 'archived', label: 'Archived' },
+            ],
+          },
+        ]}
+      />
 
       <Card>
         <CardHeader>

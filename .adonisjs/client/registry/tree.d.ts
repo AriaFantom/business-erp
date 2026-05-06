@@ -54,18 +54,30 @@ export interface ApiDefinition {
     store: typeof routes['materials.store']
     update: typeof routes['materials.update']
     archive: typeof routes['materials.archive']
+    image: {
+      update: typeof routes['materials.image.update']
+      destroy: typeof routes['materials.image.destroy']
+    }
   }
   components: {
     index: typeof routes['components.index']
     store: typeof routes['components.store']
     update: typeof routes['components.update']
     archive: typeof routes['components.archive']
+    image: {
+      update: typeof routes['components.image.update']
+      destroy: typeof routes['components.image.destroy']
+    }
   }
   products: {
     index: typeof routes['products.index']
     store: typeof routes['products.store']
     update: typeof routes['products.update']
     archive: typeof routes['products.archive']
+    image: {
+      update: typeof routes['products.image.update']
+      destroy: typeof routes['products.image.destroy']
+    }
   }
   productCategories: {
     index: typeof routes['product_categories.index']
@@ -117,6 +129,10 @@ export interface ApiDefinition {
     show: typeof routes['invoices.show']
     pay: typeof routes['invoices.pay']
     void: typeof routes['invoices.void']
+  }
+  pos: {
+    index: typeof routes['pos.index']
+    sell: typeof routes['pos.sell']
   }
   reports: {
     profit: typeof routes['reports.profit']

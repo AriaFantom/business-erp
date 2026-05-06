@@ -27,7 +27,7 @@ export class AuditEventSchema extends BaseModel {
 }
 
 export class ComponentSchema extends BaseModel {
-  static $columns = ['createdAt', 'defaultSupplierId', 'defaultUnitCost', 'id', 'isActive', 'name', 'reorderThresholdQty', 'sku', 'unit', 'updatedAt'] as const
+  static $columns = ['createdAt', 'defaultSupplierId', 'defaultUnitCost', 'id', 'imageKey', 'isActive', 'name', 'reorderThresholdQty', 'sku', 'unit', 'updatedAt'] as const
   $columns = ComponentSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
@@ -37,6 +37,8 @@ export class ComponentSchema extends BaseModel {
   declare defaultUnitCost: string
   @column({ isPrimary: true })
   declare id: number
+  @column()
+  declare imageKey: string | null
   @column()
   declare isActive: boolean
   @column()
@@ -300,7 +302,7 @@ export class JobMaterialConsumptionSchema extends BaseModel {
 }
 
 export class MaterialSchema extends BaseModel {
-  static $columns = ['createdAt', 'defaultSupplierId', 'defaultUnitCost', 'id', 'isActive', 'name', 'reorderThresholdG', 'sku', 'type', 'unit', 'updatedAt'] as const
+  static $columns = ['createdAt', 'defaultSupplierId', 'defaultUnitCost', 'id', 'imageKey', 'isActive', 'name', 'reorderThresholdG', 'sku', 'type', 'unit', 'updatedAt'] as const
   $columns = MaterialSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
@@ -310,6 +312,8 @@ export class MaterialSchema extends BaseModel {
   declare defaultUnitCost: string
   @column({ isPrimary: true })
   declare id: number
+  @column()
+  declare imageKey: string | null
   @column()
   declare isActive: boolean
   @column()

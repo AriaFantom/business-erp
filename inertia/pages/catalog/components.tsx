@@ -29,6 +29,8 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
+import { ImageUploader } from '@/components/catalog/image-uploader'
+import { ListToolbar } from '@/components/catalog/list-toolbar'
 
 type Row = {
   id: number
@@ -37,12 +39,15 @@ type Row = {
   defaultUnitCost: string
   reorderThresholdQty: number | null
   defaultSupplier: { id: number; name: string } | null
+  imageUrl: string | null
   isActive: boolean
 }
 
 type SupplierOpt = { id: number; name: string }
 
-type PageProps = { components: Row[]; suppliers: SupplierOpt[] }
+type Filters = { q: string; status: string }
+
+type PageProps = { components: Row[]; suppliers: SupplierOpt[]; filters: Filters }
 
 function NewComponentDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
   const [open, setOpen] = useState(false)
@@ -59,7 +64,7 @@ function NewComponentDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
       <DialogTrigger asChild>
         <Button>New component</Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Create component</DialogTitle>
         </DialogHeader>
@@ -170,10 +175,27 @@ function ArchiveAction({ path, name }: { path: string; name: string }) {
   )
 }
 
-export default function ComponentsPage({ components, suppliers }: PageProps) {
+function Thumb({ url, alt }: { url: string | null; alt: string }) {
+  if (!url)
+    return (
+      <div className="flex h-10 w-10 items-center justify-center rounded bg-muted text-[10px] text-muted-foreground">
+        —
+      </div>
+    )
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-8">
-      <div className="flex items-end justify-between">
+    <img
+      src={url}
+      alt={alt}
+      className="h-10 w-10 rounded object-cover"
+      loading="lazy"
+    />
+  )
+}
+
+export default function ComponentsPage({ components, suppliers, filters }: PageProps) {
+  return (
+    <div className="flex w-full flex-col gap-6 px-6 py-8">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Components</h1>
           <p className="text-sm text-muted-foreground">{components.length} components.</p>
@@ -181,29 +203,50 @@ export default function ComponentsPage({ components, suppliers }: PageProps) {
         <NewComponentDialog suppliers={suppliers} />
       </div>
 
+      <ListToolbar
+        basePath="/catalog/components"
+        q={filters.q}
+        searchPlaceholder="Search by name or SKU…"
+        selects={[
+          {
+            name: 'status',
+            value: filters.status,
+            options: [
+              { value: 'all', label: 'All statuses' },
+              { value: 'active', label: 'Active' },
+              { value: 'archived', label: 'Archived' },
+            ],
+          },
+        ]}
+      />
+
       <Card>
         <CardHeader>
           <CardTitle>All components</CardTitle>
         </CardHeader>
         <CardContent>
           {components.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No components yet.</p>
+            <p className="text-sm text-muted-foreground">No components match the filters.</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-16">Image</TableHead>
                   <TableHead>SKU</TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Default cost</TableHead>
                   <TableHead>Reorder at</TableHead>
                   <TableHead>Supplier</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-32 text-right">Actions</TableHead>
+                  <TableHead className="w-56 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {components.map((c) => (
                   <TableRow key={c.id}>
+                    <TableCell>
+                      <Thumb url={c.imageUrl} alt={c.name} />
+                    </TableCell>
                     <TableCell className="font-mono text-xs">{c.sku}</TableCell>
                     <TableCell className="font-medium">{c.name}</TableCell>
                     <TableCell>{c.defaultUnitCost}</TableCell>
@@ -217,12 +260,19 @@ export default function ComponentsPage({ components, suppliers }: PageProps) {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      {c.isActive && (
-                        <ArchiveAction
-                          path={`/catalog/components/${c.id}/archive`}
-                          name={c.name}
+                      <div className="flex justify-end gap-2">
+                        <ImageUploader
+                          uploadPath={`/catalog/components/${c.id}/image`}
+                          deletePath={`/catalog/components/${c.id}/image/delete`}
+                          hasImage={!!c.imageUrl}
                         />
-                      )}
+                        {c.isActive && (
+                          <ArchiveAction
+                            path={`/catalog/components/${c.id}/archive`}
+                            name={c.name}
+                          />
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

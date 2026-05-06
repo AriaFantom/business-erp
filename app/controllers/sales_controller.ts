@@ -5,10 +5,22 @@ import { cancelSale, confirmSale, createSale } from '#services/sale_service'
 import { DomainError } from '#services/domain_errors'
 
 export default class SalesController {
-  async index({ inertia, bouncer }: HttpContext) {
+  async index({ request, inertia, bouncer }: HttpContext) {
     await bouncer.authorize('sales.view' as never)
-    const data = await getSalesIndexViewModel()
-    return inertia.render('sales/index', data)
+    const qs = request.qs()
+    const data = await getSalesIndexViewModel({
+      q: typeof qs.q === 'string' ? qs.q : undefined,
+      status: typeof qs.status === 'string' ? qs.status : undefined,
+      customerId: qs.customerId ? Number(qs.customerId) : undefined,
+    })
+    return inertia.render('sales/index', {
+      ...data,
+      filters: {
+        q: typeof qs.q === 'string' ? qs.q : '',
+        status: typeof qs.status === 'string' ? qs.status : 'all',
+        customerId: qs.customerId ? String(qs.customerId) : 'all',
+      },
+    })
   }
 
   async show({ params, inertia, bouncer }: HttpContext) {

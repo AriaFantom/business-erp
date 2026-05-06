@@ -1,14 +1,60 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import Material from '#models/material'
-import { createMaterialValidator, updateMaterialValidator } from '#validators/catalog'
+import {
+  createMaterialValidator,
+  updateMaterialValidator,
+  uploadCatalogImageValidator,
+} from '#validators/catalog'
 import { getMaterialsViewModel } from '#services/catalog_view_models'
 import { audit } from '#services/audit'
+import { storeCatalogImage, removeCatalogImage } from '#services/catalog_image_storage'
 
 export default class MaterialsController {
-  async index({ inertia, bouncer }: HttpContext) {
+  async index({ request, inertia, bouncer }: HttpContext) {
     await bouncer.authorize('materials.view' as never)
-    const data = await getMaterialsViewModel()
-    return inertia.render('catalog/materials', data)
+    const qs = request.qs()
+    const data = await getMaterialsViewModel({
+      q: typeof qs.q === 'string' ? qs.q : undefined,
+      status: typeof qs.status === 'string' ? qs.status : undefined,
+      type: typeof qs.type === 'string' ? qs.type : undefined,
+    })
+    return inertia.render('catalog/materials', {
+      ...data,
+      filters: {
+        q: typeof qs.q === 'string' ? qs.q : '',
+        status: typeof qs.status === 'string' ? qs.status : 'all',
+        type: typeof qs.type === 'string' ? qs.type : 'all',
+      },
+    })
+  }
+
+  async updateImage({ params, request, auth, bouncer, response, session }: HttpContext) {
+    await bouncer.authorize('materials.update' as never)
+    const material = await Material.findOrFail(params.id)
+    const payload = await request.validateUsing(uploadCatalogImageValidator)
+    await storeCatalogImage('material', material, payload.image)
+    await audit({
+      actor: auth.user!,
+      action: 'material.image.update',
+      targetType: 'material',
+      targetId: material.id,
+    })
+    session.flash('success', 'Material image updated.')
+    return response.redirect().back()
+  }
+
+  async destroyImage({ params, auth, bouncer, response, session }: HttpContext) {
+    await bouncer.authorize('materials.update' as never)
+    const material = await Material.findOrFail(params.id)
+    await removeCatalogImage(material)
+    await audit({
+      actor: auth.user!,
+      action: 'material.image.delete',
+      targetType: 'material',
+      targetId: material.id,
+    })
+    session.flash('success', 'Material image removed.')
+    return response.redirect().back()
   }
 
   async store({ request, auth, bouncer, response, session }: HttpContext) {

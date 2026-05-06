@@ -15,6 +15,7 @@ export const controllers = {
   Invoices: () => import('#controllers/invoices_controller'),
   Jobs: () => import('#controllers/jobs_controller'),
   Materials: () => import('#controllers/materials_controller'),
+  Pos: () => import('#controllers/pos_controller'),
   ProductCategories: () => import('#controllers/product_categories_controller'),
   Products: () => import('#controllers/products_controller'),
   Profile: () => import('#controllers/profile_controller'),

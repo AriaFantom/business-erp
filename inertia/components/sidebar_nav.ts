@@ -12,6 +12,7 @@ import {
   Settings2,
   ShieldCheck,
   ShoppingCart,
+  Store,
   Tags,
   Truck,
   Users,
@@ -83,6 +84,12 @@ export const navItems: NavItem[] = [
     url: '/jobs',
     icon: Factory,
     permission: 'jobs.view',
+  },
+  {
+    title: 'POS',
+    url: '/pos',
+    icon: Store,
+    permission: 'pos.view',
   },
   {
     title: 'Sales',

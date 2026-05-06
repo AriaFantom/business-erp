@@ -1,14 +1,60 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import Product from '#models/product'
-import { createProductValidator, updateProductValidator } from '#validators/catalog'
+import {
+  createProductValidator,
+  updateProductValidator,
+  uploadCatalogImageValidator,
+} from '#validators/catalog'
 import { getProductsViewModel } from '#services/catalog_view_models'
 import { audit } from '#services/audit'
+import { storeCatalogImage, removeCatalogImage } from '#services/catalog_image_storage'
 
 export default class ProductsController {
-  async index({ inertia, bouncer }: HttpContext) {
+  async index({ request, inertia, bouncer }: HttpContext) {
     await bouncer.authorize('products.view' as never)
-    const data = await getProductsViewModel()
-    return inertia.render('catalog/products', data)
+    const qs = request.qs()
+    const data = await getProductsViewModel({
+      q: typeof qs.q === 'string' ? qs.q : undefined,
+      status: typeof qs.status === 'string' ? qs.status : undefined,
+      categoryId: qs.categoryId ? Number(qs.categoryId) : undefined,
+    })
+    return inertia.render('catalog/products', {
+      ...data,
+      filters: {
+        q: typeof qs.q === 'string' ? qs.q : '',
+        status: typeof qs.status === 'string' ? qs.status : 'all',
+        categoryId: qs.categoryId ? String(qs.categoryId) : 'all',
+      },
+    })
+  }
+
+  async updateImage({ params, request, auth, bouncer, response, session }: HttpContext) {
+    await bouncer.authorize('products.update' as never)
+    const product = await Product.findOrFail(params.id)
+    const payload = await request.validateUsing(uploadCatalogImageValidator)
+    await storeCatalogImage('product', product, payload.image)
+    await audit({
+      actor: auth.user!,
+      action: 'product.image.update',
+      targetType: 'product',
+      targetId: product.id,
+    })
+    session.flash('success', 'Product image updated.')
+    return response.redirect().back()
+  }
+
+  async destroyImage({ params, auth, bouncer, response, session }: HttpContext) {
+    await bouncer.authorize('products.update' as never)
+    const product = await Product.findOrFail(params.id)
+    await removeCatalogImage(product)
+    await audit({
+      actor: auth.user!,
+      action: 'product.image.delete',
+      targetType: 'product',
+      targetId: product.id,
+    })
+    session.flash('success', 'Product image removed.')
+    return response.redirect().back()
   }
 
   async store({ request, auth, bouncer, response, session }: HttpContext) {

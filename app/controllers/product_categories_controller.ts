@@ -6,10 +6,16 @@ import { getProductCategoriesViewModel } from '#services/catalog_view_models'
 import { audit } from '#services/audit'
 
 export default class ProductCategoriesController {
-  async index({ inertia, bouncer }: HttpContext) {
+  async index({ request, inertia, bouncer }: HttpContext) {
     await bouncer.authorize('productCategories.view' as never)
-    const data = await getProductCategoriesViewModel()
-    return inertia.render('catalog/categories', data)
+    const qs = request.qs()
+    const data = await getProductCategoriesViewModel({
+      q: typeof qs.q === 'string' ? qs.q : undefined,
+    })
+    return inertia.render('catalog/categories', {
+      ...data,
+      filters: { q: typeof qs.q === 'string' ? qs.q : '' },
+    })
   }
 
   async store({ request, auth, bouncer, response, session }: HttpContext) {

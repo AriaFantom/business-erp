@@ -7,9 +7,15 @@ import Component from '#models/component'
 import Inventory from '#models/inventory'
 import { totalChainCost } from '#services/job_costing'
 
-export async function getJobsIndexViewModel() {
+export async function getJobsIndexViewModel(
+  filters: { q?: string; status?: string; productId?: number } = {}
+) {
+  const query = ProductionJob.query().orderBy('created_at', 'desc').limit(500)
+  if (filters.status && filters.status !== 'all') query.where('status', filters.status)
+  if (filters.productId) query.where('product_id', filters.productId)
+  if (filters.q) query.whereILike('number', `%${filters.q.trim()}%`)
   const [jobs, products] = await Promise.all([
-    ProductionJob.query().orderBy('created_at', 'desc').limit(200),
+    query,
     Product.query().where('is_active', true).orderBy('name', 'asc'),
   ])
   const productById = new Map(products.map((p) => [p.id, p]))

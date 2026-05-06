@@ -30,6 +30,7 @@ const QuotationsController = () => import('#controllers/quotations_controller')
 const SalesController = () => import('#controllers/sales_controller')
 const InvoicesController = () => import('#controllers/invoices_controller')
 const ReportsController = () => import('#controllers/reports_controller')
+const PosController = () => import('#controllers/pos_controller')
 
 router.on('/').renderInertia('home', {}).use(middleware.firstUserSetup()).as('home')
 
@@ -90,6 +91,12 @@ router
     router
       .post('catalog/materials/:id/archive', [MaterialsController, 'archive'])
       .as('materials.archive')
+    router
+      .post('catalog/materials/:id/image', [MaterialsController, 'updateImage'])
+      .as('materials.image.update')
+    router
+      .post('catalog/materials/:id/image/delete', [MaterialsController, 'destroyImage'])
+      .as('materials.image.destroy')
 
     router.get('catalog/components', [ComponentsController, 'index']).as('components.index')
     router.post('catalog/components', [ComponentsController, 'store']).as('components.store')
@@ -97,6 +104,12 @@ router
     router
       .post('catalog/components/:id/archive', [ComponentsController, 'archive'])
       .as('components.archive')
+    router
+      .post('catalog/components/:id/image', [ComponentsController, 'updateImage'])
+      .as('components.image.update')
+    router
+      .post('catalog/components/:id/image/delete', [ComponentsController, 'destroyImage'])
+      .as('components.image.destroy')
 
     router.get('catalog/products', [ProductsController, 'index']).as('products.index')
     router.post('catalog/products', [ProductsController, 'store']).as('products.store')
@@ -104,6 +117,12 @@ router
     router
       .post('catalog/products/:id/archive', [ProductsController, 'archive'])
       .as('products.archive')
+    router
+      .post('catalog/products/:id/image', [ProductsController, 'updateImage'])
+      .as('products.image.update')
+    router
+      .post('catalog/products/:id/image/delete', [ProductsController, 'destroyImage'])
+      .as('products.image.destroy')
 
     router
       .get('catalog/categories', [ProductCategoriesController, 'index'])
@@ -166,6 +185,10 @@ router
     router.get('invoices/:id', [InvoicesController, 'show']).as('invoices.show')
     router.post('invoices/:id/payments', [InvoicesController, 'pay']).as('invoices.pay')
     router.post('invoices/:id/void', [InvoicesController, 'void']).as('invoices.void')
+
+    // ── POS ──────────────────────────────────────────────────────────
+    router.get('pos', [PosController, 'index']).as('pos.index')
+    router.post('pos/sell', [PosController, 'sell']).as('pos.sell')
 
     // ── Reports ───────────────────────────────────────────────────────
     router.get('reports/profit', [ReportsController, 'profit']).as('reports.profit')

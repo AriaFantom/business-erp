@@ -6,9 +6,15 @@ import InvoicePayment from '#models/invoice_payment'
 import Customer from '#models/customer'
 import Product from '#models/product'
 
-export async function getSalesIndexViewModel() {
+export async function getSalesIndexViewModel(
+  filters: { q?: string; status?: string; customerId?: number } = {}
+) {
+  const query = Sale.query().orderBy('created_at', 'desc').limit(500)
+  if (filters.status && filters.status !== 'all') query.where('status', filters.status)
+  if (filters.customerId) query.where('customer_id', filters.customerId)
+  if (filters.q) query.whereILike('number', `%${filters.q.trim()}%`)
   const [sales, customers, products] = await Promise.all([
-    Sale.query().orderBy('created_at', 'desc').limit(200),
+    query,
     Customer.query().where('is_active', true).orderBy('name', 'asc'),
     Product.query().where('is_active', true).orderBy('name', 'asc'),
   ])
@@ -78,11 +84,14 @@ export async function getSaleShowViewModel(id: number) {
   }
 }
 
-export async function getInvoicesIndexViewModel() {
-  const [invoices, customers] = await Promise.all([
-    Invoice.query().orderBy('issued_at', 'desc').limit(200),
-    Customer.query().orderBy('name', 'asc'),
-  ])
+export async function getInvoicesIndexViewModel(
+  filters: { q?: string; status?: string; customerId?: number } = {}
+) {
+  const query = Invoice.query().orderBy('issued_at', 'desc').limit(500)
+  if (filters.status && filters.status !== 'all') query.where('status', filters.status)
+  if (filters.customerId) query.where('customer_id', filters.customerId)
+  if (filters.q) query.whereILike('number', `%${filters.q.trim()}%`)
+  const [invoices, customers] = await Promise.all([query, Customer.query().orderBy('name', 'asc')])
   const cById = new Map(customers.map((c) => [c.id, c]))
   return {
     invoices: invoices.map((i) => ({
@@ -97,6 +106,7 @@ export async function getInvoicesIndexViewModel() {
       total: i.total,
       paidTotal: i.paidTotal,
     })),
+    customers: customers.map((c) => ({ id: c.id, name: c.name })),
   }
 }
 

@@ -21,6 +21,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import DashboardLayout from '@/layouts/dashboard-layout'
+import { ListToolbar } from '@/components/catalog/list-toolbar'
 
 type Row = {
   id: number
@@ -29,7 +30,7 @@ type Row = {
   taxRatePct: string | null
 }
 
-type PageProps = { categories: Row[] }
+type PageProps = { categories: Row[]; filters: { q: string } }
 
 function NewCategoryDialog() {
   const [open, setOpen] = useState(false)
@@ -132,10 +133,10 @@ function DeleteAction({ path, name }: { path: string; name: string }) {
   )
 }
 
-export default function CategoriesPage({ categories }: PageProps) {
+export default function CategoriesPage({ categories, filters }: PageProps) {
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-6 px-6 py-8">
-      <div className="flex items-end justify-between">
+    <div className="flex w-full flex-col gap-6 px-6 py-8">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Product categories</h1>
           <p className="text-sm text-muted-foreground">
@@ -144,6 +145,12 @@ export default function CategoriesPage({ categories }: PageProps) {
         </div>
         <NewCategoryDialog />
       </div>
+
+      <ListToolbar
+        basePath="/catalog/categories"
+        q={filters.q}
+        searchPlaceholder="Search categories…"
+      />
 
       <Card>
         <CardHeader>

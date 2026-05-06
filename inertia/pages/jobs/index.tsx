@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
+import { ListToolbar } from '@/components/catalog/list-toolbar'
 
 type JobRow = {
   id: number
@@ -47,7 +48,9 @@ type JobRow = {
 
 type ProductOpt = { id: number; sku: string; name: string }
 
-type PageProps = { jobs: JobRow[]; products: ProductOpt[] }
+type Filters = { q: string; status: string; productId: string }
+
+type PageProps = { jobs: JobRow[]; products: ProductOpt[]; filters: Filters }
 
 function NewJobDialog({ products }: { products: ProductOpt[] }) {
   const [open, setOpen] = useState(false)
@@ -156,16 +159,44 @@ function statusVariant(s: string) {
   return 'outline' as const
 }
 
-export default function JobsIndex({ jobs, products }: PageProps) {
+export default function JobsIndex({ jobs, products, filters }: PageProps) {
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-8">
-      <div className="flex items-end justify-between">
+    <div className="flex w-full flex-col gap-6 px-6 py-8">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Production jobs</h1>
           <p className="text-sm text-muted-foreground">{jobs.length} jobs.</p>
         </div>
         <NewJobDialog products={products} />
       </div>
+
+      <ListToolbar
+        basePath="/jobs"
+        q={filters.q}
+        searchPlaceholder="Search by job number…"
+        selects={[
+          {
+            name: 'status',
+            value: filters.status,
+            options: [
+              { value: 'all', label: 'All statuses' },
+              { value: 'draft', label: 'Draft' },
+              { value: 'in_progress', label: 'In progress' },
+              { value: 'completed', label: 'Completed' },
+              { value: 'failed', label: 'Failed' },
+              { value: 'cancelled', label: 'Cancelled' },
+            ],
+          },
+          {
+            name: 'productId',
+            value: filters.productId,
+            options: [
+              { value: 'all', label: 'All products' },
+              ...products.map((p) => ({ value: String(p.id), label: p.name })),
+            ],
+          },
+        ]}
+      />
 
       <Card>
         <CardHeader>

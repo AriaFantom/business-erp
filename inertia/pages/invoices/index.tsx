@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
+import { ListToolbar } from '@/components/catalog/list-toolbar'
 
 type InvoiceRow = {
   id: number
@@ -25,7 +26,15 @@ type InvoiceRow = {
   paidTotal: string
 }
 
-type PageProps = { invoices: InvoiceRow[] }
+type CustomerOpt = { id: number; name: string }
+
+type Filters = { q: string; status: string; customerId: string }
+
+type PageProps = {
+  invoices: InvoiceRow[]
+  customers: CustomerOpt[]
+  filters: Filters
+}
 
 function statusVariant(s: string) {
   if (s === 'paid') return 'default' as const
@@ -34,12 +43,12 @@ function statusVariant(s: string) {
   return 'destructive' as const
 }
 
-export default function InvoicesIndex({ invoices }: PageProps) {
+export default function InvoicesIndex({ invoices, customers, filters }: PageProps) {
   const outstanding = invoices
     .filter((i: InvoiceRow) => i.status === 'unpaid' || i.status === 'partial')
     .reduce((s, i) => s + (Number(i.total) - Number(i.paidTotal)), 0)
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-8">
+    <div className="flex w-full flex-col gap-6 px-6 py-8">
       <div>
         <h1 className="text-2xl font-semibold">Invoices</h1>
         <p className="text-sm text-muted-foreground">
@@ -47,13 +56,40 @@ export default function InvoicesIndex({ invoices }: PageProps) {
         </p>
       </div>
 
+      <ListToolbar
+        basePath="/invoices"
+        q={filters.q}
+        searchPlaceholder="Search by number…"
+        selects={[
+          {
+            name: 'status',
+            value: filters.status,
+            options: [
+              { value: 'all', label: 'All statuses' },
+              { value: 'unpaid', label: 'Unpaid' },
+              { value: 'partial', label: 'Partial' },
+              { value: 'paid', label: 'Paid' },
+              { value: 'void', label: 'Void' },
+            ],
+          },
+          {
+            name: 'customerId',
+            value: filters.customerId,
+            options: [
+              { value: 'all', label: 'All customers' },
+              ...customers.map((c) => ({ value: String(c.id), label: c.name })),
+            ],
+          },
+        ]}
+      />
+
       <Card>
         <CardHeader>
           <CardTitle>All invoices</CardTitle>
         </CardHeader>
         <CardContent>
           {invoices.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No invoices yet.</p>
+            <p className="text-sm text-muted-foreground">No invoices match the filters.</p>
           ) : (
             <Table>
               <TableHeader>
