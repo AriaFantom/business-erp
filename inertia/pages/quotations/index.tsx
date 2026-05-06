@@ -1,6 +1,7 @@
 import { type ReactElement, useState } from 'react'
 import { useForm, router } from '@inertiajs/react'
 import { Link } from '@adonisjs/inertia/react'
+import { CheckCircle2, ExternalLink, FileText, Send, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -31,6 +32,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
+import { StatCard } from '@/components/catalog/stat-card'
 
 type QuotationRow = {
   id: number
@@ -48,8 +50,10 @@ type ProductOpt = {
   id: number
   sku: string
   name: string
-  defaultProfitPct: string | null
-  taxRatePct: string | null
+  unitCost: number
+  profitPct: number
+  taxRatePct: number
+  suggestedUnitPrice: number
 }
 
 type Filters = { q: string; status: string; customerId: string }
@@ -99,9 +103,11 @@ function NewQuotationDialog({
       ...data.items,
       {
         productId,
-        description: p.name,
+        description: `${p.name} (${p.sku})`,
         qty: 1,
-        taxRatePct: p.taxRatePct ? Number(p.taxRatePct) : 18,
+        unitPrice: p.suggestedUnitPrice,
+        profitPctOverride: p.profitPct,
+        taxRatePct: p.taxRatePct,
       },
     ])
   }
@@ -117,6 +123,29 @@ function NewQuotationDialog({
       'items',
       data.items.map((l, i) => (i === idx ? { ...l, ...patch } : l))
     )
+
+  const setLineProfit = (idx: number, profitPctOverride: number | undefined) => {
+    const ln = data.items[idx]
+    const p = ln?.productId ? products.find((pp) => pp.id === ln.productId) : null
+    if (p && profitPctOverride !== undefined) {
+      const recomputed = Math.round(p.unitCost * (1 + profitPctOverride / 100) * 100) / 100
+      updateLine(idx, { profitPctOverride, unitPrice: recomputed })
+    } else {
+      updateLine(idx, { profitPctOverride })
+    }
+  }
+
+  const subtotals = data.items.reduce(
+    (acc, ln) => {
+      const ls = Math.round((ln.qty || 0) * (ln.unitPrice || 0) * 100) / 100
+      const lt = Math.round((ls * (ln.taxRatePct || 0)) / 100 * 100) / 100
+      acc.subtotal += ls
+      acc.tax += lt
+      acc.total += ls + lt
+      return acc
+    },
+    { subtotal: 0, tax: 0, total: 0 }
+  )
 
   const removeLine = (idx: number) =>
     setData('items', data.items.filter((_, i) => i !== idx))
@@ -200,95 +229,121 @@ function NewQuotationDialog({
             {data.items.length === 0 ? (
               <p className="text-sm text-muted-foreground">No lines.</p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Qty</TableHead>
-                    <TableHead>Unit price</TableHead>
-                    <TableHead>Profit %</TableHead>
-                    <TableHead>Tax %</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.items.map((ln, i) => (
-                    <TableRow key={i}>
-                      <TableCell>
-                        <Input
-                          value={ln.description}
-                          onChange={(e) =>
-                            updateLine(i, { description: e.target.value })
-                          }
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          value={ln.qty}
-                          onChange={(e) =>
-                            updateLine(i, { qty: Number(e.target.value) })
-                          }
-                          className="w-20"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          step="0.0001"
-                          value={ln.unitPrice ?? ''}
-                          placeholder={ln.productId ? 'auto' : '0'}
-                          onChange={(e) =>
-                            updateLine(i, {
-                              unitPrice: e.target.value
-                                ? Number(e.target.value)
-                                : undefined,
-                            })
-                          }
-                          className="w-28"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={ln.profitPctOverride ?? ''}
-                          placeholder="default"
-                          onChange={(e) =>
-                            updateLine(i, {
-                              profitPctOverride: e.target.value
-                                ? Number(e.target.value)
-                                : undefined,
-                            })
-                          }
-                          className="w-20"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={ln.taxRatePct}
-                          onChange={(e) =>
-                            updateLine(i, { taxRatePct: Number(e.target.value) })
-                          }
-                          className="w-20"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeLine(i)}
-                        >
-                          Remove
-                        </Button>
-                      </TableCell>
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Qty</TableHead>
+                      <TableHead>Unit price</TableHead>
+                      <TableHead>Profit %</TableHead>
+                      <TableHead>Tax %</TableHead>
+                      <TableHead className="text-right">Line total</TableHead>
+                      <TableHead></TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {data.items.map((ln, i) => {
+                      const ls = Math.round((ln.qty || 0) * (ln.unitPrice || 0) * 100) / 100
+                      const lt =
+                        Math.round((ls * (ln.taxRatePct || 0)) / 100 * 100) / 100
+                      const lto = Math.round((ls + lt) * 100) / 100
+                      return (
+                        <TableRow key={i}>
+                          <TableCell>
+                            <Input
+                              value={ln.description}
+                              onChange={(e) =>
+                                updateLine(i, { description: e.target.value })
+                              }
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              value={ln.qty}
+                              onChange={(e) =>
+                                updateLine(i, { qty: Number(e.target.value) })
+                              }
+                              className="w-20"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              step="0.0001"
+                              value={ln.unitPrice ?? ''}
+                              placeholder={ln.productId ? 'auto' : '0'}
+                              onChange={(e) =>
+                                updateLine(i, {
+                                  unitPrice: e.target.value
+                                    ? Number(e.target.value)
+                                    : undefined,
+                                })
+                              }
+                              className="w-28"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={ln.profitPctOverride ?? ''}
+                              placeholder="default"
+                              onChange={(e) =>
+                                setLineProfit(
+                                  i,
+                                  e.target.value ? Number(e.target.value) : undefined
+                                )
+                              }
+                              className="w-20"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={ln.taxRatePct}
+                              onChange={(e) =>
+                                updateLine(i, { taxRatePct: Number(e.target.value) })
+                              }
+                              className="w-20"
+                            />
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            ₹{lto.toFixed(2)}
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              aria-label="Remove line"
+                              onClick={() => removeLine(i)}
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+                <div className="mt-3 flex flex-col gap-1 rounded bg-muted/40 p-3 text-sm">
+                  <div className="flex justify-between">
+                    <span>Subtotal</span>
+                    <span>₹{subtotals.subtotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Tax</span>
+                    <span>₹{subtotals.tax.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between font-semibold">
+                    <span>Total</span>
+                    <span>₹{subtotals.total.toFixed(2)}</span>
+                  </div>
+                </div>
+              </>
             )}
           </div>
 
@@ -334,14 +389,27 @@ export default function QuotationsIndex({
 }: PageProps) {
   // Use router for type checking suppression
   void router
+  const totalValue = quotations.reduce((s, q) => s + Number(q.total || 0), 0)
+  const accepted = quotations.filter((q) => q.status === 'accepted' || q.status === 'converted').length
+  const draftSent = quotations.filter((q) => q.status === 'draft' || q.status === 'sent').length
   return (
     <div className="flex w-full flex-col gap-6 px-6 py-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Quotations</h1>
-          <p className="text-sm text-muted-foreground">{quotations.length} quotations.</p>
         </div>
         <NewQuotationDialog customers={customers} products={products} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatCard label="Total quotations" value={quotations.length} icon={FileText} />
+        <StatCard label="In flight" value={draftSent} hint="Draft or sent" icon={Send} />
+        <StatCard
+          label="Accepted / converted"
+          value={accepted}
+          hint={`Pipeline value ₹${totalValue.toFixed(2)}`}
+          icon={CheckCircle2}
+        />
       </div>
 
       <ListToolbar
@@ -405,12 +473,11 @@ export default function QuotationsIndex({
                     <TableCell>{q.validUntil?.slice(0, 10) ?? '—'}</TableCell>
                     <TableCell className="text-right">{q.total}</TableCell>
                     <TableCell className="text-right">
-                      <Link
-                        href={`/quotations/${q.id}`}
-                        className="text-sm underline-offset-2 hover:underline"
-                      >
-                        Open
-                      </Link>
+                      <Button asChild variant="ghost" size="icon" aria-label="Open quotation">
+                        <Link href={`/quotations/${q.id}`}>
+                          <ExternalLink className="size-4" />
+                        </Link>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

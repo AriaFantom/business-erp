@@ -1,5 +1,7 @@
 import { type ReactElement } from 'react'
 import { Link } from '@adonisjs/inertia/react'
+import { CheckCircle2, ExternalLink, Receipt, Wallet } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
@@ -12,6 +14,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
+import { StatCard } from '@/components/catalog/stat-card'
 
 type InvoiceRow = {
   id: number
@@ -47,13 +50,27 @@ export default function InvoicesIndex({ invoices, customers, filters }: PageProp
   const outstanding = invoices
     .filter((i: InvoiceRow) => i.status === 'unpaid' || i.status === 'partial')
     .reduce((s, i) => s + (Number(i.total) - Number(i.paidTotal)), 0)
+  const paid = invoices.filter((i) => i.status === 'paid').length
+  const totalBilled = invoices.reduce((s, i) => s + Number(i.total || 0), 0)
   return (
     <div className="flex w-full flex-col gap-6 px-6 py-8">
       <div>
         <h1 className="text-2xl font-semibold">Invoices</h1>
-        <p className="text-sm text-muted-foreground">
-          {invoices.length} invoices · ₹{outstanding.toFixed(2)} outstanding.
-        </p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatCard
+          label="Total invoices"
+          value={invoices.length}
+          hint={`Billed ₹${totalBilled.toFixed(2)}`}
+          icon={Receipt}
+        />
+        <StatCard label="Paid" value={paid} icon={CheckCircle2} />
+        <StatCard
+          label="Outstanding"
+          value={`₹${outstanding.toFixed(2)}`}
+          icon={Wallet}
+        />
       </div>
 
       <ListToolbar
@@ -117,12 +134,11 @@ export default function InvoicesIndex({ invoices, customers, filters }: PageProp
                     <TableCell className="text-right">{i.total}</TableCell>
                     <TableCell className="text-right">{i.paidTotal}</TableCell>
                     <TableCell className="text-right">
-                      <Link
-                        href={`/invoices/${i.id}`}
-                        className="text-sm underline-offset-2 hover:underline"
-                      >
-                        Open
-                      </Link>
+                      <Button asChild variant="ghost" size="icon" aria-label="Open invoice">
+                        <Link href={`/invoices/${i.id}`}>
+                          <ExternalLink className="size-4" />
+                        </Link>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

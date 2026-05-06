@@ -1,6 +1,7 @@
 import { type ReactElement, useState } from 'react'
 import { useForm } from '@inertiajs/react'
 import { Link } from '@adonisjs/inertia/react'
+import { CheckCircle2, ExternalLink, ScrollText, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -31,6 +32,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
+import { StatCard } from '@/components/catalog/stat-card'
 
 type SaleRow = {
   id: number
@@ -288,14 +290,29 @@ function Field({
 }
 
 export default function SalesIndex({ sales, customers, products, filters }: PageProps) {
+  const confirmedCount = sales.filter((s) => s.status === 'confirmed').length
+  const cancelledCount = sales.filter((s) => s.status === 'cancelled').length
+  const totalRevenue = sales
+    .filter((s) => s.status === 'confirmed')
+    .reduce((sum, s) => sum + Number(s.total || 0), 0)
   return (
     <div className="flex w-full flex-col gap-6 px-6 py-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Sales</h1>
-          <p className="text-sm text-muted-foreground">{sales.length} sales.</p>
         </div>
         <NewSaleDialog customers={customers} products={products} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatCard label="Total sales" value={sales.length} icon={ScrollText} />
+        <StatCard
+          label="Confirmed"
+          value={confirmedCount}
+          hint={`Revenue ₹${totalRevenue.toFixed(2)}`}
+          icon={CheckCircle2}
+        />
+        <StatCard label="Cancelled" value={cancelledCount} icon={XCircle} />
       </div>
 
       <ListToolbar
@@ -354,12 +371,11 @@ export default function SalesIndex({ sales, customers, products, filters }: Page
                     <TableCell className="text-right">{s.total}</TableCell>
                     <TableCell>{s.confirmedAt?.slice(0, 10) ?? '—'}</TableCell>
                     <TableCell className="text-right">
-                      <Link
-                        href={`/sales/${s.id}`}
-                        className="text-sm underline-offset-2 hover:underline"
-                      >
-                        Open
-                      </Link>
+                      <Button asChild variant="ghost" size="icon" aria-label="Open sale">
+                        <Link href={`/sales/${s.id}`}>
+                          <ExternalLink className="size-4" />
+                        </Link>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

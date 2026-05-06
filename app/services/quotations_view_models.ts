@@ -1,7 +1,10 @@
+import db from '@adonisjs/lucid/services/db'
 import Quotation from '#models/quotation'
 import QuotationItem from '#models/quotation_item'
 import Customer from '#models/customer'
 import Product from '#models/product'
+import ProductCategory from '#models/product_category'
+import { computeUnitPrice } from '#services/pricing'
 
 export async function getQuotationsIndexViewModel(
   filters: { q?: string; status?: string; customerId?: number } = {}
@@ -17,6 +20,36 @@ export async function getQuotationsIndexViewModel(
   ])
   const customerById = new Map(customers.map((c) => [c.id, c]))
 
+  const categoryIds = [
+    ...new Set(products.map((p) => p.categoryId).filter((id): id is number => !!id)),
+  ]
+  const cats = categoryIds.length
+    ? await ProductCategory.query().whereIn('id', categoryIds)
+    : []
+  const catById = new Map(cats.map((c) => [c.id, c]))
+
+  const costRows =
+    products.length > 0
+      ? await db
+          .from('production_jobs')
+          .whereIn(
+            'product_id',
+            products.map((p) => p.id)
+          )
+          .where('status', 'completed')
+          .where('produced_qty', '>', 0)
+          .groupBy('product_id')
+          .select('product_id')
+          .sum({ totalCost: 'total_cost' })
+          .sum({ totalQty: 'produced_qty' })
+      : []
+  const costByProduct = new Map<number, number>()
+  for (const row of costRows) {
+    const total = Number(row.totalCost ?? 0)
+    const qty = Number(row.totalQty ?? 0)
+    costByProduct.set(Number(row.product_id), qty > 0 ? total / qty : 0)
+  }
+
   return {
     quotations: quotations.map((q) => ({
       id: q.id,
@@ -29,13 +62,23 @@ export async function getQuotationsIndexViewModel(
       total: q.total,
     })),
     customers: customers.map((c) => ({ id: c.id, name: c.name })),
-    products: products.map((p) => ({
-      id: p.id,
-      sku: p.sku,
-      name: p.name,
-      defaultProfitPct: p.defaultProfitPct,
-      taxRatePct: p.taxRatePct,
-    })),
+    products: products.map((p) => {
+      const cost = costByProduct.get(p.id) ?? 0
+      const breakdown = computeUnitPrice({
+        costPrice: cost,
+        product: p,
+        category: p.categoryId ? catById.get(p.categoryId) ?? null : null,
+      })
+      return {
+        id: p.id,
+        sku: p.sku,
+        name: p.name,
+        unitCost: Math.round(cost * 10000) / 10000,
+        profitPct: breakdown.profitPctUsed ?? 0,
+        taxRatePct: breakdown.taxRatePct,
+        suggestedUnitPrice: breakdown.unitPrice,
+      }
+    }),
   }
 }
 

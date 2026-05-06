@@ -31,6 +31,8 @@ import {
 import { Badge } from '@/components/ui/badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
+import { StatCard } from '@/components/catalog/stat-card'
+import { CheckCircle2, ExternalLink, Truck, XCircle } from 'lucide-react'
 
 type PurchaseRow = {
   id: number
@@ -322,12 +324,29 @@ export default function PurchasesIndex({
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Purchases</h1>
-          <p className="text-sm text-muted-foreground">{purchases.length} purchases.</p>
         </div>
         <NewPurchaseDialog
           suppliers={suppliers}
           materials={materials}
           components={components}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatCard label="Total purchases" value={purchases.length} icon={Truck} />
+        <StatCard
+          label="Confirmed"
+          value={purchases.filter((p) => p.status === 'confirmed').length}
+          hint={`Spent ₹${purchases
+            .filter((p) => p.status === 'confirmed')
+            .reduce((s, p) => s + Number(p.total || 0), 0)
+            .toFixed(2)}`}
+          icon={CheckCircle2}
+        />
+        <StatCard
+          label="Cancelled"
+          value={purchases.filter((p) => p.status === 'cancelled').length}
+          icon={XCircle}
         />
       </div>
 
@@ -387,12 +406,11 @@ export default function PurchasesIndex({
                     <TableCell>{p.purchasedAt?.slice(0, 10) ?? '—'}</TableCell>
                     <TableCell className="text-right">{p.total}</TableCell>
                     <TableCell className="text-right">
-                      <Link
-                        href={`/purchases/${p.id}`}
-                        className="text-sm underline-offset-2 hover:underline"
-                      >
-                        Open
-                      </Link>
+                      <Button asChild variant="ghost" size="icon" aria-label="Open purchase">
+                        <Link href={`/purchases/${p.id}`}>
+                          <ExternalLink className="size-4" />
+                        </Link>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

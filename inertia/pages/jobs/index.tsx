@@ -1,6 +1,7 @@
 import { type ReactElement, useState } from 'react'
 import { useForm } from '@inertiajs/react'
 import { Link } from '@adonisjs/inertia/react'
+import { CheckCircle2, ExternalLink, Factory, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -31,6 +32,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
+import { StatCard } from '@/components/catalog/stat-card'
 
 type JobRow = {
   id: number
@@ -160,14 +162,21 @@ function statusVariant(s: string) {
 }
 
 export default function JobsIndex({ jobs, products, filters }: PageProps) {
+  const inProgress = jobs.filter((j) => j.status === 'in_progress').length
+  const completed = jobs.filter((j) => j.status === 'completed').length
   return (
     <div className="flex w-full flex-col gap-6 px-6 py-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Production jobs</h1>
-          <p className="text-sm text-muted-foreground">{jobs.length} jobs.</p>
         </div>
         <NewJobDialog products={products} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatCard label="Total jobs" value={jobs.length} icon={Factory} />
+        <StatCard label="In progress" value={inProgress} icon={Loader2} />
+        <StatCard label="Completed" value={completed} icon={CheckCircle2} />
       </div>
 
       <ListToolbar
@@ -232,12 +241,11 @@ export default function JobsIndex({ jobs, products, filters }: PageProps) {
                     <TableCell className="text-right">{j.totalCost}</TableCell>
                     <TableCell className="text-right">{j.unitCost}</TableCell>
                     <TableCell className="text-right">
-                      <Link
-                        href={`/jobs/${j.id}`}
-                        className="text-sm underline-offset-2 hover:underline"
-                      >
-                        Open
-                      </Link>
+                      <Button asChild variant="ghost" size="icon" aria-label="Open job">
+                        <Link href={`/jobs/${j.id}`}>
+                          <ExternalLink className="size-4" />
+                        </Link>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

@@ -1,5 +1,6 @@
 import { type ReactElement, useMemo, useState } from 'react'
 import { router, useForm } from '@inertiajs/react'
+import { Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -20,9 +21,11 @@ type Product = {
   sku: string
   name: string
   category: { id: number; name: string } | null
-  defaultProfitPct: string | null
-  taxRatePct: string | null
   imageUrl: string | null
+  unitCost: number
+  profitPct: number
+  taxRatePct: number
+  suggestedUnitPrice: number
 }
 
 type Category = {
@@ -48,20 +51,18 @@ type CartLine = {
   sku: string
   name: string
   qty: number
-  unitPrice: number
+  unitCost: number
+  profitPct: number
   taxRatePct: number
+  unitPrice: number
 }
 
 function round2(n: number) {
   return Math.round(n * 100) / 100
 }
 
-function defaultPrice(_p: Product): number {
-  return 0
-}
-
-function defaultTax(p: Product): number {
-  return p.taxRatePct ? Number(p.taxRatePct) : 0
+function priceFromProfit(cost: number, profitPct: number): number {
+  return round2(cost * (1 + profitPct / 100))
 }
 
 export default function PosPage({ products, categories, customers, filters }: PageProps) {
@@ -105,11 +106,19 @@ export default function PosPage({ products, categories, customers, filters }: Pa
           sku: p.sku,
           name: p.name,
           qty: 1,
-          unitPrice: defaultPrice(p),
-          taxRatePct: defaultTax(p),
+          unitCost: p.unitCost,
+          profitPct: p.profitPct,
+          taxRatePct: p.taxRatePct,
+          unitPrice: p.suggestedUnitPrice,
         },
       ]
     })
+  }
+
+  function patchLine(productId: number, patch: Partial<CartLine>) {
+    setCart((prev) =>
+      prev.map((l) => (l.productId === productId ? { ...l, ...patch } : l))
+    )
   }
 
   function changeQty(productId: number, qty: number) {
@@ -117,17 +126,24 @@ export default function PosPage({ products, categories, customers, filters }: Pa
       setCart((prev) => prev.filter((l) => l.productId !== productId))
       return
     }
-    setCart((prev) =>
-      prev.map((l) => (l.productId === productId ? { ...l, qty } : l))
-    )
+    patchLine(productId, { qty })
   }
 
-  function changePrice(productId: number, price: number) {
-    setCart((prev) =>
-      prev.map((l) =>
-        l.productId === productId ? { ...l, unitPrice: Math.max(0, price) } : l
-      )
-    )
+  function changeProfit(productId: number, profitPct: number) {
+    const line = cart.find((l) => l.productId === productId)
+    if (!line) return
+    patchLine(productId, {
+      profitPct,
+      unitPrice: priceFromProfit(line.unitCost, profitPct),
+    })
+  }
+
+  function changePrice(productId: number, unitPrice: number) {
+    patchLine(productId, { unitPrice: Math.max(0, unitPrice) })
+  }
+
+  function changeTax(productId: number, taxRatePct: number) {
+    patchLine(productId, { taxRatePct: Math.max(0, taxRatePct) })
   }
 
   function removeLine(productId: number) {
@@ -166,10 +182,49 @@ export default function PosPage({ products, categories, customers, filters }: Pa
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Point of sale</h1>
-          <p className="text-sm text-muted-foreground">
-            Sell products directly. Each sale auto-issues a paid invoice.
-          </p>
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Producible products
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold">{products.length}</p>
+            <p className="text-xs text-muted-foreground">
+              Items with at least one completed job.
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Cart lines
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold">{cart.length}</p>
+            <p className="text-xs text-muted-foreground">
+              {cart.reduce((s, l) => s + l.qty, 0)} units staged.
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Cart total
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold">₹{totals.total.toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground">
+              ₹{totals.subtotal.toFixed(2)} + tax ₹{totals.tax.toFixed(2)}
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       <ListToolbar
@@ -188,7 +243,7 @@ export default function PosPage({ products, categories, customers, filters }: Pa
         ]}
       />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_400px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_440px]">
         <Card>
           <CardHeader>
             <CardTitle>Products</CardTitle>
@@ -196,7 +251,8 @@ export default function PosPage({ products, categories, customers, filters }: Pa
           <CardContent>
             {products.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No products match the filters.
+                No products are available for sale yet — only items with at
+                least one completed production job appear here.
               </p>
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
@@ -231,6 +287,17 @@ export default function PosPage({ products, categories, customers, filters }: Pa
                           {p.category.name}
                         </Badge>
                       )}
+                      <div className="mt-1 flex items-center justify-between text-[11px]">
+                        <span className="text-muted-foreground">
+                          Cost ₹{p.unitCost.toFixed(2)}
+                        </span>
+                        <span className="font-semibold">
+                          ₹{p.suggestedUnitPrice.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {p.profitPct.toFixed(1)}% profit · {p.taxRatePct.toFixed(1)}% tax
+                      </div>
                     </div>
                   </button>
                 ))}
@@ -274,76 +341,103 @@ export default function PosPage({ products, categories, customers, filters }: Pa
                   </p>
                 ) : (
                   <div className="flex flex-col gap-2">
-                    {cart.map((l) => (
-                      <div
-                        key={l.productId}
-                        className="flex flex-col gap-1 rounded border border-border p-2"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="line-clamp-1 text-sm font-medium">
-                            {l.name}
-                          </span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeLine(l.productId)}
-                          >
-                            ×
-                          </Button>
+                    {cart.map((l) => {
+                      const lineSubtotal = round2(l.qty * l.unitPrice)
+                      const lineTax = round2((lineSubtotal * l.taxRatePct) / 100)
+                      const lineTotal = round2(lineSubtotal + lineTax)
+                      return (
+                        <div
+                          key={l.productId}
+                          className="flex flex-col gap-2 rounded border border-border p-2"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex flex-col">
+                              <span className="line-clamp-1 text-sm font-medium">
+                                {l.name}
+                              </span>
+                              <span className="font-mono text-[10px] text-muted-foreground">
+                                cost ₹{l.unitCost.toFixed(2)}
+                              </span>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              aria-label="Remove line"
+                              onClick={() => removeLine(l.productId)}
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-4 gap-1">
+                            <div className="flex flex-col gap-1">
+                              <span className="text-[10px] text-muted-foreground">
+                                Qty
+                              </span>
+                              <Input
+                                type="number"
+                                step="1"
+                                min="1"
+                                value={l.qty}
+                                onChange={(e) =>
+                                  changeQty(l.productId, Number(e.target.value))
+                                }
+                              />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-[10px] text-muted-foreground">
+                                Profit %
+                              </span>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={l.profitPct}
+                                onChange={(e) =>
+                                  changeProfit(l.productId, Number(e.target.value))
+                                }
+                              />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-[10px] text-muted-foreground">
+                                Unit price
+                              </span>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={l.unitPrice}
+                                onChange={(e) =>
+                                  changePrice(l.productId, Number(e.target.value))
+                                }
+                              />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-[10px] text-muted-foreground">
+                                Tax %
+                              </span>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={l.taxRatePct}
+                                onChange={(e) =>
+                                  changeTax(l.productId, Number(e.target.value))
+                                }
+                              />
+                            </div>
+                          </div>
+                          <div className="flex justify-between text-[11px] text-muted-foreground">
+                            <span>
+                              ₹{lineSubtotal.toFixed(2)} + tax ₹{lineTax.toFixed(2)}
+                            </span>
+                            <span className="font-semibold text-foreground">
+                              ₹{lineTotal.toFixed(2)}
+                            </span>
+                          </div>
                         </div>
-                        <div className="grid grid-cols-3 gap-1">
-                          <div className="flex flex-col gap-1">
-                            <span className="text-[10px] text-muted-foreground">
-                              Qty
-                            </span>
-                            <Input
-                              type="number"
-                              step="1"
-                              min="1"
-                              value={l.qty}
-                              onChange={(e) =>
-                                changeQty(l.productId, Number(e.target.value))
-                              }
-                            />
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <span className="text-[10px] text-muted-foreground">
-                              Unit price
-                            </span>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={l.unitPrice}
-                              onChange={(e) =>
-                                changePrice(l.productId, Number(e.target.value))
-                              }
-                            />
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <span className="text-[10px] text-muted-foreground">
-                              Tax %
-                            </span>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={l.taxRatePct}
-                              onChange={(e) =>
-                                setCart((prev) =>
-                                  prev.map((x) =>
-                                    x.productId === l.productId
-                                      ? { ...x, taxRatePct: Number(e.target.value) }
-                                      : x
-                                  )
-                                )
-                              }
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </div>
@@ -417,5 +511,4 @@ export default function PosPage({ products, categories, customers, filters }: Pa
 
 PosPage.layout = (page: ReactElement) => <DashboardLayout>{page}</DashboardLayout>
 
-// Keep imports tree-shake-stable
 void router

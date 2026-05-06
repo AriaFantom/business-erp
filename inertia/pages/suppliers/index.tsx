@@ -28,7 +28,9 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
+import { Archive, CheckCircle2, Truck, XCircle } from 'lucide-react'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
+import { StatCard } from '@/components/catalog/stat-card'
 
 type Row = {
   id: number
@@ -140,14 +142,21 @@ function Field({
 }
 
 export default function SuppliersIndex({ suppliers, filters }: PageProps) {
+  const active = suppliers.filter((s) => s.isActive).length
+  const archived = suppliers.length - active
   return (
     <div className="flex w-full flex-col gap-6 px-6 py-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Suppliers</h1>
-          <p className="text-sm text-muted-foreground">{suppliers.length} suppliers</p>
         </div>
         <NewSupplierDialog />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatCard label="Total" value={suppliers.length} icon={Truck} />
+        <StatCard label="Active" value={active} icon={CheckCircle2} />
+        <StatCard label="Archived" value={archived} icon={XCircle} />
       </div>
 
       <ListToolbar
@@ -231,13 +240,15 @@ function ArchiveAction({
   return (
     <Button
       variant="ghost"
-      size="sm"
+      size="icon"
       disabled={processing}
+      aria-label="Archive supplier"
+      title="Archive"
       onClick={() => {
         if (window.confirm(confirmText)) post(path, { preserveScroll: true })
       }}
     >
-      Archive
+      <Archive className="size-4" />
     </Button>
   )
 }
