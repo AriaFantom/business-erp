@@ -32,7 +32,9 @@ import DashboardLayout from '@/layouts/dashboard-layout'
 import { ImageUploader } from '@/components/catalog/image-uploader'
 import { AvatarUploader } from '@/components/catalog/avatar-uploader'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
+import { StatCard } from '@/components/catalog/stat-card'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { Package, CheckCircle2, XCircle } from 'lucide-react'
 import {
   ColumnVisibilityMenu,
   type ColumnDef,
@@ -62,7 +64,14 @@ type CategoryOpt = {
 
 type Filters = { q: string; status: string; categoryId: string }
 
-type PageProps = { products: Row[]; categories: CategoryOpt[]; filters: Filters }
+type Counts = { total: number; active: number; archived: number }
+
+type PageProps = {
+  products: Row[]
+  categories: CategoryOpt[]
+  filters: Filters
+  counts: Counts
+}
 
 function NewProductDialog({ categories }: { categories: CategoryOpt[] }) {
   const [open, setOpen] = useState(false)
@@ -222,8 +231,13 @@ const PRODUCT_COLUMNS: ColumnDef[] = [
   { key: 'actions', label: 'Actions', required: true },
 ]
 
-export default function ProductsPage({ products, categories, filters }: PageProps) {
+export default function ProductsPage({ products, categories, filters, counts }: PageProps) {
   const { isVisible, toggle, reset } = useColumnVisibility('catalog.products')
+  const baseQs =
+    filters.categoryId && filters.categoryId !== 'all' ? `&categoryId=${filters.categoryId}` : ''
+  const totalHref = `/catalog/products${baseQs ? `?${baseQs.slice(1)}` : ''}`
+  const activeHref = `/catalog/products?status=active${baseQs}`
+  const archivedHref = `/catalog/products?status=archived${baseQs}`
   return (
     <div className="flex w-full flex-col gap-6 px-6 py-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -242,6 +256,30 @@ export default function ProductsPage({ products, categories, filters }: PageProp
           />
           <NewProductDialog categories={categories} />
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatCard
+          label="Total"
+          value={counts.total}
+          icon={Package}
+          href={totalHref}
+          active={filters.status === 'all'}
+        />
+        <StatCard
+          label="Active"
+          value={counts.active}
+          icon={CheckCircle2}
+          href={activeHref}
+          active={filters.status !== 'archived' && filters.status !== 'all'}
+        />
+        <StatCard
+          label="Archived"
+          value={counts.archived}
+          icon={XCircle}
+          href={archivedHref}
+          active={filters.status === 'archived'}
+        />
       </div>
 
       <ListToolbar

@@ -31,6 +31,8 @@ import { Badge } from '@/components/ui/badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { ImageUploader } from '@/components/catalog/image-uploader'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
+import { StatCard } from '@/components/catalog/stat-card'
+import { Puzzle, CheckCircle2, XCircle } from 'lucide-react'
 
 type Row = {
   id: number
@@ -47,7 +49,14 @@ type SupplierOpt = { id: number; name: string }
 
 type Filters = { q: string; status: string }
 
-type PageProps = { components: Row[]; suppliers: SupplierOpt[]; filters: Filters }
+type Counts = { total: number; active: number; archived: number }
+
+type PageProps = {
+  components: Row[]
+  suppliers: SupplierOpt[]
+  filters: Filters
+  counts: Counts
+}
 
 function NewComponentDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
   const [open, setOpen] = useState(false)
@@ -163,7 +172,7 @@ function ArchiveAction({ path, name }: { path: string; name: string }) {
   const { post, processing } = useForm()
   return (
     <Button
-      variant="ghost"
+      variant="destructive"
       size="sm"
       disabled={processing}
       onClick={() => {
@@ -192,7 +201,7 @@ function Thumb({ url, alt }: { url: string | null; alt: string }) {
   )
 }
 
-export default function ComponentsPage({ components, suppliers, filters }: PageProps) {
+export default function ComponentsPage({ components, suppliers, filters, counts }: PageProps) {
   return (
     <div className="flex w-full flex-col gap-6 px-6 py-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -201,6 +210,30 @@ export default function ComponentsPage({ components, suppliers, filters }: PageP
           <p className="text-sm text-muted-foreground">{components.length} components.</p>
         </div>
         <NewComponentDialog suppliers={suppliers} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatCard
+          label="Total"
+          value={counts.total}
+          icon={Puzzle}
+          href="/catalog/components"
+          active={filters.status === 'all'}
+        />
+        <StatCard
+          label="Active"
+          value={counts.active}
+          icon={CheckCircle2}
+          href="/catalog/components?status=active"
+          active={filters.status !== 'archived' && filters.status !== 'all'}
+        />
+        <StatCard
+          label="Archived"
+          value={counts.archived}
+          icon={XCircle}
+          href="/catalog/components?status=archived"
+          active={filters.status === 'archived'}
+        />
       </div>
 
       <ListToolbar

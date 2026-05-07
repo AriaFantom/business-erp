@@ -4,7 +4,7 @@ import User from '#models/user'
 import Role from '#models/role'
 import Invitation from '#models/invitation'
 import { DateTime } from 'luxon'
-import string from '@adonisjs/core/helpers/string'
+import { issueInvitationToken } from '#services/invitation_token'
 
 /**
  * Runs before /dashboard (and other authenticated routes).
@@ -37,13 +37,15 @@ export default class FirstUserSetupMiddleware {
 
       setup = await Invitation.create({
         email: null,
-        token: string.random(64),
+        token: '',
         roleId: ownerRole.id,
         invitedBy: null,
         type: 'setup',
         status: 'pending',
         expiresAt: DateTime.now().plus({ hours: 24 }),
       })
+      setup.token = issueInvitationToken(setup.id, 'setup', '24 hours')
+      await setup.save()
     }
 
     return ctx.response.redirect(`/invite/${setup.token}`)

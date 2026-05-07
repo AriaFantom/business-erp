@@ -50,6 +50,23 @@ function applySearch(
   })
 }
 
+export type StatusCounts = { total: number; active: number; archived: number }
+
+async function countByStatus<T extends { count: (col: string, alias?: string) => unknown }>(
+  buildQuery: () => T
+): Promise<StatusCounts> {
+  const totalRow = (await (buildQuery() as any).count('* as total').first()) as {
+    $extras: { total: number | string }
+  } | null
+  const activeRow = (await (buildQuery() as any)
+    .where('is_active', true)
+    .count('* as total')
+    .first()) as { $extras: { total: number | string } } | null
+  const total = Number(totalRow?.$extras.total ?? 0)
+  const active = Number(activeRow?.$extras.total ?? 0)
+  return { total, active, archived: Math.max(0, total - active) }
+}
+
 export type MaterialRow = {
   id: number
   sku: string
@@ -69,6 +86,12 @@ export async function getMaterialsViewModel(filters: ListFilters & { type?: stri
   if (filters.type && filters.type !== 'all') {
     query.where('type', filters.type)
   }
+  const counts = await countByStatus(() => {
+    const q = Material.query()
+    applySearch(q as never, filters.q, ['name', 'sku'])
+    if (filters.type && filters.type !== 'all') q.where('type', filters.type)
+    return q
+  })
   const materials = await query
   const signed = await Promise.all(materials.map((m) => signCatalogImageUrl(m.imageKey)))
   return {
@@ -85,6 +108,7 @@ export async function getMaterialsViewModel(filters: ListFilters & { type?: stri
       imageUrl: signed[idx],
       isActive: m.isActive,
     })),
+    counts,
     suppliers: await listActiveSuppliers(),
   }
 }
@@ -104,6 +128,11 @@ export async function getComponentsViewModel(filters: ListFilters = {}) {
   const query = Component.query().preload('defaultSupplier').orderBy('name', 'asc')
   applyStatus(query as never, filters.status)
   applySearch(query as never, filters.q, ['name', 'sku'])
+  const counts = await countByStatus(() => {
+    const q = Component.query()
+    applySearch(q as never, filters.q, ['name', 'sku'])
+    return q
+  })
   const components = await query
   const signed = await Promise.all(components.map((c) => signCatalogImageUrl(c.imageKey)))
   return {
@@ -119,6 +148,7 @@ export async function getComponentsViewModel(filters: ListFilters = {}) {
       imageUrl: signed[idx],
       isActive: c.isActive,
     })),
+    counts,
     suppliers: await listActiveSuppliers(),
   }
 }
@@ -144,6 +174,12 @@ export async function getProductsViewModel(filters: ListFilters & { categoryId?:
   if (filters.categoryId) {
     query.where('category_id', filters.categoryId)
   }
+  const counts = await countByStatus(() => {
+    const q = Product.query()
+    applySearch(q as never, filters.q, ['name', 'sku'])
+    if (filters.categoryId) q.where('category_id', filters.categoryId)
+    return q
+  })
   const [products, categories] = await Promise.all([
     query,
     ProductCategory.query().orderBy('name', 'asc'),
@@ -208,6 +244,7 @@ export async function getProductsViewModel(filters: ListFilters & { categoryId?:
       defaultProfitPct: c.defaultProfitPct,
       taxRatePct: c.taxRatePct,
     })),
+    counts,
   }
 }
 
@@ -238,6 +275,11 @@ export async function getSuppliersViewModel(filters: ListFilters = {}) {
   const query = Supplier.query().orderBy('name', 'asc')
   applyStatus(query as never, filters.status)
   applySearch(query as never, filters.q, ['name', 'email', 'phone', 'gstin'])
+  const counts = await countByStatus(() => {
+    const q = Supplier.query()
+    applySearch(q as never, filters.q, ['name', 'email', 'phone', 'gstin'])
+    return q
+  })
   const suppliers = await query
   return {
     suppliers: suppliers.map<SupplierRow>((s) => ({
@@ -248,6 +290,7 @@ export async function getSuppliersViewModel(filters: ListFilters = {}) {
       phone: s.phone,
       isActive: s.isActive,
     })),
+    counts,
   }
 }
 
@@ -269,6 +312,11 @@ export async function getCustomersViewModel(filters: ListFilters = {}) {
   const query = Customer.query().orderBy('name', 'asc')
   applyStatus(query as never, filters.status)
   applySearch(query as never, filters.q, ['name', 'email', 'phone', 'gstin'])
+  const counts = await countByStatus(() => {
+    const q = Customer.query()
+    applySearch(q as never, filters.q, ['name', 'email', 'phone', 'gstin'])
+    return q
+  })
   const customers = await query
   return {
     customers: customers.map<CustomerRow>((c) => ({
@@ -279,6 +327,7 @@ export async function getCustomersViewModel(filters: ListFilters = {}) {
       phone: c.phone,
       isActive: c.isActive,
     })),
+    counts,
   }
 }
 

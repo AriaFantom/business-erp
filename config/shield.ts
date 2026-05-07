@@ -1,24 +1,38 @@
+import app from '@adonisjs/core/services/app'
 import { defineConfig } from '@adonisjs/shield'
 
 const shieldConfig = defineConfig({
   /**
    * Configure CSP policies for your app. Refer documentation
    * to learn more.
+   *
+   * CSP is enabled in production only — the Vite dev server
+   * ships an inline-script snippet for HMR that would otherwise
+   * be blocked. In prod, Vite emits hashed bundles served from
+   * the same origin, so 'self' covers it.
    */
   csp: {
-    /**
-     * Enable the Content-Security-Policy header.
-     */
-    enabled: false,
+    enabled: app.inProduction,
 
-    /**
-     * Per-resource CSP directives.
-     */
-    directives: {},
+    directives: {
+      'default-src': [`'self'`],
+      'base-uri': [`'self'`],
+      'font-src': [`'self'`, 'https:', 'data:'],
+      'form-action': [`'self'`],
+      'frame-ancestors': [`'none'`],
+      // S3/MinIO-signed URLs for catalog images live on a different host.
+      // Allow data: (small inline icons) and https: (signed S3 URLs).
+      'img-src': [`'self'`, 'data:', 'blob:', 'https:'],
+      'object-src': [`'none'`],
+      'script-src': [`'self'`],
+      'script-src-attr': [`'none'`],
+      // Tailwind utilities + shadcn rely on inline style attributes
+      // (e.g. for animations and CSS variable bindings).
+      'style-src': [`'self'`, `'unsafe-inline'`],
+      'connect-src': [`'self'`, 'https:'],
+      'upgrade-insecure-requests': [],
+    },
 
-    /**
-     * Report violations without blocking resources.
-     */
     reportOnly: false,
   },
 
@@ -67,17 +81,14 @@ const shieldConfig = defineConfig({
 
   /**
    * Force browser to always use HTTPS.
+   *
+   * Disabled outside production so local plain-HTTP dev isn't pinned
+   * to HTTPS by a stale browser cache.
    */
   hsts: {
-    /**
-     * Enable the Strict-Transport-Security header.
-     */
-    enabled: true,
-
-    /**
-     * HSTS policy duration remembered by browsers.
-     */
+    enabled: app.inProduction,
     maxAge: '180 days',
+    includeSubDomains: true,
   },
 
   /**

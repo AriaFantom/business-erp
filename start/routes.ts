@@ -31,8 +31,9 @@ const SalesController = () => import('#controllers/sales_controller')
 const InvoicesController = () => import('#controllers/invoices_controller')
 const ReportsController = () => import('#controllers/reports_controller')
 const PosController = () => import('#controllers/pos_controller')
+const RootController = () => import('#controllers/root_controller')
 
-router.on('/').renderInertia('home', {}).use(middleware.firstUserSetup()).as('home')
+router.get('/', [RootController, 'index']).use(middleware.firstUserSetup()).as('home')
 
 router
   .group(() => {

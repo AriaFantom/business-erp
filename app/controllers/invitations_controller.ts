@@ -3,11 +3,11 @@ import Invitation from '#models/invitation'
 import Role from '#models/role'
 import { createInvitationValidator } from '#validators/invitation'
 import { DateTime } from 'luxon'
-import string from '@adonisjs/core/helpers/string'
 import mail from '@adonisjs/mail/services/main'
 import InvitationNotification from '#mails/invitation_notification'
 import { canAssignRole } from '#services/role_hierarchy'
 import { getInvitationsViewModel } from '#services/dashboard_view_models'
+import { issueInvitationToken } from '#services/invitation_token'
 
 export default class InvitationsController {
   /** GET /system/invitations — invite form + pending invitations */
@@ -56,15 +56,22 @@ export default class InvitationsController {
       return response.redirect().back()
     }
 
+    const expiresIn = '7 days'
     const invitation = await Invitation.create({
       email,
-      token: string.random(64),
+      // Filled in below once we know the row id.
+      token: '',
       roleId,
       invitedBy: auth.user!.id,
       type: 'invite',
       status: 'pending',
       expiresAt: DateTime.now().plus({ days: 7 }),
     })
+
+    // Encryption needs the row id so the link is bound to this specific
+    // invitation. Issue the token, then persist it.
+    invitation.token = issueInvitationToken(invitation.id, 'invite', expiresIn)
+    await invitation.save()
 
     invitation.$setRelated('role', role)
 
@@ -99,7 +106,10 @@ export default class InvitationsController {
     }
 
     // Refresh the expiry window so a stale link becomes usable again.
+    // The encrypted token also carries an expiry, so re-issue it.
+    const purpose = invitation.type === 'setup' ? 'setup' : 'invite'
     invitation.expiresAt = DateTime.now().plus({ days: 7 })
+    invitation.token = issueInvitationToken(invitation.id, purpose, '7 days')
     await invitation.save()
     await invitation.load('role')
 

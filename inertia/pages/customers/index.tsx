@@ -43,7 +43,9 @@ type Row = {
 
 type Filters = { q: string; status: string }
 
-type PageProps = { customers: Row[]; filters: Filters }
+type Counts = { total: number; active: number; archived: number }
+
+type PageProps = { customers: Row[]; filters: Filters; counts: Counts }
 
 function NewCustomerDialog() {
   const [open, setOpen] = useState(false)
@@ -131,7 +133,7 @@ function ArchiveAction({ path, confirmText }: { path: string; confirmText: strin
   const { post, processing } = useForm()
   return (
     <Button
-      variant="ghost"
+      variant="destructive"
       size="icon"
       disabled={processing}
       aria-label="Archive customer"
@@ -145,9 +147,7 @@ function ArchiveAction({ path, confirmText }: { path: string; confirmText: strin
   )
 }
 
-export default function CustomersIndex({ customers, filters }: PageProps) {
-  const active = customers.filter((c) => c.isActive).length
-  const archived = customers.length - active
+export default function CustomersIndex({ customers, filters, counts }: PageProps) {
   return (
     <div className="flex w-full flex-col gap-6 px-6 py-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -158,9 +158,27 @@ export default function CustomersIndex({ customers, filters }: PageProps) {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Total" value={customers.length} icon={Users} />
-        <StatCard label="Active" value={active} icon={CheckCircle2} />
-        <StatCard label="Archived" value={archived} icon={XCircle} />
+        <StatCard
+          label="Total"
+          value={counts.total}
+          icon={Users}
+          href="/customers"
+          active={filters.status === 'all'}
+        />
+        <StatCard
+          label="Active"
+          value={counts.active}
+          icon={CheckCircle2}
+          href="/customers?status=active"
+          active={filters.status !== 'archived' && filters.status !== 'all'}
+        />
+        <StatCard
+          label="Archived"
+          value={counts.archived}
+          icon={XCircle}
+          href="/customers?status=archived"
+          active={filters.status === 'archived'}
+        />
       </div>
 
       <ListToolbar

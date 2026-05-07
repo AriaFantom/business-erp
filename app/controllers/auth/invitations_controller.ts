@@ -4,16 +4,33 @@ import User from '#models/user'
 import { acceptInvitationValidator } from '#validators/invitation'
 import { DateTime } from 'luxon'
 import db from '@adonisjs/lucid/services/db'
+import { verifyInvitationToken, type InvitationPurpose } from '#services/invitation_token'
 
-export default class InvitationController {
-  /** GET /invite/:token */
-  async show({ params, inertia, response }: HttpContext) {
+async function resolveInvitation(token: string) {
+  // The same URL has to handle both setup and invite tokens, so try both
+  // purposes. Decryption only succeeds for the purpose the token was
+  // issued for, so this never crosses the streams.
+  const purposes: InvitationPurpose[] = ['invite', 'setup']
+  for (const purpose of purposes) {
+    const id = verifyInvitationToken(token, purpose)
+    if (id === null) continue
     const invitation = await Invitation.query()
-      .where('token', params.token)
+      .where('id', id)
+      .where('token', token)
+      .where('type', purpose)
       .where('status', 'pending')
       .where('expires_at', '>', DateTime.now().toSQL()!)
       .preload('role')
       .first()
+    if (invitation) return invitation
+  }
+  return null
+}
+
+export default class InvitationController {
+  /** GET /invite/:token */
+  async show({ params, inertia, response }: HttpContext) {
+    const invitation = await resolveInvitation(params.token)
 
     if (!invitation) {
       return response.redirect('/login?error=invalid_invitation')
@@ -34,11 +51,7 @@ export default class InvitationController {
   async store({ params, request, response, session }: HttpContext) {
     const payload = await request.validateUsing(acceptInvitationValidator)
 
-    const invitation = await Invitation.query()
-      .where('token', params.token)
-      .where('status', 'pending')
-      .where('expires_at', '>', DateTime.now().toSQL()!)
-      .first()
+    const invitation = await resolveInvitation(params.token)
 
     if (!invitation) {
       session.flash('error', 'This invitation is no longer valid.')

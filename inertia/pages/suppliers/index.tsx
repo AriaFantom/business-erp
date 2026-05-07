@@ -43,7 +43,9 @@ type Row = {
 
 type Filters = { q: string; status: string }
 
-type PageProps = { suppliers: Row[]; filters: Filters }
+type Counts = { total: number; active: number; archived: number }
+
+type PageProps = { suppliers: Row[]; filters: Filters; counts: Counts }
 
 function NewSupplierDialog() {
   const [open, setOpen] = useState(false)
@@ -141,9 +143,7 @@ function Field({
   )
 }
 
-export default function SuppliersIndex({ suppliers, filters }: PageProps) {
-  const active = suppliers.filter((s) => s.isActive).length
-  const archived = suppliers.length - active
+export default function SuppliersIndex({ suppliers, filters, counts }: PageProps) {
   return (
     <div className="flex w-full flex-col gap-6 px-6 py-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -154,9 +154,27 @@ export default function SuppliersIndex({ suppliers, filters }: PageProps) {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Total" value={suppliers.length} icon={Truck} />
-        <StatCard label="Active" value={active} icon={CheckCircle2} />
-        <StatCard label="Archived" value={archived} icon={XCircle} />
+        <StatCard
+          label="Total"
+          value={counts.total}
+          icon={Truck}
+          href="/suppliers"
+          active={filters.status === 'all'}
+        />
+        <StatCard
+          label="Active"
+          value={counts.active}
+          icon={CheckCircle2}
+          href="/suppliers?status=active"
+          active={filters.status !== 'archived' && filters.status !== 'all'}
+        />
+        <StatCard
+          label="Archived"
+          value={counts.archived}
+          icon={XCircle}
+          href="/suppliers?status=archived"
+          active={filters.status === 'archived'}
+        />
       </div>
 
       <ListToolbar
@@ -239,7 +257,7 @@ function ArchiveAction({
   const { post, processing } = useForm()
   return (
     <Button
-      variant="ghost"
+      variant="destructive"
       size="icon"
       disabled={processing}
       aria-label="Archive supplier"
