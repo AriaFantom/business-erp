@@ -1,3 +1,4 @@
+import db from '@adonisjs/lucid/services/db'
 import Material from '#models/material'
 import Component from '#models/component'
 import Product from '#models/product'
@@ -132,6 +133,8 @@ export type ProductRow = {
   taxRatePct: string | null
   imageUrl: string | null
   isActive: boolean
+  inProductionQty: number
+  soldQty: number
 }
 
 export async function getProductsViewModel(filters: ListFilters & { categoryId?: number } = {}) {
@@ -145,7 +148,46 @@ export async function getProductsViewModel(filters: ListFilters & { categoryId?:
     query,
     ProductCategory.query().orderBy('name', 'asc'),
   ])
-  const signed = await Promise.all(products.map((p) => signCatalogImageUrl(p.imageKey)))
+  const ids = products.map((p) => p.id)
+
+  const [signed, productionRows, soldRows] = await Promise.all([
+    Promise.all(products.map((p) => signCatalogImageUrl(p.imageKey))),
+    ids.length > 0
+      ? db
+          .from('production_jobs')
+          .whereIn('product_id', ids)
+          .where('status', 'in_progress')
+          .groupBy('product_id')
+          .select('product_id')
+          .sum({ planned: 'planned_qty' })
+          .sum({ produced: 'produced_qty' })
+      : [],
+    ids.length > 0
+      ? db
+          .from('sale_items')
+          .join('sales', 'sales.id', 'sale_items.sale_id')
+          .whereIn('sale_items.product_id', ids)
+          .where('sales.status', 'confirmed')
+          .groupBy('sale_items.product_id')
+          .select('sale_items.product_id as product_id')
+          .sum({ qty: 'sale_items.qty' })
+      : [],
+  ])
+
+  // "In production" = units still pending on in-progress jobs (planned − produced).
+  // Avoids double-counting once a job records partial production.
+  const inProductionByProduct = new Map<number, number>()
+  for (const r of productionRows) {
+    const planned = Number(r.planned ?? 0)
+    const produced = Number(r.produced ?? 0)
+    const remaining = Math.max(0, planned - produced)
+    inProductionByProduct.set(Number(r.product_id), remaining)
+  }
+  const soldByProduct = new Map<number, number>()
+  for (const r of soldRows) {
+    soldByProduct.set(Number(r.product_id), Number(r.qty ?? 0))
+  }
+
   return {
     products: products.map<ProductRow>((p, idx) => ({
       id: p.id,
@@ -157,6 +199,8 @@ export async function getProductsViewModel(filters: ListFilters & { categoryId?:
       taxRatePct: p.taxRatePct,
       imageUrl: signed[idx],
       isActive: p.isActive,
+      inProductionQty: inProductionByProduct.get(p.id) ?? 0,
+      soldQty: soldByProduct.get(p.id) ?? 0,
     })),
     categories: categories.map((c) => ({
       id: c.id,
@@ -253,15 +297,17 @@ export type InventoryRow = {
 export async function getInventoryViewModel(
   filters: { q?: string; itemKind?: string; lowStock?: boolean } = {}
 ) {
-  const [inventory, materials, components, recentMovements] = await Promise.all([
+  const [inventory, materials, components, products, recentMovements] = await Promise.all([
     Inventory.query(),
     Material.query(),
     Component.query(),
+    Product.query(),
     StockMovement.query().orderBy('created_at', 'desc').limit(50),
   ])
 
   const matById = new Map(materials.map((m) => [m.id, m]))
   const compById = new Map(components.map((c) => [c.id, c]))
+  const prodById = new Map(products.map((p) => [p.id, p]))
 
   const rows: InventoryRow[] = []
   for (const inv of inventory) {
@@ -294,6 +340,20 @@ export async function getInventoryViewModel(
         unit: c.unit,
         reorderThreshold: c.reorderThresholdQty !== null ? String(c.reorderThresholdQty) : null,
         belowThreshold: threshold !== null && Number(inv.qty) < threshold,
+      })
+    } else if (inv.itemKind === 'product') {
+      const p = prodById.get(inv.itemId)
+      if (!p) continue
+      rows.push({
+        itemKind: 'product',
+        itemId: p.id,
+        itemSku: p.sku,
+        itemName: p.name,
+        qty: inv.qty,
+        avgUnitCost: inv.avgUnitCost,
+        unit: 'unit',
+        reorderThreshold: null,
+        belowThreshold: false,
       })
     }
   }

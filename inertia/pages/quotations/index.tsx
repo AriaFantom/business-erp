@@ -33,6 +33,11 @@ import { Badge } from '@/components/ui/badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
+import {
+  ColumnVisibilityMenu,
+  type ColumnDef,
+} from '@/components/data-table/column-visibility'
+import { useColumnVisibility } from '@/hooks/use-column-visibility'
 
 type QuotationRow = {
   id: number
@@ -316,7 +321,7 @@ function NewQuotationDialog({
                           <TableCell>
                             <Button
                               type="button"
-                              variant="ghost"
+                              variant="destructive-soft"
                               size="icon"
                               aria-label="Remove line"
                               onClick={() => removeLine(i)}
@@ -350,6 +355,7 @@ function NewQuotationDialog({
           <DialogFooter>
             <Button
               type="submit"
+              variant="success"
               disabled={
                 processing || !data.customerId || data.items.length === 0
               }
@@ -381,6 +387,16 @@ function Field({
   )
 }
 
+const QUOTATION_COLUMNS: ColumnDef[] = [
+  { key: 'number', label: 'Number', required: true },
+  { key: 'customer', label: 'Customer' },
+  { key: 'status', label: 'Status' },
+  { key: 'issued', label: 'Issued' },
+  { key: 'validUntil', label: 'Valid until' },
+  { key: 'total', label: 'Total' },
+  { key: 'actions', label: 'Actions', required: true },
+]
+
 export default function QuotationsIndex({
   quotations,
   customers,
@@ -389,6 +405,7 @@ export default function QuotationsIndex({
 }: PageProps) {
   // Use router for type checking suppression
   void router
+  const { isVisible, toggle, reset } = useColumnVisibility('quotations')
   const totalValue = quotations.reduce((s, q) => s + Number(q.total || 0), 0)
   const accepted = quotations.filter((q) => q.status === 'accepted' || q.status === 'converted').length
   const draftSent = quotations.filter((q) => q.status === 'draft' || q.status === 'sent').length
@@ -398,7 +415,15 @@ export default function QuotationsIndex({
         <div>
           <h1 className="text-2xl font-semibold">Quotations</h1>
         </div>
-        <NewQuotationDialog customers={customers} products={products} />
+        <div className="flex items-center gap-2">
+          <ColumnVisibilityMenu
+            columns={QUOTATION_COLUMNS}
+            isVisible={isVisible}
+            onToggle={toggle}
+            onReset={reset}
+          />
+          <NewQuotationDialog customers={customers} products={products} />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -452,33 +477,52 @@ export default function QuotationsIndex({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Number</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Issued</TableHead>
-                  <TableHead>Valid until</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead></TableHead>
+                  {isVisible('number') && <TableHead>Number</TableHead>}
+                  {isVisible('customer') && <TableHead>Customer</TableHead>}
+                  {isVisible('status') && <TableHead>Status</TableHead>}
+                  {isVisible('issued') && <TableHead>Issued</TableHead>}
+                  {isVisible('validUntil') && <TableHead>Valid until</TableHead>}
+                  {isVisible('total') && (
+                    <TableHead className="text-right">Total</TableHead>
+                  )}
+                  {isVisible('actions') && <TableHead></TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {quotations.map((q) => (
                   <TableRow key={q.id}>
-                    <TableCell className="font-mono text-xs">{q.number}</TableCell>
-                    <TableCell>{q.customerName}</TableCell>
-                    <TableCell>
-                      <Badge variant={statusVariant(q.status)}>{q.status}</Badge>
-                    </TableCell>
-                    <TableCell>{q.issuedAt?.slice(0, 10) ?? '—'}</TableCell>
-                    <TableCell>{q.validUntil?.slice(0, 10) ?? '—'}</TableCell>
-                    <TableCell className="text-right">{q.total}</TableCell>
-                    <TableCell className="text-right">
-                      <Button asChild variant="ghost" size="icon" aria-label="Open quotation">
-                        <Link href={`/quotations/${q.id}`}>
-                          <ExternalLink className="size-4" />
-                        </Link>
-                      </Button>
-                    </TableCell>
+                    {isVisible('number') && (
+                      <TableCell className="font-mono text-xs">{q.number}</TableCell>
+                    )}
+                    {isVisible('customer') && <TableCell>{q.customerName}</TableCell>}
+                    {isVisible('status') && (
+                      <TableCell>
+                        <Badge variant={statusVariant(q.status)}>{q.status}</Badge>
+                      </TableCell>
+                    )}
+                    {isVisible('issued') && (
+                      <TableCell>{q.issuedAt?.slice(0, 10) ?? '—'}</TableCell>
+                    )}
+                    {isVisible('validUntil') && (
+                      <TableCell>{q.validUntil?.slice(0, 10) ?? '—'}</TableCell>
+                    )}
+                    {isVisible('total') && (
+                      <TableCell className="text-right">{q.total}</TableCell>
+                    )}
+                    {isVisible('actions') && (
+                      <TableCell className="text-right">
+                        <Button
+                          asChild
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Open quotation"
+                        >
+                          <Link href={`/quotations/${q.id}`}>
+                            <ExternalLink className="size-4" />
+                          </Link>
+                        </Button>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>

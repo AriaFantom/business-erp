@@ -33,6 +33,11 @@ import { Badge } from '@/components/ui/badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
+import {
+  ColumnVisibilityMenu,
+  type ColumnDef,
+} from '@/components/data-table/column-visibility'
+import { useColumnVisibility } from '@/hooks/use-column-visibility'
 
 type JobRow = {
   id: number
@@ -126,7 +131,11 @@ function NewJobDialog({ products }: { products: ProductOpt[] }) {
             <Input value={data.note} onChange={(e) => setData('note', e.target.value)} />
           </Field>
           <DialogFooter>
-            <Button type="submit" disabled={processing || !data.productId}>
+            <Button
+              type="submit"
+              variant="success"
+              disabled={processing || !data.productId}
+            >
               {processing ? 'Saving…' : 'Create'}
             </Button>
           </DialogFooter>
@@ -161,7 +170,19 @@ function statusVariant(s: string) {
   return 'outline' as const
 }
 
+const JOB_COLUMNS: ColumnDef[] = [
+  { key: 'number', label: 'Number', required: true },
+  { key: 'product', label: 'Product' },
+  { key: 'status', label: 'Status' },
+  { key: 'planned', label: 'Planned' },
+  { key: 'produced', label: 'Produced' },
+  { key: 'totalCost', label: 'Total cost' },
+  { key: 'unitCost', label: 'Unit cost' },
+  { key: 'actions', label: 'Actions', required: true },
+]
+
 export default function JobsIndex({ jobs, products, filters }: PageProps) {
+  const { isVisible, toggle, reset } = useColumnVisibility('jobs')
   const inProgress = jobs.filter((j) => j.status === 'in_progress').length
   const completed = jobs.filter((j) => j.status === 'completed').length
   return (
@@ -170,7 +191,15 @@ export default function JobsIndex({ jobs, products, filters }: PageProps) {
         <div>
           <h1 className="text-2xl font-semibold">Production jobs</h1>
         </div>
-        <NewJobDialog products={products} />
+        <div className="flex items-center gap-2">
+          <ColumnVisibilityMenu
+            columns={JOB_COLUMNS}
+            isVisible={isVisible}
+            onToggle={toggle}
+            onReset={reset}
+          />
+          <NewJobDialog products={products} />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -218,35 +247,62 @@ export default function JobsIndex({ jobs, products, filters }: PageProps) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Number</TableHead>
-                  <TableHead>Product</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Planned</TableHead>
-                  <TableHead className="text-right">Produced</TableHead>
-                  <TableHead className="text-right">Total cost</TableHead>
-                  <TableHead className="text-right">Unit cost</TableHead>
-                  <TableHead></TableHead>
+                  {isVisible('number') && <TableHead>Number</TableHead>}
+                  {isVisible('product') && <TableHead>Product</TableHead>}
+                  {isVisible('status') && <TableHead>Status</TableHead>}
+                  {isVisible('planned') && (
+                    <TableHead className="text-right">Planned</TableHead>
+                  )}
+                  {isVisible('produced') && (
+                    <TableHead className="text-right">Produced</TableHead>
+                  )}
+                  {isVisible('totalCost') && (
+                    <TableHead className="text-right">Total cost</TableHead>
+                  )}
+                  {isVisible('unitCost') && (
+                    <TableHead className="text-right">Unit cost</TableHead>
+                  )}
+                  {isVisible('actions') && <TableHead></TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {jobs.map((j) => (
                   <TableRow key={j.id}>
-                    <TableCell className="font-mono text-xs">{j.number}</TableCell>
-                    <TableCell>{j.productName}</TableCell>
-                    <TableCell>
-                      <Badge variant={statusVariant(j.status)}>{j.status}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">{j.plannedQty}</TableCell>
-                    <TableCell className="text-right">{j.producedQty}</TableCell>
-                    <TableCell className="text-right">{j.totalCost}</TableCell>
-                    <TableCell className="text-right">{j.unitCost}</TableCell>
-                    <TableCell className="text-right">
-                      <Button asChild variant="ghost" size="icon" aria-label="Open job">
-                        <Link href={`/jobs/${j.id}`}>
-                          <ExternalLink className="size-4" />
-                        </Link>
-                      </Button>
-                    </TableCell>
+                    {isVisible('number') && (
+                      <TableCell className="font-mono text-xs">{j.number}</TableCell>
+                    )}
+                    {isVisible('product') && <TableCell>{j.productName}</TableCell>}
+                    {isVisible('status') && (
+                      <TableCell>
+                        <Badge variant={statusVariant(j.status)}>{j.status}</Badge>
+                      </TableCell>
+                    )}
+                    {isVisible('planned') && (
+                      <TableCell className="text-right">{j.plannedQty}</TableCell>
+                    )}
+                    {isVisible('produced') && (
+                      <TableCell className="text-right">{j.producedQty}</TableCell>
+                    )}
+                    {isVisible('totalCost') && (
+                      <TableCell className="text-right">{j.totalCost}</TableCell>
+                    )}
+                    {isVisible('unitCost') && (
+                      <TableCell className="text-right">{j.unitCost}</TableCell>
+                    )}
+                    {isVisible('actions') && (
+                      <TableCell className="text-right">
+                        <Button
+                          asChild
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Open job"
+                        >
+                          <Link href={`/jobs/${j.id}`}>
+                            <ExternalLink className="size-4" />
+                          </Link>
+                        </Button>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>

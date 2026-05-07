@@ -33,6 +33,11 @@ import { Badge } from '@/components/ui/badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
+import {
+  ColumnVisibilityMenu,
+  type ColumnDef,
+} from '@/components/data-table/column-visibility'
+import { useColumnVisibility } from '@/hooks/use-column-visibility'
 
 type SaleRow = {
   id: number
@@ -241,7 +246,7 @@ function NewSaleDialog({
                       <TableCell>
                         <Button
                           type="button"
-                          variant="ghost"
+                          variant="destructive-soft"
                           size="sm"
                           onClick={() => removeLine(i)}
                         >
@@ -258,6 +263,7 @@ function NewSaleDialog({
           <DialogFooter>
             <Button
               type="submit"
+              variant="success"
               disabled={
                 processing || !data.customerId || data.items.length === 0
               }
@@ -289,7 +295,17 @@ function Field({
   )
 }
 
+const SALE_COLUMNS: ColumnDef[] = [
+  { key: 'number', label: 'Number', required: true },
+  { key: 'customer', label: 'Customer' },
+  { key: 'status', label: 'Status' },
+  { key: 'total', label: 'Total' },
+  { key: 'confirmed', label: 'Confirmed' },
+  { key: 'actions', label: 'Actions', required: true },
+]
+
 export default function SalesIndex({ sales, customers, products, filters }: PageProps) {
+  const { isVisible, toggle, reset } = useColumnVisibility('sales')
   const confirmedCount = sales.filter((s) => s.status === 'confirmed').length
   const cancelledCount = sales.filter((s) => s.status === 'cancelled').length
   const totalRevenue = sales
@@ -301,7 +317,15 @@ export default function SalesIndex({ sales, customers, products, filters }: Page
         <div>
           <h1 className="text-2xl font-semibold">Sales</h1>
         </div>
-        <NewSaleDialog customers={customers} products={products} />
+        <div className="flex items-center gap-2">
+          <ColumnVisibilityMenu
+            columns={SALE_COLUMNS}
+            isVisible={isVisible}
+            onToggle={toggle}
+            onReset={reset}
+          />
+          <NewSaleDialog customers={customers} products={products} />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -352,31 +376,41 @@ export default function SalesIndex({ sales, customers, products, filters }: Page
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Number</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead>Confirmed</TableHead>
-                  <TableHead></TableHead>
+                  {isVisible('number') && <TableHead>Number</TableHead>}
+                  {isVisible('customer') && <TableHead>Customer</TableHead>}
+                  {isVisible('status') && <TableHead>Status</TableHead>}
+                  {isVisible('total') && <TableHead className="text-right">Total</TableHead>}
+                  {isVisible('confirmed') && <TableHead>Confirmed</TableHead>}
+                  {isVisible('actions') && <TableHead></TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sales.map((s) => (
                   <TableRow key={s.id}>
-                    <TableCell className="font-mono text-xs">{s.number}</TableCell>
-                    <TableCell>{s.customerName}</TableCell>
-                    <TableCell>
-                      <Badge variant={statusVariant(s.status)}>{s.status}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">{s.total}</TableCell>
-                    <TableCell>{s.confirmedAt?.slice(0, 10) ?? '—'}</TableCell>
-                    <TableCell className="text-right">
-                      <Button asChild variant="ghost" size="icon" aria-label="Open sale">
-                        <Link href={`/sales/${s.id}`}>
-                          <ExternalLink className="size-4" />
-                        </Link>
-                      </Button>
-                    </TableCell>
+                    {isVisible('number') && (
+                      <TableCell className="font-mono text-xs">{s.number}</TableCell>
+                    )}
+                    {isVisible('customer') && <TableCell>{s.customerName}</TableCell>}
+                    {isVisible('status') && (
+                      <TableCell>
+                        <Badge variant={statusVariant(s.status)}>{s.status}</Badge>
+                      </TableCell>
+                    )}
+                    {isVisible('total') && (
+                      <TableCell className="text-right">{s.total}</TableCell>
+                    )}
+                    {isVisible('confirmed') && (
+                      <TableCell>{s.confirmedAt?.slice(0, 10) ?? '—'}</TableCell>
+                    )}
+                    {isVisible('actions') && (
+                      <TableCell className="text-right">
+                        <Button asChild variant="ghost" size="icon" aria-label="Open sale">
+                          <Link href={`/sales/${s.id}`}>
+                            <ExternalLink className="size-4" />
+                          </Link>
+                        </Button>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>

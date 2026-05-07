@@ -30,7 +30,14 @@ import {
 import { Badge } from '@/components/ui/badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { ImageUploader } from '@/components/catalog/image-uploader'
+import { AvatarUploader } from '@/components/catalog/avatar-uploader'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
+import { ConfirmDialog } from '@/components/confirm-dialog'
+import {
+  ColumnVisibilityMenu,
+  type ColumnDef,
+} from '@/components/data-table/column-visibility'
+import { useColumnVisibility } from '@/hooks/use-column-visibility'
 
 type Row = {
   id: number
@@ -42,6 +49,8 @@ type Row = {
   taxRatePct: string | null
   imageUrl: string | null
   isActive: boolean
+  inProductionQty: number
+  soldQty: number
 }
 
 type CategoryOpt = {
@@ -146,7 +155,7 @@ function NewProductDialog({ categories }: { categories: CategoryOpt[] }) {
             </Field>
           </div>
           <DialogFooter>
-            <Button type="submit" disabled={processing}>
+            <Button type="submit" variant="success" disabled={processing}>
               {processing ? 'Saving…' : 'Create'}
             </Button>
           </DialogFooter>
@@ -176,21 +185,45 @@ function Field({
 
 function ArchiveAction({ path, name }: { path: string; name: string }) {
   const { post, processing } = useForm()
+  const [open, setOpen] = useState(false)
   return (
-    <Button
-      variant="ghost"
-      size="sm"
-      disabled={processing}
-      onClick={() => {
-        if (window.confirm(`Archive ${name}?`)) post(path, { preserveScroll: true })
-      }}
-    >
-      Archive
-    </Button>
+    <>
+      <Button
+        variant="destructive"
+        size="sm"
+        disabled={processing}
+        onClick={() => setOpen(true)}
+      >
+        Archive
+      </Button>
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title={`Archive ${name}?`}
+        description="The product will be hidden from new sales and quotations. You can reactivate it later."
+        confirmLabel="Archive"
+        variant="destructive"
+        onConfirm={() => post(path, { preserveScroll: true })}
+      />
+    </>
   )
 }
 
+const PRODUCT_COLUMNS: ColumnDef[] = [
+  { key: 'image', label: 'Image' },
+  { key: 'sku', label: 'SKU' },
+  { key: 'name', label: 'Name', required: true },
+  { key: 'category', label: 'Category' },
+  { key: 'inProduction', label: 'In production' },
+  { key: 'sold', label: 'Sold' },
+  { key: 'profit', label: 'Profit %' },
+  { key: 'tax', label: 'Tax %' },
+  { key: 'status', label: 'Status' },
+  { key: 'actions', label: 'Actions', required: true },
+]
+
 export default function ProductsPage({ products, categories, filters }: PageProps) {
+  const { isVisible, toggle, reset } = useColumnVisibility('catalog.products')
   return (
     <div className="flex w-full flex-col gap-6 px-6 py-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -200,7 +233,15 @@ export default function ProductsPage({ products, categories, filters }: PageProp
             {products.length} products in catalog.
           </p>
         </div>
-        <NewProductDialog categories={categories} />
+        <div className="flex items-center gap-2">
+          <ColumnVisibilityMenu
+            columns={PRODUCT_COLUMNS}
+            isVisible={isVisible}
+            onToggle={toggle}
+            onReset={reset}
+          />
+          <NewProductDialog categories={categories} />
+        </div>
       </div>
 
       <ListToolbar
@@ -239,49 +280,87 @@ export default function ProductsPage({ products, categories, filters }: PageProp
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-16">Image</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Profit %</TableHead>
-                  <TableHead>Tax %</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-48 text-right">Actions</TableHead>
+                  {isVisible('image') && <TableHead className="w-16">Image</TableHead>}
+                  {isVisible('sku') && <TableHead>SKU</TableHead>}
+                  {isVisible('name') && <TableHead>Name</TableHead>}
+                  {isVisible('category') && <TableHead>Category</TableHead>}
+                  {isVisible('inProduction') && (
+                    <TableHead className="text-right">In production</TableHead>
+                  )}
+                  {isVisible('sold') && (
+                    <TableHead className="text-right">Sold</TableHead>
+                  )}
+                  {isVisible('profit') && <TableHead>Profit %</TableHead>}
+                  {isVisible('tax') && <TableHead>Tax %</TableHead>}
+                  {isVisible('status') && <TableHead>Status</TableHead>}
+                  {isVisible('actions') && (
+                    <TableHead className="w-48 text-right">Actions</TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {products.map((p) => (
                   <TableRow key={p.id}>
-                    <TableCell>
-                      <Thumb url={p.imageUrl} alt={p.name} />
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">{p.sku}</TableCell>
-                    <TableCell className="font-medium">{p.name}</TableCell>
-                    <TableCell>{p.category?.name ?? '—'}</TableCell>
-                    <TableCell>{p.defaultProfitPct ?? '—'}</TableCell>
-                    <TableCell>{p.taxRatePct ?? '—'}</TableCell>
-                    <TableCell>
-                      {p.isActive ? (
-                        <Badge variant="outline">Active</Badge>
-                      ) : (
-                        <Badge variant="secondary">Archived</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <ImageUploader
+                    {isVisible('image') && (
+                      <TableCell>
+                        <AvatarUploader
                           uploadPath={`/catalog/products/${p.id}/image`}
-                          deletePath={`/catalog/products/${p.id}/image/delete`}
-                          hasImage={!!p.imageUrl}
+                          imageUrl={p.imageUrl}
+                          alt={p.name}
                         />
-                        {p.isActive && (
-                          <ArchiveAction
-                            path={`/catalog/products/${p.id}/archive`}
-                            name={p.name}
-                          />
+                      </TableCell>
+                    )}
+                    {isVisible('sku') && (
+                      <TableCell className="font-mono text-xs">{p.sku}</TableCell>
+                    )}
+                    {isVisible('name') && (
+                      <TableCell className="font-medium">{p.name}</TableCell>
+                    )}
+                    {isVisible('category') && (
+                      <TableCell>{p.category?.name ?? '—'}</TableCell>
+                    )}
+                    {isVisible('inProduction') && (
+                      <TableCell className="text-right tabular-nums">
+                        {p.inProductionQty > 0 ? p.inProductionQty : '—'}
+                      </TableCell>
+                    )}
+                    {isVisible('sold') && (
+                      <TableCell className="text-right tabular-nums">
+                        {p.soldQty > 0 ? p.soldQty : '—'}
+                      </TableCell>
+                    )}
+                    {isVisible('profit') && (
+                      <TableCell>{p.defaultProfitPct ?? '—'}</TableCell>
+                    )}
+                    {isVisible('tax') && (
+                      <TableCell>{p.taxRatePct ?? '—'}</TableCell>
+                    )}
+                    {isVisible('status') && (
+                      <TableCell>
+                        {p.isActive ? (
+                          <Badge variant="outline">Active</Badge>
+                        ) : (
+                          <Badge variant="secondary">Archived</Badge>
                         )}
-                      </div>
-                    </TableCell>
+                      </TableCell>
+                    )}
+                    {isVisible('actions') && (
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <ImageUploader
+                            uploadPath={`/catalog/products/${p.id}/image`}
+                            deletePath={`/catalog/products/${p.id}/image/delete`}
+                            hasImage={!!p.imageUrl}
+                          />
+                          {p.isActive && (
+                            <ArchiveAction
+                              path={`/catalog/products/${p.id}/archive`}
+                              name={p.name}
+                            />
+                          )}
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
@@ -290,23 +369,6 @@ export default function ProductsPage({ products, categories, filters }: PageProp
         </CardContent>
       </Card>
     </div>
-  )
-}
-
-function Thumb({ url, alt }: { url: string | null; alt: string }) {
-  if (!url)
-    return (
-      <div className="flex h-10 w-10 items-center justify-center rounded bg-muted text-[10px] text-muted-foreground">
-        —
-      </div>
-    )
-  return (
-    <img
-      src={url}
-      alt={alt}
-      className="h-10 w-10 rounded object-cover"
-      loading="lazy"
-    />
   )
 }
 

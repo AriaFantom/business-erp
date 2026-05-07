@@ -9,6 +9,7 @@ import type User from '#models/user'
 import { audit } from '#services/audit'
 import { nextDocNumber } from '#services/numbering'
 import { generateInvoiceForSale } from '#services/invoice_service'
+import { applyMovement, invalidateSnapshotCache } from '#services/inventory_service'
 import { InvalidStateError } from '#services/domain_errors'
 
 export type PosLineInput = {
@@ -63,7 +64,7 @@ export async function completePosSale(input: {
     if (!p.isActive) throw new Error(`Product "${p.name}" is archived.`)
   }
 
-  return db.transaction(async (trx) => {
+  const result = await db.transaction(async (trx) => {
     let subtotal = 0
     let taxTotal = 0
     let total = 0
@@ -113,6 +114,21 @@ export async function completePosSale(input: {
       item.lineTotal = String(l.lineTotal)
       item.useTransaction(trx)
       await item.save()
+
+      // Deduct stock for the sold product. applyMovement locks the inventory
+      // row and throws InsufficientStockError if qty would go negative.
+      await applyMovement({
+        itemKind: 'product',
+        itemId: l.productId,
+        qty: -l.qty,
+        unitCost: l.unitPrice,
+        reason: 'sale',
+        referenceType: 'sale',
+        referenceId: sale.id,
+        note: null,
+        actor: input.actor,
+        trx,
+      })
     }
 
     const invoice = await generateInvoiceForSale(sale, input.actor, trx, {
@@ -152,4 +168,7 @@ export async function completePosSale(input: {
 
     return { saleId: sale.id, invoiceId: invoice.id, total: round2(total) }
   })
+
+  await invalidateSnapshotCache()
+  return result
 }

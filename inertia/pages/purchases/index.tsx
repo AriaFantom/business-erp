@@ -33,6 +33,11 @@ import DashboardLayout from '@/layouts/dashboard-layout'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
 import { CheckCircle2, ExternalLink, Truck, XCircle } from 'lucide-react'
+import {
+  ColumnVisibilityMenu,
+  type ColumnDef,
+} from '@/components/data-table/column-visibility'
+import { useColumnVisibility } from '@/hooks/use-column-visibility'
 
 type PurchaseRow = {
   id: number
@@ -264,7 +269,7 @@ function NewPurchaseDialog({
                         <TableCell>
                           <Button
                             type="button"
-                            variant="ghost"
+                            variant="destructive-soft"
                             size="sm"
                             onClick={() => removeLine(i)}
                           >
@@ -283,6 +288,7 @@ function NewPurchaseDialog({
           <DialogFooter>
             <Button
               type="submit"
+              variant="success"
               disabled={processing || !data.supplierId || data.items.length === 0}
             >
               {processing ? 'Saving…' : 'Create draft'}
@@ -312,6 +318,15 @@ function Field({
   )
 }
 
+const PURCHASE_COLUMNS: ColumnDef[] = [
+  { key: 'number', label: 'Number', required: true },
+  { key: 'supplier', label: 'Supplier' },
+  { key: 'status', label: 'Status' },
+  { key: 'purchasedOn', label: 'Purchased on' },
+  { key: 'total', label: 'Total' },
+  { key: 'actions', label: 'Actions', required: true },
+]
+
 export default function PurchasesIndex({
   purchases,
   suppliers,
@@ -319,17 +334,26 @@ export default function PurchasesIndex({
   components,
   filters,
 }: PageProps) {
+  const { isVisible, toggle, reset } = useColumnVisibility('purchases')
   return (
     <div className="flex w-full flex-col gap-6 px-6 py-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Purchases</h1>
         </div>
-        <NewPurchaseDialog
-          suppliers={suppliers}
-          materials={materials}
-          components={components}
-        />
+        <div className="flex items-center gap-2">
+          <ColumnVisibilityMenu
+            columns={PURCHASE_COLUMNS}
+            isVisible={isVisible}
+            onToggle={toggle}
+            onReset={reset}
+          />
+          <NewPurchaseDialog
+            suppliers={suppliers}
+            materials={materials}
+            components={components}
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -387,31 +411,48 @@ export default function PurchasesIndex({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Number</TableHead>
-                  <TableHead>Supplier</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Purchased on</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead></TableHead>
+                  {isVisible('number') && <TableHead>Number</TableHead>}
+                  {isVisible('supplier') && <TableHead>Supplier</TableHead>}
+                  {isVisible('status') && <TableHead>Status</TableHead>}
+                  {isVisible('purchasedOn') && <TableHead>Purchased on</TableHead>}
+                  {isVisible('total') && (
+                    <TableHead className="text-right">Total</TableHead>
+                  )}
+                  {isVisible('actions') && <TableHead></TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {purchases.map((p) => (
                   <TableRow key={p.id}>
-                    <TableCell className="font-mono text-xs">{p.number}</TableCell>
-                    <TableCell>{p.supplierName}</TableCell>
-                    <TableCell>
-                      <Badge variant={statusVariant(p.status)}>{p.status}</Badge>
-                    </TableCell>
-                    <TableCell>{p.purchasedAt?.slice(0, 10) ?? '—'}</TableCell>
-                    <TableCell className="text-right">{p.total}</TableCell>
-                    <TableCell className="text-right">
-                      <Button asChild variant="ghost" size="icon" aria-label="Open purchase">
-                        <Link href={`/purchases/${p.id}`}>
-                          <ExternalLink className="size-4" />
-                        </Link>
-                      </Button>
-                    </TableCell>
+                    {isVisible('number') && (
+                      <TableCell className="font-mono text-xs">{p.number}</TableCell>
+                    )}
+                    {isVisible('supplier') && <TableCell>{p.supplierName}</TableCell>}
+                    {isVisible('status') && (
+                      <TableCell>
+                        <Badge variant={statusVariant(p.status)}>{p.status}</Badge>
+                      </TableCell>
+                    )}
+                    {isVisible('purchasedOn') && (
+                      <TableCell>{p.purchasedAt?.slice(0, 10) ?? '—'}</TableCell>
+                    )}
+                    {isVisible('total') && (
+                      <TableCell className="text-right">{p.total}</TableCell>
+                    )}
+                    {isVisible('actions') && (
+                      <TableCell className="text-right">
+                        <Button
+                          asChild
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Open purchase"
+                        >
+                          <Link href={`/purchases/${p.id}`}>
+                            <ExternalLink className="size-4" />
+                          </Link>
+                        </Button>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>

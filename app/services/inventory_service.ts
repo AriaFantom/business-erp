@@ -8,12 +8,15 @@ import type User from '#models/user'
 import { InsufficientStockError } from '#services/domain_errors'
 import { audit } from '#services/audit'
 
-export type ItemKind = 'material' | 'component'
+export type ItemKind = 'material' | 'component' | 'product'
 
 export type MovementReason =
   | 'purchase'
   | 'job_consume'
   | 'job_return'
+  | 'job_produce'
+  | 'sale'
+  | 'sale_return'
   | 'adjustment_increase'
   | 'adjustment_decrease'
 

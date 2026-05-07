@@ -16,22 +16,24 @@ export default class PosController {
     const q = typeof qs.q === 'string' ? qs.q : ''
     const categoryId = qs.categoryId ? Number(qs.categoryId) : null
 
-    // Only surface products that have been produced (at least one completed
-    // job with produced_qty > 0). Filtering happens in SQL so unsellable rows
-    // never reach the client.
-    const producibleIdsRaw = await db
-      .from('production_jobs')
-      .where('status', 'completed')
-      .where('produced_qty', '>', 0)
-      .distinct('product_id')
-      .select('product_id')
-    const producibleIds = producibleIdsRaw.map((r) => Number(r.product_id))
+    // Only surface products that currently have stock available (inventory
+    // qty > 0 for itemKind = 'product'). Filtering happens in SQL so empty
+    // rows never reach the client.
+    const stockRows = await db
+      .from('inventory')
+      .where('item_kind', 'product')
+      .where('qty', '>', 0)
+      .select('item_id', 'qty')
+    const stockByProduct = new Map<number, number>(
+      stockRows.map((r) => [Number(r.item_id), Number(r.qty)])
+    )
+    const inStockIds = [...stockByProduct.keys()]
 
     let products: Product[] = []
-    if (producibleIds.length > 0) {
+    if (inStockIds.length > 0) {
       const productsQ = Product.query()
         .where('is_active', true)
-        .whereIn('id', producibleIds)
+        .whereIn('id', inStockIds)
         .preload('category')
         .orderBy('name', 'asc')
       if (categoryId) productsQ.where('category_id', categoryId)
@@ -100,6 +102,7 @@ export default class PosController {
           profitPct: breakdown.profitPctUsed ?? 0,
           taxRatePct: breakdown.taxRatePct,
           suggestedUnitPrice: breakdown.unitPrice,
+          stockQty: stockByProduct.get(p.id) ?? 0,
         }
       }),
       categories: categories.map((c) => ({

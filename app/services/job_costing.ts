@@ -269,7 +269,7 @@ export async function completeJob(input: {
   producedQty: number
   actor: User
 }): Promise<ProductionJob> {
-  return db.transaction(async (trx) => {
+  const result = await db.transaction(async (trx) => {
     const job = await ProductionJob.query({ client: trx })
       .where('id', input.jobId)
       .forUpdate()
@@ -295,16 +295,39 @@ export async function completeJob(input: {
     await job.save()
 
     await recomputeJobTotals(input.jobId, trx)
+
+    // Credit the produced product into inventory at the per-unit cost just
+    // recomputed. Re-read the job to pick up the freshly persisted unitCost.
+    const refreshed = await ProductionJob.query({ client: trx })
+      .where('id', input.jobId)
+      .firstOrFail()
+    const perUnitCost = Number(refreshed.unitCost)
+    await applyMovement({
+      itemKind: 'product',
+      itemId: refreshed.productId,
+      qty: input.producedQty,
+      unitCost: perUnitCost,
+      reason: 'job_produce',
+      referenceType: 'job',
+      referenceId: refreshed.id,
+      note: null,
+      actor: input.actor,
+      trx,
+    })
+
     await audit({
       actor: input.actor,
       action: 'job.complete',
       targetType: 'job',
       targetId: input.jobId,
-      payload: { producedQty: input.producedQty },
+      payload: { producedQty: input.producedQty, unitCost: perUnitCost },
       trx,
     })
-    return job
+    return refreshed
   })
+
+  await invalidateSnapshotCache()
+  return result
 }
 
 export async function failJob(input: {

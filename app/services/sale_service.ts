@@ -10,6 +10,7 @@ import type User from '#models/user'
 import { audit } from '#services/audit'
 import { nextDocNumber } from '#services/numbering'
 import { generateInvoiceForSale } from '#services/invoice_service'
+import { applyMovement, invalidateSnapshotCache } from '#services/inventory_service'
 import { InvalidStateError } from '#services/domain_errors'
 
 export type SaleLineInput = {
@@ -39,7 +40,12 @@ export async function createSale(input: {
       to: 'used in sale',
     })
   }
+  if (input.items.length === 0) {
+    throw new Error('At least one line is required.')
+  }
   for (const it of input.items) {
+    if (it.qty <= 0) throw new Error('Quantity must be greater than zero.')
+    if (it.unitPrice < 0) throw new Error('Unit price cannot be negative.')
     if (it.productId) await Product.findOrFail(it.productId)
   }
 
@@ -168,7 +174,7 @@ export async function convertQuotationToSale(quotationId: number, actor: User): 
  * Returns the confirmed sale (the invoice id is on the invoice itself).
  */
 export async function confirmSale(saleId: number, actor: User): Promise<Sale> {
-  return db.transaction(async (trx) => {
+  const result = await db.transaction(async (trx) => {
     const sale = await Sale.query({ client: trx }).where('id', saleId).forUpdate().firstOrFail()
     if (sale.status !== 'draft') {
       throw new InvalidStateError({
@@ -177,6 +183,27 @@ export async function confirmSale(saleId: number, actor: User): Promise<Sale> {
         to: 'confirmed',
       })
     }
+
+    // Deduct stock for every line that points at a real product. Free-form
+    // lines (productId = null) bypass inventory. applyMovement locks the
+    // inventory row and throws InsufficientStockError on negative outcomes.
+    const items = await SaleItem.query({ client: trx }).where('sale_id', saleId)
+    for (const it of items) {
+      if (!it.productId) continue
+      await applyMovement({
+        itemKind: 'product',
+        itemId: it.productId,
+        qty: -Number(it.qty),
+        unitCost: Number(it.unitPrice),
+        reason: 'sale',
+        referenceType: 'sale',
+        referenceId: sale.id,
+        note: null,
+        actor,
+        trx,
+      })
+    }
+
     sale.status = 'confirmed'
     sale.confirmedAt = DateTime.now()
     await sale.save()
@@ -193,6 +220,9 @@ export async function confirmSale(saleId: number, actor: User): Promise<Sale> {
     })
     return sale
   })
+
+  await invalidateSnapshotCache()
+  return result
 }
 
 export async function cancelSale(saleId: number, actor: User): Promise<Sale> {

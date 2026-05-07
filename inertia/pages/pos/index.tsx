@@ -26,6 +26,7 @@ type Product = {
   profitPct: number
   taxRatePct: number
   suggestedUnitPrice: number
+  stockQty: number
 }
 
 type Category = {
@@ -55,6 +56,7 @@ type CartLine = {
   profitPct: number
   taxRatePct: number
   unitPrice: number
+  stockQty: number
 }
 
 function round2(n: number) {
@@ -92,11 +94,13 @@ export default function PosPage({ products, categories, customers, filters }: Pa
   }, [cart])
 
   function addToCart(p: Product) {
+    if (p.stockQty <= 0) return
     setCart((prev) => {
       const existing = prev.find((l) => l.productId === p.id)
       if (existing) {
+        const nextQty = Math.min(existing.qty + 1, p.stockQty)
         return prev.map((l) =>
-          l.productId === p.id ? { ...l, qty: l.qty + 1 } : l
+          l.productId === p.id ? { ...l, qty: nextQty } : l
         )
       }
       return [
@@ -110,6 +114,7 @@ export default function PosPage({ products, categories, customers, filters }: Pa
           profitPct: p.profitPct,
           taxRatePct: p.taxRatePct,
           unitPrice: p.suggestedUnitPrice,
+          stockQty: p.stockQty,
         },
       ]
     })
@@ -126,7 +131,9 @@ export default function PosPage({ products, categories, customers, filters }: Pa
       setCart((prev) => prev.filter((l) => l.productId !== productId))
       return
     }
-    patchLine(productId, { qty })
+    const line = cart.find((l) => l.productId === productId)
+    const clamped = line ? Math.min(qty, line.stockQty) : qty
+    patchLine(productId, { qty: clamped })
   }
 
   function changeProfit(productId: number, profitPct: number) {
@@ -189,13 +196,13 @@ export default function PosPage({ products, categories, customers, filters }: Pa
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Producible products
+              Products in stock
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-semibold">{products.length}</p>
             <p className="text-xs text-muted-foreground">
-              Items with at least one completed job.
+              {products.reduce((s, p) => s + p.stockQty, 0)} units available.
             </p>
           </CardContent>
         </Card>
@@ -251,56 +258,71 @@ export default function PosPage({ products, categories, customers, filters }: Pa
           <CardContent>
             {products.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No products are available for sale yet — only items with at
-                least one completed production job appear here.
+                No products are in stock — complete a production job to add
+                inventory.
               </p>
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
-                {products.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => addToCart(p)}
-                    className="group flex flex-col items-stretch gap-2 rounded border border-border bg-card p-3 text-left transition hover:border-primary"
-                  >
-                    {p.imageUrl ? (
-                      <img
-                        src={p.imageUrl}
-                        alt={p.name}
-                        className="h-24 w-full rounded object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="flex h-24 w-full items-center justify-center rounded bg-muted text-xs text-muted-foreground">
-                        No image
-                      </div>
-                    )}
-                    <div className="flex flex-col gap-1">
-                      <span className="line-clamp-2 text-sm font-medium">
-                        {p.name}
-                      </span>
-                      <span className="font-mono text-[10px] text-muted-foreground">
-                        {p.sku}
-                      </span>
-                      {p.category && (
-                        <Badge variant="outline" className="w-fit text-[10px]">
-                          {p.category.name}
-                        </Badge>
+                {products.map((p) => {
+                  const inCart =
+                    cart.find((l) => l.productId === p.id)?.qty ?? 0
+                  const remaining = p.stockQty - inCart
+                  const disabled = remaining <= 0
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => addToCart(p)}
+                      disabled={disabled}
+                      className="group flex flex-col items-stretch gap-2 rounded border border-border bg-card p-3 text-left transition hover:border-primary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border"
+                    >
+                      {p.imageUrl ? (
+                        <img
+                          src={p.imageUrl}
+                          alt={p.name}
+                          className="h-24 w-full rounded object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="flex h-24 w-full items-center justify-center rounded bg-muted text-xs text-muted-foreground">
+                          No image
+                        </div>
                       )}
-                      <div className="mt-1 flex items-center justify-between text-[11px]">
-                        <span className="text-muted-foreground">
-                          Cost ₹{p.unitCost.toFixed(2)}
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-start justify-between gap-1">
+                          <span className="line-clamp-2 text-sm font-medium">
+                            {p.name}
+                          </span>
+                          <Badge
+                            variant={disabled ? 'destructive' : 'secondary'}
+                            className="shrink-0 text-[10px]"
+                          >
+                            {remaining} left
+                          </Badge>
+                        </div>
+                        <span className="font-mono text-[10px] text-muted-foreground">
+                          {p.sku}
                         </span>
-                        <span className="font-semibold">
-                          ₹{p.suggestedUnitPrice.toFixed(2)}
-                        </span>
+                        {p.category && (
+                          <Badge variant="outline" className="w-fit text-[10px]">
+                            {p.category.name}
+                          </Badge>
+                        )}
+                        <div className="mt-1 flex items-center justify-between text-[11px]">
+                          <span className="text-muted-foreground">
+                            Cost ₹{p.unitCost.toFixed(2)}
+                          </span>
+                          <span className="font-semibold">
+                            ₹{p.suggestedUnitPrice.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">
+                          {p.profitPct.toFixed(1)}% profit · {p.taxRatePct.toFixed(1)}% tax
+                        </div>
                       </div>
-                      <div className="text-[10px] text-muted-foreground">
-                        {p.profitPct.toFixed(1)}% profit · {p.taxRatePct.toFixed(1)}% tax
-                      </div>
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  )
+                })}
               </div>
             )}
           </CardContent>
@@ -356,7 +378,7 @@ export default function PosPage({ products, categories, customers, filters }: Pa
                                 {l.name}
                               </span>
                               <span className="font-mono text-[10px] text-muted-foreground">
-                                cost ₹{l.unitCost.toFixed(2)}
+                                cost ₹{l.unitCost.toFixed(2)} · stock {l.stockQty}
                               </span>
                             </div>
                             <Button
@@ -378,6 +400,7 @@ export default function PosPage({ products, categories, customers, filters }: Pa
                                 type="number"
                                 step="1"
                                 min="1"
+                                max={l.stockQty}
                                 value={l.qty}
                                 onChange={(e) =>
                                   changeQty(l.productId, Number(e.target.value))
@@ -493,6 +516,7 @@ export default function PosPage({ products, categories, customers, filters }: Pa
                 </Button>
                 <Button
                   type="submit"
+                  variant="success"
                   className="flex-1"
                   disabled={
                     processing || cart.length === 0 || !customerId || totals.total <= 0

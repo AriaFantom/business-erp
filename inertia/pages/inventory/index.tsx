@@ -30,6 +30,11 @@ import {
 import { Badge } from '@/components/ui/badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
+import {
+  ColumnVisibilityMenu,
+  type ColumnDef,
+} from '@/components/data-table/column-visibility'
+import { useColumnVisibility } from '@/hooks/use-column-visibility'
 
 type InventoryRow = {
   itemKind: string
@@ -142,7 +147,7 @@ function AdjustDialog({ items }: { items: AdjustableItem[] }) {
             <Input value={data.note} onChange={(e) => setData('note', e.target.value)} />
           </Field>
           <DialogFooter>
-            <Button type="submit" disabled={processing || !target}>
+            <Button type="submit" variant="success" disabled={processing || !target}>
               {processing ? 'Saving…' : 'Apply'}
             </Button>
           </DialogFooter>
@@ -170,6 +175,26 @@ function Field({
   )
 }
 
+const STOCK_COLUMNS: ColumnDef[] = [
+  { key: 'kind', label: 'Kind' },
+  { key: 'sku', label: 'SKU' },
+  { key: 'name', label: 'Name', required: true },
+  { key: 'qty', label: 'Qty' },
+  { key: 'unit', label: 'Unit' },
+  { key: 'cost', label: 'Avg cost' },
+  { key: 'status', label: 'Status' },
+]
+
+const MOVE_COLUMNS: ColumnDef[] = [
+  { key: 'when', label: 'When' },
+  { key: 'reason', label: 'Reason' },
+  { key: 'kind', label: 'Kind' },
+  { key: 'qty', label: 'Qty', required: true },
+  { key: 'unitCost', label: 'Unit cost' },
+  { key: 'reference', label: 'Reference' },
+  { key: 'note', label: 'Note' },
+]
+
 export default function InventoryPage({
   inventory,
   recentMovements,
@@ -177,6 +202,8 @@ export default function InventoryPage({
   filters,
 }: PageProps) {
   const lowCount = inventory.filter((r) => r.belowThreshold).length
+  const stockCols = useColumnVisibility('inventory.stock')
+  const moveCols = useColumnVisibility('inventory.movements')
   return (
     <div className="flex w-full flex-col gap-6 px-6 py-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -201,6 +228,7 @@ export default function InventoryPage({
               { value: 'all', label: 'All kinds' },
               { value: 'material', label: 'Materials' },
               { value: 'component', label: 'Components' },
+              { value: 'product', label: 'Products' },
             ],
           },
           {
@@ -215,8 +243,14 @@ export default function InventoryPage({
       />
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
           <CardTitle>On hand</CardTitle>
+          <ColumnVisibilityMenu
+            columns={STOCK_COLUMNS}
+            isVisible={stockCols.isVisible}
+            onToggle={stockCols.toggle}
+            onReset={stockCols.reset}
+          />
         </CardHeader>
         <CardContent>
           {inventory.length === 0 ? (
@@ -225,31 +259,45 @@ export default function InventoryPage({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Kind</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead className="text-right">Qty</TableHead>
-                  <TableHead>Unit</TableHead>
-                  <TableHead className="text-right">Avg cost</TableHead>
-                  <TableHead>Status</TableHead>
+                  {stockCols.isVisible('kind') && <TableHead>Kind</TableHead>}
+                  {stockCols.isVisible('sku') && <TableHead>SKU</TableHead>}
+                  {stockCols.isVisible('name') && <TableHead>Name</TableHead>}
+                  {stockCols.isVisible('qty') && (
+                    <TableHead className="text-right">Qty</TableHead>
+                  )}
+                  {stockCols.isVisible('unit') && <TableHead>Unit</TableHead>}
+                  {stockCols.isVisible('cost') && (
+                    <TableHead className="text-right">Avg cost</TableHead>
+                  )}
+                  {stockCols.isVisible('status') && <TableHead>Status</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {inventory.map((r) => (
                   <TableRow key={`${r.itemKind}:${r.itemId}`}>
-                    <TableCell>{r.itemKind}</TableCell>
-                    <TableCell className="font-mono text-xs">{r.itemSku}</TableCell>
-                    <TableCell className="font-medium">{r.itemName}</TableCell>
-                    <TableCell className="text-right">{r.qty}</TableCell>
-                    <TableCell>{r.unit}</TableCell>
-                    <TableCell className="text-right">{r.avgUnitCost}</TableCell>
-                    <TableCell>
-                      {r.belowThreshold ? (
-                        <Badge variant="destructive">Low</Badge>
-                      ) : (
-                        <Badge variant="outline">OK</Badge>
-                      )}
-                    </TableCell>
+                    {stockCols.isVisible('kind') && <TableCell>{r.itemKind}</TableCell>}
+                    {stockCols.isVisible('sku') && (
+                      <TableCell className="font-mono text-xs">{r.itemSku}</TableCell>
+                    )}
+                    {stockCols.isVisible('name') && (
+                      <TableCell className="font-medium">{r.itemName}</TableCell>
+                    )}
+                    {stockCols.isVisible('qty') && (
+                      <TableCell className="text-right">{r.qty}</TableCell>
+                    )}
+                    {stockCols.isVisible('unit') && <TableCell>{r.unit}</TableCell>}
+                    {stockCols.isVisible('cost') && (
+                      <TableCell className="text-right">{r.avgUnitCost}</TableCell>
+                    )}
+                    {stockCols.isVisible('status') && (
+                      <TableCell>
+                        {r.belowThreshold ? (
+                          <Badge variant="destructive">Low</Badge>
+                        ) : (
+                          <Badge variant="outline">OK</Badge>
+                        )}
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
@@ -259,8 +307,14 @@ export default function InventoryPage({
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
           <CardTitle>Recent movements</CardTitle>
+          <ColumnVisibilityMenu
+            columns={MOVE_COLUMNS}
+            isVisible={moveCols.isVisible}
+            onToggle={moveCols.toggle}
+            onReset={moveCols.reset}
+          />
         </CardHeader>
         <CardContent>
           {recentMovements.length === 0 ? (
@@ -269,31 +323,43 @@ export default function InventoryPage({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>When</TableHead>
-                  <TableHead>Reason</TableHead>
-                  <TableHead>Kind</TableHead>
-                  <TableHead className="text-right">Qty</TableHead>
-                  <TableHead className="text-right">Unit cost</TableHead>
-                  <TableHead>Reference</TableHead>
-                  <TableHead>Note</TableHead>
+                  {moveCols.isVisible('when') && <TableHead>When</TableHead>}
+                  {moveCols.isVisible('reason') && <TableHead>Reason</TableHead>}
+                  {moveCols.isVisible('kind') && <TableHead>Kind</TableHead>}
+                  {moveCols.isVisible('qty') && (
+                    <TableHead className="text-right">Qty</TableHead>
+                  )}
+                  {moveCols.isVisible('unitCost') && (
+                    <TableHead className="text-right">Unit cost</TableHead>
+                  )}
+                  {moveCols.isVisible('reference') && <TableHead>Reference</TableHead>}
+                  {moveCols.isVisible('note') && <TableHead>Note</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {recentMovements.map((m) => (
                   <TableRow key={m.id}>
-                    <TableCell className="font-mono text-xs">
-                      {m.createdAt?.slice(0, 19).replace('T', ' ') ?? '—'}
-                    </TableCell>
-                    <TableCell>{m.reason}</TableCell>
-                    <TableCell>{m.itemKind}</TableCell>
-                    <TableCell className="text-right">{m.qty}</TableCell>
-                    <TableCell className="text-right">{m.unitCost}</TableCell>
-                    <TableCell>
-                      {m.referenceType && m.referenceId
-                        ? `${m.referenceType}#${m.referenceId}`
-                        : '—'}
-                    </TableCell>
-                    <TableCell>{m.note ?? '—'}</TableCell>
+                    {moveCols.isVisible('when') && (
+                      <TableCell className="font-mono text-xs">
+                        {m.createdAt?.slice(0, 19).replace('T', ' ') ?? '—'}
+                      </TableCell>
+                    )}
+                    {moveCols.isVisible('reason') && <TableCell>{m.reason}</TableCell>}
+                    {moveCols.isVisible('kind') && <TableCell>{m.itemKind}</TableCell>}
+                    {moveCols.isVisible('qty') && (
+                      <TableCell className="text-right">{m.qty}</TableCell>
+                    )}
+                    {moveCols.isVisible('unitCost') && (
+                      <TableCell className="text-right">{m.unitCost}</TableCell>
+                    )}
+                    {moveCols.isVisible('reference') && (
+                      <TableCell>
+                        {m.referenceType && m.referenceId
+                          ? `${m.referenceType}#${m.referenceId}`
+                          : '—'}
+                      </TableCell>
+                    )}
+                    {moveCols.isVisible('note') && <TableCell>{m.note ?? '—'}</TableCell>}
                   </TableRow>
                 ))}
               </TableBody>
