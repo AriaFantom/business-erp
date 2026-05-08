@@ -75,8 +75,17 @@ type LineDraft = {
   description: string
   qty: number
   unitPrice?: number
+  unitCost?: number
   profitPctOverride?: number
   taxRatePct: number
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100
+}
+
+function computeCustomUnitPrice(cost?: number, profitPct?: number): number {
+  return round2((cost ?? 0) * (1 + (profitPct ?? 0) / 100))
 }
 
 function statusVariant(s: string) {
@@ -120,7 +129,14 @@ function NewQuotationDialog({
   const addCustomLine = () =>
     setData('items', [
       ...data.items,
-      { description: '', qty: 1, unitPrice: 0, taxRatePct: 18 },
+      {
+        description: '',
+        qty: 1,
+        unitCost: 0,
+        profitPctOverride: 0,
+        unitPrice: 0,
+        taxRatePct: 18,
+      },
     ])
 
   const updateLine = (idx: number, patch: Partial<LineDraft>) =>
@@ -229,6 +245,8 @@ function NewQuotationDialog({
                     <TableRow>
                       <TableHead>Description</TableHead>
                       <TableHead>Qty</TableHead>
+                      <TableHead>Unit cost</TableHead>
+                      <TableHead>Profit %</TableHead>
                       <TableHead>Unit price</TableHead>
                       <TableHead>Tax %</TableHead>
                       <TableHead className="text-right">Line total</TableHead>
@@ -237,6 +255,7 @@ function NewQuotationDialog({
                   </TableHeader>
                   <TableBody>
                     {data.items.map((ln, i) => {
+                      const isCustom = !ln.productId
                       const ls = Math.round((ln.qty || 0) * (ln.unitPrice || 0) * 100) / 100
                       const lt =
                         Math.round((ls * (ln.taxRatePct || 0)) / 100 * 100) / 100
@@ -262,11 +281,60 @@ function NewQuotationDialog({
                             />
                           </TableCell>
                           <TableCell>
+                            {isCustom ? (
+                              <Input
+                                type="number"
+                                step="0.0001"
+                                value={ln.unitCost ?? ''}
+                                onChange={(e) => {
+                                  const cost = e.target.value
+                                    ? Number(e.target.value)
+                                    : undefined
+                                  updateLine(i, {
+                                    unitCost: cost,
+                                    unitPrice: computeCustomUnitPrice(
+                                      cost,
+                                      ln.profitPctOverride
+                                    ),
+                                  })
+                                }}
+                                className="w-24"
+                              />
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {isCustom ? (
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={ln.profitPctOverride ?? ''}
+                                onChange={(e) => {
+                                  const profit = e.target.value
+                                    ? Number(e.target.value)
+                                    : undefined
+                                  updateLine(i, {
+                                    profitPctOverride: profit,
+                                    unitPrice: computeCustomUnitPrice(
+                                      ln.unitCost,
+                                      profit
+                                    ),
+                                  })
+                                }}
+                                className="w-20"
+                              />
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
                             <Input
                               type="number"
                               step="0.0001"
                               value={ln.unitPrice ?? ''}
                               placeholder={ln.productId ? 'auto' : '0'}
+                              readOnly={isCustom}
                               onChange={(e) =>
                                 updateLine(i, {
                                   unitPrice: e.target.value

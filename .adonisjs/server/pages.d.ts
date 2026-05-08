@@ -18,6 +18,7 @@ declare module '@adonisjs/inertia/types' {
     'catalog/components': ExtractProps<(typeof import('../../inertia/pages/catalog/components.tsx'))['default']>
     'catalog/materials': ExtractProps<(typeof import('../../inertia/pages/catalog/materials.tsx'))['default']>
     'catalog/products': ExtractProps<(typeof import('../../inertia/pages/catalog/products.tsx'))['default']>
+    'catalog/products/show': ExtractProps<(typeof import('../../inertia/pages/catalog/products/show.tsx'))['default']>
     'customers/index': ExtractProps<(typeof import('../../inertia/pages/customers/index.tsx'))['default']>
     'dashboard': ExtractProps<(typeof import('../../inertia/pages/dashboard.tsx'))['default']>
     'errors/not_found': ExtractProps<(typeof import('../../inertia/pages/errors/not_found.tsx'))['default']>
@@ -42,6 +43,5 @@ declare module '@adonisjs/inertia/types' {
     'system/invitations': ExtractProps<(typeof import('../../inertia/pages/system/invitations.tsx'))['default']>
     'system/roles': ExtractProps<(typeof import('../../inertia/pages/system/roles.tsx'))['default']>
     'system/users': ExtractProps<(typeof import('../../inertia/pages/system/users.tsx'))['default']>
-    'catalog/products/show': ExtractProps<(typeof import('../../inertia/pages/catalog/products/show.tsx'))['default']>
   }
 }
