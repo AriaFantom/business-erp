@@ -7,7 +7,7 @@ import {
   uploadCatalogImageValidator,
   uploadProductFileValidator,
 } from '#validators/catalog'
-import { getProductsViewModel } from '#services/catalog_view_models'
+import { getProductsViewModel, getProductShowViewModel } from '#services/catalog_view_models'
 import { audit } from '#services/audit'
 import { storeCatalogImage, removeCatalogImage } from '#services/catalog_image_storage'
 import {
@@ -35,6 +35,12 @@ export default class ProductsController {
         categoryId: qs.categoryId ? String(qs.categoryId) : 'all',
       },
     })
+  }
+
+  async show({ params, inertia, bouncer }: HttpContext) {
+    await bouncer.authorize('products.view' as never)
+    const data = await getProductShowViewModel(Number(params.id))
+    return inertia.render('catalog/products/show', data)
   }
 
   async updateImage({ params, request, auth, bouncer, response, session }: HttpContext) {

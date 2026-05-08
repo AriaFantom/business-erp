@@ -270,6 +270,12 @@ const routes = {
     tokens: [{"old":"/catalog/products","type":0,"val":"catalog","end":""},{"old":"/catalog/products","type":0,"val":"products","end":""}],
     types: placeholder as Registry['products.store']['types'],
   },
+  'products.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/catalog/products/:id',
+    tokens: [{"old":"/catalog/products/:id","type":0,"val":"catalog","end":""},{"old":"/catalog/products/:id","type":0,"val":"products","end":""},{"old":"/catalog/products/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['products.show']['types'],
+  },
   'products.update': {
     methods: ["POST"],
     pattern: '/catalog/products/:id',

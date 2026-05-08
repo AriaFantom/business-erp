@@ -20,7 +20,6 @@ export type QuotationPdfData = {
     description: string
     qty: number
     unitPrice: string
-    profitPctUsed: string | null
     taxRatePct: string
     lineSubtotal: string
     lineTax: string

@@ -15,6 +15,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import DashboardLayout from '@/layouts/dashboard-layout'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { userInitials } from '@/lib/user'
 import type { InertiaProps } from '@/types'
 
@@ -145,10 +146,10 @@ function AvatarCard({
     )
   }
 
-  const onRemove = () => {
-    if (!window.confirm('Remove your avatar?')) return
+  const [removeOpen, setRemoveOpen] = useState(false)
+  const onRemove = () => setRemoveOpen(true)
+  const confirmRemove = () =>
     router.post('/profile/avatar/delete', {}, { preserveScroll: true })
-  }
 
   const displayUrl = previewUrl ?? avatarUrl ?? undefined
 
@@ -198,6 +199,15 @@ function AvatarCard({
           {uploadError && <p className="text-sm text-destructive">{uploadError}</p>}
         </div>
       </CardContent>
+      <ConfirmDialog
+        open={removeOpen}
+        onOpenChange={setRemoveOpen}
+        title="Remove your avatar?"
+        description="Your avatar will be deleted from storage. You can upload a new one later."
+        confirmLabel="Remove"
+        variant="destructive"
+        onConfirm={confirmRemove}
+      />
     </Card>
   )
 }

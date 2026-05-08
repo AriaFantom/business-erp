@@ -120,6 +120,7 @@ router
 
     router.get('catalog/products', [ProductsController, 'index']).as('products.index')
     router.post('catalog/products', [ProductsController, 'store']).as('products.store')
+    router.get('catalog/products/:id', [ProductsController, 'show']).as('products.show')
     router.post('catalog/products/:id', [ProductsController, 'update']).as('products.update')
     router
       .post('catalog/products/:id/archive', [ProductsController, 'archive'])

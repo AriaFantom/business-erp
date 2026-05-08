@@ -48,6 +48,7 @@ export type ScannedRoutes = {
     'components.image.destroy': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'products.index': { paramsTuple?: []; params?: {} }
     'products.store': { paramsTuple?: []; params?: {} }
+    'products.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'products.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'products.archive': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'products.restore': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
@@ -119,6 +120,7 @@ export type ScannedRoutes = {
     'materials.index': { paramsTuple?: []; params?: {} }
     'components.index': { paramsTuple?: []; params?: {} }
     'products.index': { paramsTuple?: []; params?: {} }
+    'products.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'products.files.index': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'products.files.download': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'fileId': ParamValue} }
     'products.qr': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
@@ -156,6 +158,7 @@ export type ScannedRoutes = {
     'materials.index': { paramsTuple?: []; params?: {} }
     'components.index': { paramsTuple?: []; params?: {} }
     'products.index': { paramsTuple?: []; params?: {} }
+    'products.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'products.files.index': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'products.files.download': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'fileId': ParamValue} }
     'products.qr': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }

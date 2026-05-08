@@ -1,6 +1,8 @@
-import { useMemo, type ReactElement } from 'react'
+import { useMemo, useState, type ReactElement } from 'react'
 import { router, useForm, usePage } from '@inertiajs/react'
 import { Plus, Trash2 } from 'lucide-react'
+
+import { ConfirmDialog } from '@/components/confirm-dialog'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -371,17 +373,10 @@ export default function SystemRoles({ roles, permissionCatalog }: RolesPageProps
                   </span>
                 </div>
                 {canDeleteRole && !role.isSystem && role.assignable && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => {
-                      if (!window.confirm(`Delete role "${role.displayName}"?`)) return
-                      router.post(`/roles/${role.id}/delete`, {}, { preserveScroll: true })
-                    }}
-                  >
-                    <Trash2 />
-                  </Button>
+                  <DeleteRoleButton
+                    roleId={role.id}
+                    roleName={role.displayName}
+                  />
                 )}
               </div>
             ))}
@@ -389,6 +384,33 @@ export default function SystemRoles({ roles, permissionCatalog }: RolesPageProps
         </Card>
       </div>
     </div>
+  )
+}
+
+function DeleteRoleButton({ roleId, roleName }: { roleId: number; roleName: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        onClick={() => setOpen(true)}
+      >
+        <Trash2 />
+      </Button>
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title={`Delete role "${roleName}"?`}
+        description="The role will be removed and any users assigned to it will lose those permissions."
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={() =>
+          router.post(`/roles/${roleId}/delete`, {}, { preserveScroll: true })
+        }
+      />
+    </>
   )
 }
 

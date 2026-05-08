@@ -129,17 +129,6 @@ function NewQuotationDialog({
       data.items.map((l, i) => (i === idx ? { ...l, ...patch } : l))
     )
 
-  const setLineProfit = (idx: number, profitPctOverride: number | undefined) => {
-    const ln = data.items[idx]
-    const p = ln?.productId ? products.find((pp) => pp.id === ln.productId) : null
-    if (p && profitPctOverride !== undefined) {
-      const recomputed = Math.round(p.unitCost * (1 + profitPctOverride / 100) * 100) / 100
-      updateLine(idx, { profitPctOverride, unitPrice: recomputed })
-    } else {
-      updateLine(idx, { profitPctOverride })
-    }
-  }
-
   const subtotals = data.items.reduce(
     (acc, ln) => {
       const ls = Math.round((ln.qty || 0) * (ln.unitPrice || 0) * 100) / 100
@@ -241,7 +230,6 @@ function NewQuotationDialog({
                       <TableHead>Description</TableHead>
                       <TableHead>Qty</TableHead>
                       <TableHead>Unit price</TableHead>
-                      <TableHead>Profit %</TableHead>
                       <TableHead>Tax %</TableHead>
                       <TableHead className="text-right">Line total</TableHead>
                       <TableHead></TableHead>
@@ -287,21 +275,6 @@ function NewQuotationDialog({
                                 })
                               }
                               className="w-28"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={ln.profitPctOverride ?? ''}
-                              placeholder="default"
-                              onChange={(e) =>
-                                setLineProfit(
-                                  i,
-                                  e.target.value ? Number(e.target.value) : undefined
-                                )
-                              }
-                              className="w-20"
                             />
                           </TableCell>
                           <TableCell>

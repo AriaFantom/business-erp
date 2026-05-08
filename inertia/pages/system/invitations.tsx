@@ -1,7 +1,9 @@
-import { useMemo, type ReactElement } from 'react'
+import { useMemo, useState, type ReactElement } from 'react'
 import { Form } from '@adonisjs/inertia/react'
 import { router, usePage } from '@inertiajs/react'
 import { MoreHorizontal, Send } from 'lucide-react'
+
+import { ConfirmDialog } from '@/components/confirm-dialog'
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -205,24 +207,10 @@ export default function SystemInvitations({
                       )}
                       {canResend && canRevoke && <DropdownMenuSeparator />}
                       {canRevoke && (
-                        <DropdownMenuItem
-                          variant="destructive"
-                          onSelect={() => {
-                            if (
-                              !window.confirm(
-                                `Revoke invitation${invite.email ? ` for ${invite.email}` : ''}?`
-                              )
-                            )
-                              return
-                            router.post(
-                              `/invitations/${invite.id}/revoke`,
-                              {},
-                              { preserveScroll: true }
-                            )
-                          }}
-                        >
-                          Revoke
-                        </DropdownMenuItem>
+                        <RevokeInvitationItem
+                          invitationId={invite.id}
+                          email={invite.email}
+                        />
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -233,6 +221,40 @@ export default function SystemInvitations({
         </Card>
       </div>
     </div>
+  )
+}
+
+function RevokeInvitationItem({
+  invitationId,
+  email,
+}: {
+  invitationId: number
+  email: string | null
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <DropdownMenuItem
+        variant="destructive"
+        onSelect={(e) => {
+          e.preventDefault()
+          setOpen(true)
+        }}
+      >
+        Revoke
+      </DropdownMenuItem>
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title={`Revoke invitation${email ? ` for ${email}` : ''}?`}
+        description="The invitation link will stop working immediately."
+        confirmLabel="Revoke"
+        variant="destructive"
+        onConfirm={() =>
+          router.post(`/invitations/${invitationId}/revoke`, {}, { preserveScroll: true })
+        }
+      />
+    </>
   )
 }
 

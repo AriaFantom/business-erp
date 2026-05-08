@@ -1,6 +1,7 @@
-import { type ReactElement } from 'react'
+import { type ReactElement, useState } from 'react'
 import { useForm } from '@inertiajs/react'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
@@ -59,17 +60,28 @@ function PostAction({
   confirmText?: string
 }) {
   const { post, processing } = useForm()
+  const [open, setOpen] = useState(false)
+  const submit = () => post(path, { preserveScroll: true })
   return (
-    <Button
-      variant={variant}
-      disabled={processing}
-      onClick={() => {
-        if (confirmText && !window.confirm(confirmText)) return
-        post(path, { preserveScroll: true })
-      }}
-    >
-      {label}
-    </Button>
+    <>
+      <Button
+        variant={variant}
+        disabled={processing}
+        onClick={() => (confirmText ? setOpen(true) : submit())}
+      >
+        {label}
+      </Button>
+      {confirmText && (
+        <ConfirmDialog
+          open={open}
+          onOpenChange={setOpen}
+          title={confirmText}
+          confirmLabel={label}
+          variant={variant === 'destructive' ? 'destructive' : 'default'}
+          onConfirm={submit}
+        />
+      )}
+    </>
   )
 }
 
@@ -142,7 +154,6 @@ export default function QuotationShow({ quotation, items }: PageProps) {
                   <TableHead>Product</TableHead>
                   <TableHead className="text-right">Qty</TableHead>
                   <TableHead className="text-right">Unit price</TableHead>
-                  <TableHead className="text-right">Profit %</TableHead>
                   <TableHead className="text-right">Tax %</TableHead>
                   <TableHead className="text-right">Subtotal</TableHead>
                   <TableHead className="text-right">Tax</TableHead>
@@ -156,7 +167,6 @@ export default function QuotationShow({ quotation, items }: PageProps) {
                     <TableCell>{it.productName ?? '—'}</TableCell>
                     <TableCell className="text-right">{it.qty}</TableCell>
                     <TableCell className="text-right">{it.unitPrice}</TableCell>
-                    <TableCell className="text-right">{it.profitPctUsed ?? '—'}</TableCell>
                     <TableCell className="text-right">{it.taxRatePct}</TableCell>
                     <TableCell className="text-right">{it.lineSubtotal}</TableCell>
                     <TableCell className="text-right">{it.lineTax}</TableCell>

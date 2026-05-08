@@ -266,6 +266,98 @@ export async function getProductsViewModel(filters: ListFilters & { categoryId?:
   }
 }
 
+export type ProductShowData = {
+  product: {
+    id: number
+    sku: string
+    name: string
+    description: string | null
+    category: { id: number; name: string } | null
+    defaultProfitPct: string | null
+    taxRatePct: string | null
+    imageUrl: string | null
+    isActive: boolean
+    inProductionQty: number
+    soldQty: number
+    createdAt: string | null
+    updatedAt: string | null
+  }
+  attachments: Array<{
+    id: number
+    originalName: string
+    sizeBytes: number
+    mimeType: string | null
+    createdAt: string | null
+  }>
+}
+
+export async function getProductShowViewModel(id: number): Promise<ProductShowData> {
+  const product = await Product.query().where('id', id).preload('category').firstOrFail()
+  const [imageUrl, attachments, productionRow, soldRow] = await Promise.all([
+    signCatalogImageUrl(product.imageKey),
+    db
+      .from('product_attachments')
+      .where('product_id', id)
+      .orderBy('created_at', 'desc')
+      .select('id', 'original_name', 'size_bytes', 'mime_type', 'created_at'),
+    db
+      .from('production_jobs')
+      .where('product_id', id)
+      .where('status', 'in_progress')
+      .sum({ planned: 'planned_qty' })
+      .sum({ produced: 'produced_qty' })
+      .first(),
+    db
+      .from('sale_items')
+      .join('sales', 'sales.id', 'sale_items.sale_id')
+      .where('sale_items.product_id', id)
+      .where('sales.status', 'confirmed')
+      .sum({ qty: 'sale_items.qty' })
+      .first(),
+  ])
+  const planned = Number(productionRow?.planned ?? 0)
+  const produced = Number(productionRow?.produced ?? 0)
+  const inProductionQty = Math.max(0, planned - produced)
+  const soldQty = Number(soldRow?.qty ?? 0)
+  return {
+    product: {
+      id: product.id,
+      sku: product.sku,
+      name: product.name,
+      description: product.description,
+      category: product.category ? { id: product.category.id, name: product.category.name } : null,
+      defaultProfitPct: product.defaultProfitPct,
+      taxRatePct: product.taxRatePct,
+      imageUrl,
+      isActive: product.isActive,
+      inProductionQty,
+      soldQty,
+      createdAt: product.createdAt?.toISO() ?? null,
+      updatedAt: product.updatedAt?.toISO() ?? null,
+    },
+    attachments: (
+      attachments as Array<{
+        id: number
+        original_name: string
+        size_bytes: number | string
+        mime_type: string | null
+        created_at: Date | string | null
+      }>
+    ).map((a) => ({
+      id: Number(a.id),
+      originalName: String(a.original_name),
+      sizeBytes: Number(a.size_bytes),
+      mimeType: a.mime_type,
+      createdAt:
+        a.created_at instanceof Date
+          ? a.created_at.toISOString()
+          : a.created_at
+            ? String(a.created_at)
+            : null,
+    })),
+  }
+}
+
 export type ProductCategoryRow = {
   id: number
   name: string

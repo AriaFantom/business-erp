@@ -63,10 +63,6 @@ function round2(n: number) {
   return Math.round(n * 100) / 100
 }
 
-function priceFromProfit(cost: number, profitPct: number): number {
-  return round2(cost * (1 + profitPct / 100))
-}
-
 export default function PosPage({ products, categories, customers, filters }: PageProps) {
   const [cart, setCart] = useState<CartLine[]>([])
   const [customerId, setCustomerId] = useState<string>(
@@ -134,15 +130,6 @@ export default function PosPage({ products, categories, customers, filters }: Pa
     const line = cart.find((l) => l.productId === productId)
     const clamped = line ? Math.min(qty, line.stockQty) : qty
     patchLine(productId, { qty: clamped })
-  }
-
-  function changeProfit(productId: number, profitPct: number) {
-    const line = cart.find((l) => l.productId === productId)
-    if (!line) return
-    patchLine(productId, {
-      profitPct,
-      unitPrice: priceFromProfit(line.unitCost, profitPct),
-    })
   }
 
   function changePrice(productId: number, unitPrice: number) {
@@ -317,7 +304,7 @@ export default function PosPage({ products, categories, customers, filters }: Pa
                           </span>
                         </div>
                         <div className="text-[10px] text-muted-foreground">
-                          {p.profitPct.toFixed(1)}% profit · {p.taxRatePct.toFixed(1)}% tax
+                          {p.taxRatePct.toFixed(1)}% tax
                         </div>
                       </div>
                     </button>
@@ -391,7 +378,7 @@ export default function PosPage({ products, categories, customers, filters }: Pa
                               <Trash2 className="size-4" />
                             </Button>
                           </div>
-                          <div className="grid grid-cols-4 gap-1">
+                          <div className="grid grid-cols-3 gap-1">
                             <div className="flex flex-col gap-1">
                               <span className="text-[10px] text-muted-foreground">
                                 Qty
@@ -404,20 +391,6 @@ export default function PosPage({ products, categories, customers, filters }: Pa
                                 value={l.qty}
                                 onChange={(e) =>
                                   changeQty(l.productId, Number(e.target.value))
-                                }
-                              />
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <span className="text-[10px] text-muted-foreground">
-                                Profit %
-                              </span>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={l.profitPct}
-                                onChange={(e) =>
-                                  changeProfit(l.productId, Number(e.target.value))
                                 }
                               />
                             </div>

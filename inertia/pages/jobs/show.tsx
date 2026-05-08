@@ -1,6 +1,7 @@
 import { type ReactElement, useState } from 'react'
 import { useForm } from '@inertiajs/react'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
@@ -100,17 +101,28 @@ function PostAction({
   confirmText?: string
 }) {
   const { post, processing } = useForm()
+  const [open, setOpen] = useState(false)
+  const submit = () => post(path, { preserveScroll: true })
   return (
-    <Button
-      variant={variant}
-      disabled={processing}
-      onClick={() => {
-        if (confirmText && !window.confirm(confirmText)) return
-        post(path, { preserveScroll: true })
-      }}
-    >
-      {label}
-    </Button>
+    <>
+      <Button
+        variant={variant}
+        disabled={processing}
+        onClick={() => (confirmText ? setOpen(true) : submit())}
+      >
+        {label}
+      </Button>
+      {confirmText && (
+        <ConfirmDialog
+          open={open}
+          onOpenChange={setOpen}
+          title={confirmText}
+          confirmLabel={label}
+          variant={variant === 'destructive' ? 'destructive' : 'default'}
+          onConfirm={submit}
+        />
+      )}
+    </>
   )
 }
 

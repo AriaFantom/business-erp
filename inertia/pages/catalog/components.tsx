@@ -29,7 +29,8 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
-import { ImageUploader } from '@/components/catalog/image-uploader'
+import { ConfirmDialog } from '@/components/confirm-dialog'
+import { AvatarUploader } from '@/components/catalog/avatar-uploader'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
 import { UnitPicker } from '@/components/catalog/unit-picker'
@@ -203,17 +204,27 @@ function Field({
 
 function ArchiveAction({ path, name }: { path: string; name: string }) {
   const { post, processing } = useForm()
+  const [open, setOpen] = useState(false)
   return (
-    <Button
-      variant="destructive"
-      size="sm"
-      disabled={processing}
-      onClick={() => {
-        if (window.confirm(`Archive ${name}?`)) post(path, { preserveScroll: true })
-      }}
-    >
-      Archive
-    </Button>
+    <>
+      <Button
+        variant="destructive"
+        size="sm"
+        disabled={processing}
+        onClick={() => setOpen(true)}
+      >
+        Archive
+      </Button>
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title={`Archive ${name}?`}
+        description="The component will be hidden from new purchases and jobs. You can reactivate it later."
+        confirmLabel="Archive"
+        variant="destructive"
+        onConfirm={() => post(path, { preserveScroll: true })}
+      />
+    </>
   )
 }
 
@@ -229,23 +240,6 @@ function RestoreAction({ path, name }: { path: string; name: string }) {
     >
       Restore
     </Button>
-  )
-}
-
-function Thumb({ url, alt }: { url: string | null; alt: string }) {
-  if (!url)
-    return (
-      <div className="flex h-10 w-10 items-center justify-center rounded bg-muted text-[10px] text-muted-foreground">
-        —
-      </div>
-    )
-  return (
-    <img
-      src={url}
-      alt={alt}
-      className="h-10 w-10 rounded object-cover"
-      loading="lazy"
-    />
   )
 }
 
@@ -354,7 +348,11 @@ export default function ComponentsPage({ components, suppliers, filters, counts 
                   <TableRow key={c.id}>
                     {isVisible('image') && (
                       <TableCell>
-                        <Thumb url={c.imageUrl} alt={c.name} />
+                        <AvatarUploader
+                          uploadPath={`/catalog/components/${c.id}/image`}
+                          imageUrl={c.imageUrl}
+                          alt={c.name}
+                        />
                       </TableCell>
                     )}
                     {isVisible('sku') && (
@@ -385,11 +383,6 @@ export default function ComponentsPage({ components, suppliers, filters, counts 
                     {isVisible('actions') && (
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <ImageUploader
-                            uploadPath={`/catalog/components/${c.id}/image`}
-                            deletePath={`/catalog/components/${c.id}/image/delete`}
-                            hasImage={!!c.imageUrl}
-                          />
                           {c.isActive ? (
                             <ArchiveAction
                               path={`/catalog/components/${c.id}/archive`}

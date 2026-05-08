@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { router } from '@inertiajs/react'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import {
   Dialog,
   DialogContent,
@@ -45,6 +46,7 @@ export function ProductFilesDialog({ productId, productName, initialCount }: Pro
   const [files, setFiles] = useState<Attachment[]>([])
   const [loading, setLoading] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [pending, setPending] = useState<Attachment | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
 
   async function refresh() {
@@ -90,18 +92,17 @@ export function ProductFilesDialog({ productId, productName, initialCount }: Pro
     )
   }
 
-  function remove(id: number, name: string) {
-    if (busy) return
-    if (!window.confirm(`Remove "${name}"?`)) return
+  function confirmRemove(file: Attachment) {
     setBusy(true)
     router.post(
-      `/catalog/products/${productId}/files/${id}/delete`,
+      `/catalog/products/${productId}/files/${file.id}/delete`,
       {},
       {
         preserveScroll: true,
         onFinish: () => {
           setBusy(false)
           refresh()
+          setPending(null)
         },
       }
     )
@@ -173,7 +174,7 @@ export function ProductFilesDialog({ productId, productName, initialCount }: Pro
                         size="icon"
                         aria-label="Delete"
                         disabled={busy}
-                        onClick={() => remove(f.id, f.originalName)}
+                        onClick={() => setPending(f)}
                       >
                         <Trash2 className="size-4" />
                       </Button>
@@ -184,6 +185,15 @@ export function ProductFilesDialog({ productId, productName, initialCount }: Pro
             </TableBody>
           </Table>
         )}
+        <ConfirmDialog
+          open={pending !== null}
+          onOpenChange={(o) => !o && setPending(null)}
+          title={pending ? `Remove "${pending.originalName}"?` : ''}
+          description="The file will be deleted from object storage. This cannot be undone."
+          confirmLabel="Remove"
+          variant="destructive"
+          onConfirm={() => pending && confirmRemove(pending)}
+        />
       </DialogContent>
     </Dialog>
   )

@@ -1,5 +1,6 @@
 import { type ReactElement, useState } from 'react'
 import { router, useForm } from '@inertiajs/react'
+import { Link } from '@adonisjs/inertia/react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -29,7 +30,6 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
-import { ImageUploader } from '@/components/catalog/image-uploader'
 import { AvatarUploader } from '@/components/catalog/avatar-uploader'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
@@ -428,17 +428,15 @@ export default function ProductsPage({ products, categories, filters, counts }: 
                     {isVisible('actions') && (
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
+                          <Button asChild variant="outline" size="sm">
+                            <Link href={`/catalog/products/${p.id}`}>View</Link>
+                          </Button>
                           <ProductFilesDialog
                             productId={p.id}
                             productName={p.name}
                             initialCount={p.attachmentCount}
                           />
                           <ProductQrDialog productId={p.id} productName={p.name} />
-                          <ImageUploader
-                            uploadPath={`/catalog/products/${p.id}/image`}
-                            deletePath={`/catalog/products/${p.id}/image/delete`}
-                            hasImage={!!p.imageUrl}
-                          />
                           {p.isActive ? (
                             <ArchiveAction
                               path={`/catalog/products/${p.id}/archive`}

@@ -31,6 +31,7 @@ import DashboardLayout from '@/layouts/dashboard-layout'
 import { Archive, CheckCircle2, Truck, XCircle } from 'lucide-react'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 
 type Row = {
   id: number
@@ -255,19 +256,28 @@ function ArchiveAction({
   confirmText: string
 }) {
   const { post, processing } = useForm()
+  const [open, setOpen] = useState(false)
   return (
-    <Button
-      variant="destructive"
-      size="icon"
-      disabled={processing}
-      aria-label="Archive supplier"
-      title="Archive"
-      onClick={() => {
-        if (window.confirm(confirmText)) post(path, { preserveScroll: true })
-      }}
-    >
-      <Archive className="size-4" />
-    </Button>
+    <>
+      <Button
+        variant="destructive"
+        size="icon"
+        disabled={processing}
+        aria-label="Archive supplier"
+        title="Archive"
+        onClick={() => setOpen(true)}
+      >
+        <Archive className="size-4" />
+      </Button>
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title={confirmText}
+        confirmLabel="Archive"
+        variant="destructive"
+        onConfirm={() => post(path, { preserveScroll: true })}
+      />
+    </>
   )
 }
 

@@ -74,6 +74,7 @@ export interface ApiDefinition {
   products: {
     index: typeof routes['products.index']
     store: typeof routes['products.store']
+    show: typeof routes['products.show']
     update: typeof routes['products.update']
     archive: typeof routes['products.archive']
     restore: typeof routes['products.restore']
