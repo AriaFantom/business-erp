@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
+import { Download } from 'lucide-react'
 
 type Quotation = {
   id: number
@@ -85,6 +86,12 @@ export default function QuotationShow({ quotation, items }: PageProps) {
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline">{quotation.status}</Badge>
+          <Button asChild variant="outline">
+            <a href={`/quotations/${quotation.id}/download`}>
+              <Download className="size-4" />
+              Download PDF
+            </a>
+          </Button>
           {quotation.status === 'draft' && (
             <PostAction path={`/quotations/${quotation.id}/send`} label="Send" />
           )}

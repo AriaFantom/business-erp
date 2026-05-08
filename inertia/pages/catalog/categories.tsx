@@ -20,17 +20,34 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
+import { StatCard } from '@/components/catalog/stat-card'
+import { ConfirmDialog } from '@/components/confirm-dialog'
+import { Tag, CheckCircle2, XCircle } from 'lucide-react'
+import {
+  ColumnVisibilityMenu,
+  type ColumnDef,
+} from '@/components/data-table/column-visibility'
+import { useColumnVisibility } from '@/hooks/use-column-visibility'
 
 type Row = {
   id: number
   name: string
   defaultProfitPct: string | null
   taxRatePct: string | null
+  isActive: boolean
+  totalSales: number
+  totalUnitsSold: number
+  productCount: number
 }
 
-type PageProps = { categories: Row[]; filters: { q: string } }
+type Filters = { q: string; status: string }
+
+type Counts = { total: number; active: number; archived: number }
+
+type PageProps = { categories: Row[]; filters: Filters; counts: Counts }
 
 function NewCategoryDialog() {
   const [open, setOpen] = useState(false)
@@ -69,27 +86,27 @@ function NewCategoryDialog() {
             })
           }}
         >
-          <Row label="Name" error={errors.name}>
+          <Field label="Name" error={errors.name}>
             <Input value={data.name} onChange={(e) => setData('name', e.target.value)} />
-          </Row>
-          <Row label="Default profit %" error={errors.defaultProfitPct}>
+          </Field>
+          <Field label="Default profit %" error={errors.defaultProfitPct}>
             <Input
               type="number"
               step="0.01"
               value={data.defaultProfitPct}
               onChange={(e) => setData('defaultProfitPct', e.target.value)}
             />
-          </Row>
-          <Row label="Tax rate %" error={errors.taxRatePct}>
+          </Field>
+          <Field label="Tax rate %" error={errors.taxRatePct}>
             <Input
               type="number"
               step="0.01"
               value={data.taxRatePct}
               onChange={(e) => setData('taxRatePct', e.target.value)}
             />
-          </Row>
+          </Field>
           <DialogFooter>
-            <Button type="submit" disabled={processing}>
+            <Button type="submit" variant="success" disabled={processing}>
               {processing ? 'Saving…' : 'Create'}
             </Button>
           </DialogFooter>
@@ -99,7 +116,7 @@ function NewCategoryDialog() {
   )
 }
 
-function Row({
+function Field({
   label,
   error,
   children,
@@ -117,23 +134,63 @@ function Row({
   )
 }
 
-function DeleteAction({ path, name }: { path: string; name: string }) {
+function ArchiveAction({ path, name }: { path: string; name: string }) {
+  const { post, processing } = useForm()
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <Button
+        variant="destructive"
+        size="sm"
+        disabled={processing}
+        onClick={() => setOpen(true)}
+      >
+        Archive
+      </Button>
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title={`Archive ${name}?`}
+        description="The category will be hidden from new product assignments. You can reactivate it later."
+        confirmLabel="Archive"
+        variant="destructive"
+        onConfirm={() => post(path, { preserveScroll: true })}
+      />
+    </>
+  )
+}
+
+function RestoreAction({ path, name }: { path: string; name: string }) {
   const { post, processing } = useForm()
   return (
     <Button
-      variant="ghost"
+      variant="outline"
       size="sm"
       disabled={processing}
-      onClick={() => {
-        if (window.confirm(`Delete category "${name}"?`)) post(path, { preserveScroll: true })
-      }}
+      onClick={() => post(path, { preserveScroll: true })}
+      title={`Restore ${name}`}
     >
-      Delete
+      Restore
     </Button>
   )
 }
 
-export default function CategoriesPage({ categories, filters }: PageProps) {
+function formatMoney(n: number): string {
+  return `₹${n.toFixed(2)}`
+}
+
+const CATEGORY_COLUMNS: ColumnDef[] = [
+  { key: 'name', label: 'Name', required: true },
+  { key: 'profit', label: 'Default profit %' },
+  { key: 'tax', label: 'Tax %' },
+  { key: 'products', label: 'Products' },
+  { key: 'sales', label: 'Total sales' },
+  { key: 'status', label: 'Status' },
+  { key: 'actions', label: 'Actions', required: true },
+]
+
+export default function CategoriesPage({ categories, filters, counts }: PageProps) {
+  const { isVisible, toggle, reset } = useColumnVisibility('catalog.categories')
   return (
     <div className="flex w-full flex-col gap-6 px-6 py-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -146,10 +203,45 @@ export default function CategoriesPage({ categories, filters }: PageProps) {
         <NewCategoryDialog />
       </div>
 
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatCard
+          label="Total"
+          value={counts.total}
+          icon={Tag}
+          href="/catalog/categories"
+          active={filters.status === 'all'}
+        />
+        <StatCard
+          label="Active"
+          value={counts.active}
+          icon={CheckCircle2}
+          href="/catalog/categories?status=active"
+          active={filters.status !== 'archived' && filters.status !== 'all'}
+        />
+        <StatCard
+          label="Archived"
+          value={counts.archived}
+          icon={XCircle}
+          href="/catalog/categories?status=archived"
+          active={filters.status === 'archived'}
+        />
+      </div>
+
       <ListToolbar
         basePath="/catalog/categories"
         q={filters.q}
         searchPlaceholder="Search categories…"
+        selects={[
+          {
+            name: 'status',
+            value: filters.status,
+            options: [
+              { value: 'all', label: 'All statuses' },
+              { value: 'active', label: 'Active' },
+              { value: 'archived', label: 'Archived' },
+            ],
+          },
+        ]}
       />
 
       <Card>
@@ -158,29 +250,90 @@ export default function CategoriesPage({ categories, filters }: PageProps) {
         </CardHeader>
         <CardContent>
           {categories.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No categories yet.</p>
+            <p className="text-sm text-muted-foreground">No categories match the filters.</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Default profit %</TableHead>
-                  <TableHead>Tax %</TableHead>
-                  <TableHead className="w-32 text-right">Actions</TableHead>
+                  {isVisible('name') && <TableHead>Name</TableHead>}
+                  {isVisible('profit') && <TableHead>Default profit %</TableHead>}
+                  {isVisible('tax') && <TableHead>Tax %</TableHead>}
+                  {isVisible('products') && (
+                    <TableHead className="text-right">Products</TableHead>
+                  )}
+                  {isVisible('sales') && (
+                    <TableHead className="text-right">Total sales</TableHead>
+                  )}
+                  {isVisible('status') && <TableHead>Status</TableHead>}
+                  {isVisible('actions') && (
+                    <TableHead className="w-40 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <span>Actions</span>
+                        <ColumnVisibilityMenu
+                          columns={CATEGORY_COLUMNS}
+                          isVisible={isVisible}
+                          onToggle={toggle}
+                          onReset={reset}
+                          compact
+                        />
+                      </div>
+                    </TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {categories.map((c) => (
                   <TableRow key={c.id}>
-                    <TableCell className="font-medium">{c.name}</TableCell>
-                    <TableCell>{c.defaultProfitPct ?? '—'}</TableCell>
-                    <TableCell>{c.taxRatePct ?? '—'}</TableCell>
-                    <TableCell className="text-right">
-                      <DeleteAction
-                        path={`/catalog/categories/${c.id}/delete`}
-                        name={c.name}
-                      />
-                    </TableCell>
+                    {isVisible('name') && (
+                      <TableCell className="font-medium">{c.name}</TableCell>
+                    )}
+                    {isVisible('profit') && (
+                      <TableCell>{c.defaultProfitPct ?? '—'}</TableCell>
+                    )}
+                    {isVisible('tax') && <TableCell>{c.taxRatePct ?? '—'}</TableCell>}
+                    {isVisible('products') && (
+                      <TableCell className="text-right tabular-nums">
+                        {c.productCount}
+                      </TableCell>
+                    )}
+                    {isVisible('sales') && (
+                      <TableCell className="text-right tabular-nums">
+                        <div className="flex flex-col items-end">
+                          <span>{formatMoney(c.totalSales)}</span>
+                          {c.totalUnitsSold > 0 && (
+                            <span className="text-xs text-muted-foreground">
+                              {c.totalUnitsSold} units
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                    )}
+                    {isVisible('status') && (
+                      <TableCell>
+                        {c.isActive ? (
+                          <Badge variant="outline">Active</Badge>
+                        ) : (
+                          <Badge variant="secondary">Archived</Badge>
+                        )}
+                      </TableCell>
+                    )}
+                    {isVisible('actions') && (
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          {c.isActive ? (
+                            <ArchiveAction
+                              path={`/catalog/categories/${c.id}/archive`}
+                              name={c.name}
+                            />
+                          ) : (
+                            <RestoreAction
+                              path={`/catalog/categories/${c.id}/restore`}
+                              name={c.name}
+                            />
+                          )}
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>

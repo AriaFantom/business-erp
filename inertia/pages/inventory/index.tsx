@@ -135,7 +135,18 @@ function AdjustDialog({ items }: { items: AdjustableItem[] }) {
               </SelectContent>
             </Select>
           </Field>
-          <Field label="Qty delta (positive = add, negative = remove)" error={errors.qtyDelta}>
+          <Field
+            label={
+              target
+                ? `Qty delta (${
+                    items.find(
+                      (it) => `${it.itemKind}:${it.itemId}` === target
+                    )?.unit ?? ''
+                  }) — positive = add, negative = remove`
+                : 'Qty delta (positive = add, negative = remove)'
+            }
+            error={errors.qtyDelta}
+          >
             <Input
               type="number"
               step="0.001"
@@ -243,14 +254,8 @@ export default function InventoryPage({
       />
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
+        <CardHeader>
           <CardTitle>On hand</CardTitle>
-          <ColumnVisibilityMenu
-            columns={STOCK_COLUMNS}
-            isVisible={stockCols.isVisible}
-            onToggle={stockCols.toggle}
-            onReset={stockCols.reset}
-          />
         </CardHeader>
         <CardContent>
           {inventory.length === 0 ? (
@@ -270,6 +275,15 @@ export default function InventoryPage({
                     <TableHead className="text-right">Avg cost</TableHead>
                   )}
                   {stockCols.isVisible('status') && <TableHead>Status</TableHead>}
+                  <TableHead className="w-12 text-right">
+                    <ColumnVisibilityMenu
+                      columns={STOCK_COLUMNS}
+                      isVisible={stockCols.isVisible}
+                      onToggle={stockCols.toggle}
+                      onReset={stockCols.reset}
+                      compact
+                    />
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -283,7 +297,9 @@ export default function InventoryPage({
                       <TableCell className="font-medium">{r.itemName}</TableCell>
                     )}
                     {stockCols.isVisible('qty') && (
-                      <TableCell className="text-right">{r.qty}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {r.qty} <span className="text-xs text-muted-foreground">{r.unit}</span>
+                      </TableCell>
                     )}
                     {stockCols.isVisible('unit') && <TableCell>{r.unit}</TableCell>}
                     {stockCols.isVisible('cost') && (
@@ -298,6 +314,7 @@ export default function InventoryPage({
                         )}
                       </TableCell>
                     )}
+                    <TableCell />
                   </TableRow>
                 ))}
               </TableBody>
@@ -307,14 +324,8 @@ export default function InventoryPage({
       </Card>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
+        <CardHeader>
           <CardTitle>Recent movements</CardTitle>
-          <ColumnVisibilityMenu
-            columns={MOVE_COLUMNS}
-            isVisible={moveCols.isVisible}
-            onToggle={moveCols.toggle}
-            onReset={moveCols.reset}
-          />
         </CardHeader>
         <CardContent>
           {recentMovements.length === 0 ? (
@@ -334,6 +345,15 @@ export default function InventoryPage({
                   )}
                   {moveCols.isVisible('reference') && <TableHead>Reference</TableHead>}
                   {moveCols.isVisible('note') && <TableHead>Note</TableHead>}
+                  <TableHead className="w-12 text-right">
+                    <ColumnVisibilityMenu
+                      columns={MOVE_COLUMNS}
+                      isVisible={moveCols.isVisible}
+                      onToggle={moveCols.toggle}
+                      onReset={moveCols.reset}
+                      compact
+                    />
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -360,6 +380,7 @@ export default function InventoryPage({
                       </TableCell>
                     )}
                     {moveCols.isVisible('note') && <TableCell>{m.note ?? '—'}</TableCell>}
+                    <TableCell />
                   </TableRow>
                 ))}
               </TableBody>

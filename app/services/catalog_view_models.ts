@@ -72,6 +72,7 @@ export type MaterialRow = {
   sku: string
   name: string
   type: string
+  unit: string
   defaultUnitCost: string
   reorderThresholdG: string | null
   defaultSupplier: { id: number; name: string } | null
@@ -100,6 +101,7 @@ export async function getMaterialsViewModel(filters: ListFilters & { type?: stri
       sku: m.sku,
       name: m.name,
       type: m.type,
+      unit: m.unit,
       defaultUnitCost: m.defaultUnitCost,
       reorderThresholdG: m.reorderThresholdG,
       defaultSupplier: m.defaultSupplier
@@ -117,6 +119,7 @@ export type ComponentRow = {
   id: number
   sku: string
   name: string
+  unit: string
   defaultUnitCost: string
   reorderThresholdQty: number | null
   defaultSupplier: { id: number; name: string } | null
@@ -140,6 +143,7 @@ export async function getComponentsViewModel(filters: ListFilters = {}) {
       id: c.id,
       sku: c.sku,
       name: c.name,
+      unit: c.unit,
       defaultUnitCost: c.defaultUnitCost,
       reorderThresholdQty: c.reorderThresholdQty,
       defaultSupplier: c.defaultSupplier
@@ -165,6 +169,7 @@ export type ProductRow = {
   isActive: boolean
   inProductionQty: number
   soldQty: number
+  attachmentCount: number
 }
 
 export async function getProductsViewModel(filters: ListFilters & { categoryId?: number } = {}) {
@@ -186,7 +191,7 @@ export async function getProductsViewModel(filters: ListFilters & { categoryId?:
   ])
   const ids = products.map((p) => p.id)
 
-  const [signed, productionRows, soldRows] = await Promise.all([
+  const [signed, productionRows, soldRows, attachmentRows] = await Promise.all([
     Promise.all(products.map((p) => signCatalogImageUrl(p.imageKey))),
     ids.length > 0
       ? db
@@ -208,6 +213,14 @@ export async function getProductsViewModel(filters: ListFilters & { categoryId?:
           .select('sale_items.product_id as product_id')
           .sum({ qty: 'sale_items.qty' })
       : [],
+    ids.length > 0
+      ? db
+          .from('product_attachments')
+          .whereIn('product_id', ids)
+          .groupBy('product_id')
+          .select('product_id')
+          .count('* as total')
+      : [],
   ])
 
   // "In production" = units still pending on in-progress jobs (planned − produced).
@@ -223,6 +236,10 @@ export async function getProductsViewModel(filters: ListFilters & { categoryId?:
   for (const r of soldRows) {
     soldByProduct.set(Number(r.product_id), Number(r.qty ?? 0))
   }
+  const attachmentCountByProduct = new Map<number, number>()
+  for (const r of attachmentRows as Array<{ product_id: number; total: string | number | null }>) {
+    attachmentCountByProduct.set(Number(r.product_id), Number(r.total ?? 0))
+  }
 
   return {
     products: products.map<ProductRow>((p, idx) => ({
@@ -237,6 +254,7 @@ export async function getProductsViewModel(filters: ListFilters & { categoryId?:
       isActive: p.isActive,
       inProductionQty: inProductionByProduct.get(p.id) ?? 0,
       soldQty: soldByProduct.get(p.id) ?? 0,
+      attachmentCount: attachmentCountByProduct.get(p.id) ?? 0,
     })),
     categories: categories.map((c) => ({
       id: c.id,
@@ -248,17 +266,78 @@ export async function getProductsViewModel(filters: ListFilters & { categoryId?:
   }
 }
 
+export type ProductCategoryRow = {
+  id: number
+  name: string
+  defaultProfitPct: string | null
+  taxRatePct: string | null
+  isActive: boolean
+  totalSales: number
+  totalUnitsSold: number
+  productCount: number
+}
+
 export async function getProductCategoriesViewModel(filters: ListFilters = {}) {
   const query = ProductCategory.query().orderBy('name', 'asc')
+  applyStatus(query as never, filters.status)
   applySearch(query as never, filters.q, ['name'])
-  const categories = await query
+  const counts = await countByStatus(() => {
+    const q = ProductCategory.query()
+    applySearch(q as never, filters.q, ['name'])
+    return q
+  })
+
+  const [categories, salesRows, productCountRows] = await Promise.all([
+    query,
+    db
+      .from('sale_items as si')
+      .join('sales as s', 's.id', 'si.sale_id')
+      .join('products as p', 'p.id', 'si.product_id')
+      .whereNotNull('p.category_id')
+      .where('s.status', 'confirmed')
+      .groupBy('p.category_id')
+      .select('p.category_id as categoryId')
+      .sum({ revenue: 'si.line_total' })
+      .sum({ units: 'si.qty' }),
+    db
+      .from('products')
+      .whereNotNull('category_id')
+      .groupBy('category_id')
+      .select('category_id as categoryId')
+      .count('* as total'),
+  ])
+
+  const salesByCat = new Map<number, { revenue: number; units: number }>()
+  for (const r of salesRows as Array<{
+    categoryId: number
+    revenue: string | number | null
+    units: string | number | null
+  }>) {
+    salesByCat.set(Number(r.categoryId), {
+      revenue: Number(r.revenue ?? 0),
+      units: Number(r.units ?? 0),
+    })
+  }
+  const productCountByCat = new Map<number, number>()
+  for (const r of productCountRows as Array<{
+    categoryId: number
+    total: string | number | null
+  }>) {
+    productCountByCat.set(Number(r.categoryId), Number(r.total ?? 0))
+  }
+
   return {
-    categories: categories.map((c) => ({
+    categories: categories.map<ProductCategoryRow>((c) => ({
       id: c.id,
       name: c.name,
       defaultProfitPct: c.defaultProfitPct,
       taxRatePct: c.taxRatePct,
+      isActive: c.isActive,
+      totalSales: salesByCat.get(c.id)?.revenue ?? 0,
+      totalUnitsSold: salesByCat.get(c.id)?.units ?? 0,
+      productCount: productCountByCat.get(c.id) ?? 0,
     })),
+    counts,
   }
 }
 

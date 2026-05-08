@@ -71,19 +71,22 @@ export default class MaterialsController {
       sku: payload.sku,
       name: payload.name,
       type: payload.type,
-      unit: 'g',
+      unit: payload.unit ?? 'g',
       defaultSupplierId: payload.defaultSupplierId ?? null,
       defaultUnitCost: String(payload.defaultUnitCost),
       reorderThresholdG:
         payload.reorderThresholdG !== undefined ? String(payload.reorderThresholdG) : null,
       isActive: true,
     })
+    if (payload.image) {
+      await storeCatalogImage('material', material, payload.image)
+    }
     await audit({
       actor: auth.user!,
       action: 'material.create',
       targetType: 'material',
       targetId: material.id,
-      payload,
+      payload: { ...payload, image: payload.image ? '<file>' : undefined },
     })
     session.flash('success', `Material "${material.name}" created.`)
     return response.redirect().back()
@@ -96,6 +99,7 @@ export default class MaterialsController {
 
     material.merge({
       ...payload,
+      unit: payload.unit ?? material.unit,
       defaultUnitCost:
         payload.defaultUnitCost !== undefined
           ? String(payload.defaultUnitCost)
@@ -131,6 +135,21 @@ export default class MaterialsController {
       targetId: material.id,
     })
     session.flash('success', 'Material archived.')
+    return response.redirect().back()
+  }
+
+  async restore({ params, auth, bouncer, response, session }: HttpContext) {
+    await bouncer.authorize('materials.archive' as never)
+    const material = await Material.findOrFail(params.id)
+    material.isActive = true
+    await material.save()
+    await audit({
+      actor: auth.user!,
+      action: 'material.restore',
+      targetType: 'material',
+      targetId: material.id,
+    })
+    session.flash('success', `Material "${material.name}" restored.`)
     return response.redirect().back()
   }
 }

@@ -5,6 +5,7 @@ const lineRule = vine.object({
   description: vine.string().trim().minLength(1).maxLength(280),
   qty: vine.number().min(1).max(1_000_000),
   unitPrice: vine.number().min(0).max(99_999_999_999).optional(),
+  profitPctOverride: vine.number().min(0).max(1000).optional(),
   taxRatePct: vine.number().min(0).max(100).optional(),
 })
 

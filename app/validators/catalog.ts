@@ -58,15 +58,19 @@ export const updateCustomerValidator = vine.compile(
   })
 )
 
+const unitRule = vine.string().trim().minLength(1).maxLength(16)
+
 // ── Materials ───────────────────────────────────────────────────────────
 export const createMaterialValidator = vine.compile(
   vine.object({
     sku: skuRule,
     name: nameRule,
     type: vine.enum(['filament', 'resin', 'other']),
+    unit: unitRule.optional(),
     defaultSupplierId: vine.number().positive().optional(),
     defaultUnitCost: moneyRule,
     reorderThresholdG: decimalQtyRule.optional(),
+    image: vine.file({ size: '4mb', extnames: ['jpg', 'jpeg', 'png', 'webp'] }).optional(),
   })
 )
 
@@ -74,6 +78,7 @@ export const updateMaterialValidator = vine.compile(
   vine.object({
     name: nameRule.optional(),
     type: vine.enum(['filament', 'resin', 'other']).optional(),
+    unit: unitRule.optional(),
     defaultSupplierId: vine.number().positive().nullable().optional(),
     defaultUnitCost: moneyRule.optional(),
     reorderThresholdG: decimalQtyRule.nullable().optional(),
@@ -86,15 +91,18 @@ export const createComponentValidator = vine.compile(
   vine.object({
     sku: skuRule,
     name: nameRule,
+    unit: unitRule.optional(),
     defaultSupplierId: vine.number().positive().optional(),
     defaultUnitCost: moneyRule,
     reorderThresholdQty: vine.number().min(0).optional(),
+    image: vine.file({ size: '4mb', extnames: ['jpg', 'jpeg', 'png', 'webp'] }).optional(),
   })
 )
 
 export const updateComponentValidator = vine.compile(
   vine.object({
     name: nameRule.optional(),
+    unit: unitRule.optional(),
     defaultSupplierId: vine.number().positive().nullable().optional(),
     defaultUnitCost: moneyRule.optional(),
     reorderThresholdQty: vine.number().min(0).nullable().optional(),
@@ -146,6 +154,16 @@ export const updateProductValidator = vine.compile(
 export const uploadCatalogImageValidator = vine.compile(
   vine.object({
     image: vine.file({ size: '4mb', extnames: ['jpg', 'jpeg', 'png', 'webp'] }),
+  })
+)
+
+// ── Product 3D-model file upload ────────────────────────────────────────
+export const uploadProductFileValidator = vine.compile(
+  vine.object({
+    file: vine.file({
+      size: '50mb',
+      extnames: ['stl', '3mf', 'obj', 'step', 'stp', 'igs', 'iges', 'ply', 'gcode', 'zip'],
+    }),
   })
 )
 

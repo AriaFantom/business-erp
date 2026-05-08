@@ -11,6 +11,7 @@ import { nextDocNumber } from '#services/numbering'
 import { computeUnitPrice } from '#services/pricing'
 import { latestProductCost } from '#services/job_costing'
 import { InvalidStateError } from '#services/domain_errors'
+import { invalidatePdf } from '#services/document_pdf/render'
 
 export type QuotationLineInput = {
   productId?: number | null
@@ -18,6 +19,8 @@ export type QuotationLineInput = {
   qty: number
   /** Manual override; if null/undefined the pricing service derives it. */
   unitPrice?: number | null
+  /** When set on a product line, recompute unit price as cost*(1+x/100) and skip the layered ladder. When set on a custom line, persisted as profitPctUsed for record-keeping. */
+  profitPctOverride?: number | null
   taxRatePct?: number | null
 }
 
@@ -34,20 +37,33 @@ async function buildLine(input: QuotationLineInput) {
     const product = await Product.findOrFail(input.productId)
     const category = product.categoryId ? await ProductCategory.find(product.categoryId) : null
     const cost = await latestProductCost(input.productId)
-    const breakdown = computeUnitPrice({
-      costPrice: cost,
-      manualUnitPrice: input.unitPrice ?? null,
-      product,
-      category,
-    })
-    unitPrice = breakdown.unitPrice
-    profitPctUsed = breakdown.profitPctUsed
-    taxRatePct = input.taxRatePct ?? breakdown.taxRatePct
+
+    if (
+      input.profitPctOverride !== null &&
+      input.profitPctOverride !== undefined &&
+      (input.unitPrice === null || input.unitPrice === undefined)
+    ) {
+      const baseCost = cost ?? 0
+      unitPrice = round2(baseCost * (1 + input.profitPctOverride / 100))
+      profitPctUsed = input.profitPctOverride
+      taxRatePct = input.taxRatePct ?? Number(product.taxRatePct ?? category?.taxRatePct ?? 0)
+    } else {
+      const breakdown = computeUnitPrice({
+        costPrice: cost,
+        manualUnitPrice: input.unitPrice ?? null,
+        product,
+        category,
+      })
+      unitPrice = breakdown.unitPrice
+      profitPctUsed = breakdown.profitPctUsed
+      taxRatePct = input.taxRatePct ?? breakdown.taxRatePct
+    }
   } else {
     if (input.unitPrice === null || input.unitPrice === undefined) {
       throw new Error('Custom (non-product) lines require a manual unit price.')
     }
     unitPrice = input.unitPrice
+    profitPctUsed = input.profitPctOverride ?? null
   }
 
   const subtotal = round2(unitPrice * input.qty)
@@ -149,6 +165,7 @@ async function transitionStatus(
     q.status = next
     patch(q)
     await q.save()
+    await invalidatePdf(q)
     await audit({
       actor,
       action,

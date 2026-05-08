@@ -192,12 +192,6 @@ export default function JobsIndex({ jobs, products, filters }: PageProps) {
           <h1 className="text-2xl font-semibold">Production jobs</h1>
         </div>
         <div className="flex items-center gap-2">
-          <ColumnVisibilityMenu
-            columns={JOB_COLUMNS}
-            isVisible={isVisible}
-            onToggle={toggle}
-            onReset={reset}
-          />
           <NewJobDialog products={products} />
         </div>
       </div>
@@ -262,7 +256,17 @@ export default function JobsIndex({ jobs, products, filters }: PageProps) {
                   {isVisible('unitCost') && (
                     <TableHead className="text-right">Unit cost</TableHead>
                   )}
-                  {isVisible('actions') && <TableHead></TableHead>}
+                  {isVisible('actions') && (
+                    <TableHead className="w-20 text-right">
+                      <ColumnVisibilityMenu
+                        columns={JOB_COLUMNS}
+                        isVisible={isVisible}
+                        onToggle={toggle}
+                        onReset={reset}
+                        compact
+                      />
+                    </TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>

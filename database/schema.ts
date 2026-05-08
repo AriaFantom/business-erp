@@ -330,8 +330,31 @@ export class MaterialSchema extends BaseModel {
   declare updatedAt: DateTime
 }
 
+export class ProductAttachmentSchema extends BaseModel {
+  static $columns = ['createdAt', 'fileKey', 'id', 'mimeType', 'originalName', 'productId', 'sizeBytes', 'updatedAt', 'uploadedByUserId'] as const
+  $columns = ProductAttachmentSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare fileKey: string
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare mimeType: string | null
+  @column()
+  declare originalName: string
+  @column()
+  declare productId: number
+  @column()
+  declare sizeBytes: bigint | number
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare uploadedByUserId: number | null
+}
+
 export class ProductCategorySchema extends BaseModel {
-  static $columns = ['createdAt', 'defaultProfitPct', 'id', 'name', 'taxRatePct', 'updatedAt'] as const
+  static $columns = ['createdAt', 'defaultProfitPct', 'id', 'isActive', 'name', 'taxRatePct', 'updatedAt'] as const
   $columns = ProductCategorySchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
@@ -339,6 +362,8 @@ export class ProductCategorySchema extends BaseModel {
   declare defaultProfitPct: string | null
   @column({ isPrimary: true })
   declare id: number
+  @column()
+  declare isActive: boolean
   @column()
   declare name: string
   @column()

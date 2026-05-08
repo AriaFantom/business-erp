@@ -1,8 +1,13 @@
 import type { HttpContext } from '@adonisjs/core/http'
+import React from 'react'
 import { recordPaymentValidator } from '#validators/sales'
 import { getInvoiceShowViewModel, getInvoicesIndexViewModel } from '#services/sales_view_models'
 import { recordPayment, voidInvoice } from '#services/invoice_service'
 import { DomainError } from '#services/domain_errors'
+import Invoice from '#models/invoice'
+import env from '#start/env'
+import { ensurePdf, streamPdf } from '#services/document_pdf/render'
+import { InvoiceDocument } from '#services/document_pdf/invoice_document'
 
 export default class InvoicesController {
   async index({ request, inertia, bouncer }: HttpContext) {
@@ -65,5 +70,16 @@ export default class InvoicesController {
       throw err
     }
     return response.redirect().back()
+  }
+
+  async download({ params, response, bouncer }: HttpContext) {
+    await bouncer.authorize('invoices.view' as never)
+    const invoice = await Invoice.findOrFail(params.id)
+    const vm = await getInvoiceShowViewModel(invoice.id)
+    const appName = env.get('APP_NAME')
+    await ensurePdf('invoice', invoice, () =>
+      React.createElement(InvoiceDocument, { ...vm, appName })
+    )
+    await streamPdf(invoice.pdfKey!, response, `invoice-${invoice.number}.pdf`)
   }
 }

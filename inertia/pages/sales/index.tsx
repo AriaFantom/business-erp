@@ -318,12 +318,6 @@ export default function SalesIndex({ sales, customers, products, filters }: Page
           <h1 className="text-2xl font-semibold">Sales</h1>
         </div>
         <div className="flex items-center gap-2">
-          <ColumnVisibilityMenu
-            columns={SALE_COLUMNS}
-            isVisible={isVisible}
-            onToggle={toggle}
-            onReset={reset}
-          />
           <NewSaleDialog customers={customers} products={products} />
         </div>
       </div>
@@ -381,7 +375,17 @@ export default function SalesIndex({ sales, customers, products, filters }: Page
                   {isVisible('status') && <TableHead>Status</TableHead>}
                   {isVisible('total') && <TableHead className="text-right">Total</TableHead>}
                   {isVisible('confirmed') && <TableHead>Confirmed</TableHead>}
-                  {isVisible('actions') && <TableHead></TableHead>}
+                  {isVisible('actions') && (
+                    <TableHead className="w-20 text-right">
+                      <ColumnVisibilityMenu
+                        columns={SALE_COLUMNS}
+                        isVisible={isVisible}
+                        onToggle={toggle}
+                        onReset={reset}
+                        compact
+                      />
+                    </TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>

@@ -11,10 +11,14 @@ export default class ProductCategoriesController {
     const qs = request.qs()
     const data = await getProductCategoriesViewModel({
       q: typeof qs.q === 'string' ? qs.q : undefined,
+      status: typeof qs.status === 'string' ? qs.status : undefined,
     })
     return inertia.render('catalog/categories', {
       ...data,
-      filters: { q: typeof qs.q === 'string' ? qs.q : '' },
+      filters: {
+        q: typeof qs.q === 'string' ? qs.q : '',
+        status: typeof qs.status === 'string' ? qs.status : 'all',
+      },
     })
   }
 
@@ -33,6 +37,7 @@ export default class ProductCategoriesController {
       defaultProfitPct:
         payload.defaultProfitPct !== undefined ? String(payload.defaultProfitPct) : null,
       taxRatePct: payload.taxRatePct !== undefined ? String(payload.taxRatePct) : null,
+      isActive: true,
     })
     await audit({
       actor: auth.user!,
@@ -77,24 +82,46 @@ export default class ProductCategoriesController {
     return response.redirect().back()
   }
 
-  async destroy({ params, auth, bouncer, response, session }: HttpContext) {
+  async archive({ params, auth, bouncer, response, session }: HttpContext) {
     await bouncer.authorize('productCategories.delete' as never)
     const cat = await ProductCategory.findOrFail(params.id)
 
-    const inUse = await Product.query().where('category_id', cat.id).first()
-    if (inUse) {
-      session.flash('error', 'Reassign products before deleting this category.')
+    const activeProductInCat = await Product.query()
+      .where('category_id', cat.id)
+      .where('is_active', true)
+      .first()
+    if (activeProductInCat) {
+      session.flash(
+        'error',
+        'This category is still used by active products. Archive or reassign them first.'
+      )
       return response.redirect().back()
     }
 
-    await cat.delete()
+    cat.isActive = false
+    await cat.save()
     await audit({
       actor: auth.user!,
-      action: 'product_category.delete',
+      action: 'product_category.archive',
       targetType: 'product_category',
       targetId: cat.id,
     })
-    session.flash('success', 'Category deleted.')
+    session.flash('success', `Category "${cat.name}" archived.`)
+    return response.redirect().back()
+  }
+
+  async restore({ params, auth, bouncer, response, session }: HttpContext) {
+    await bouncer.authorize('productCategories.delete' as never)
+    const cat = await ProductCategory.findOrFail(params.id)
+    cat.isActive = true
+    await cat.save()
+    await audit({
+      actor: auth.user!,
+      action: 'product_category.restore',
+      targetType: 'product_category',
+      targetId: cat.id,
+    })
+    session.flash('success', `Category "${cat.name}" restored.`)
     return response.redirect().back()
   }
 }

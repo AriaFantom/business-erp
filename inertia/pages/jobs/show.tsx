@@ -173,7 +173,16 @@ function ConsumeDialog({ jobId, items }: { jobId: number; items: InventoryItem[]
               </SelectContent>
             </Select>
           </Field>
-          <Field label="Qty consumed" error={errors.qtyConsumed}>
+          <Field
+            label={`Qty consumed${
+              target
+                ? ` (${
+                    items.find((it) => `${it.itemKind}:${it.itemId}` === target)?.unit ?? ''
+                  })`
+                : ''
+            }`}
+            error={errors.qtyConsumed}
+          >
             <Input
               type="number"
               step="0.001"
@@ -181,7 +190,16 @@ function ConsumeDialog({ jobId, items }: { jobId: number; items: InventoryItem[]
               onChange={(e) => setData('qtyConsumed', Number(e.target.value))}
             />
           </Field>
-          <Field label="Of which wasted" error={errors.qtyWasted}>
+          <Field
+            label={`Of which wasted${
+              target
+                ? ` (${
+                    items.find((it) => `${it.itemKind}:${it.itemId}` === target)?.unit ?? ''
+                  })`
+                : ''
+            }`}
+            error={errors.qtyWasted}
+          >
             <Input
               type="number"
               step="0.001"

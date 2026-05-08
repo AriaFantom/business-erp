@@ -10,6 +10,7 @@ import type User from '#models/user'
 import { audit } from '#services/audit'
 import { nextDocNumber } from '#services/numbering'
 import { InvalidStateError, OverpaymentError } from '#services/domain_errors'
+import { invalidatePdf } from '#services/document_pdf/render'
 
 const DEFAULT_DUE_DAYS = 14
 
@@ -121,6 +122,7 @@ export async function recordPayment(input: {
     invoice.paidTotal = String(newPaid)
     invoice.status = newPaid >= Number(invoice.total) - 0.001 ? 'paid' : 'partial'
     await invoice.save()
+    await invalidatePdf(invoice)
 
     await audit({
       actor: input.actor,
@@ -150,6 +152,7 @@ export async function voidInvoice(invoiceId: number, actor: User): Promise<Invoi
     }
     invoice.status = 'void'
     await invoice.save()
+    await invalidatePdf(invoice)
 
     await audit({
       actor,

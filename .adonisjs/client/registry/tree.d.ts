@@ -54,6 +54,7 @@ export interface ApiDefinition {
     store: typeof routes['materials.store']
     update: typeof routes['materials.update']
     archive: typeof routes['materials.archive']
+    restore: typeof routes['materials.restore']
     image: {
       update: typeof routes['materials.image.update']
       destroy: typeof routes['materials.image.destroy']
@@ -64,6 +65,7 @@ export interface ApiDefinition {
     store: typeof routes['components.store']
     update: typeof routes['components.update']
     archive: typeof routes['components.archive']
+    restore: typeof routes['components.restore']
     image: {
       update: typeof routes['components.image.update']
       destroy: typeof routes['components.image.destroy']
@@ -74,16 +76,27 @@ export interface ApiDefinition {
     store: typeof routes['products.store']
     update: typeof routes['products.update']
     archive: typeof routes['products.archive']
+    restore: typeof routes['products.restore']
     image: {
       update: typeof routes['products.image.update']
       destroy: typeof routes['products.image.destroy']
+    }
+    files: {
+      index: typeof routes['products.files.index']
+      upload: typeof routes['products.files.upload']
+      download: typeof routes['products.files.download']
+      destroy: typeof routes['products.files.destroy']
+    }
+    qr: typeof routes['products.qr'] & {
+      download: typeof routes['products.qr.download']
     }
   }
   productCategories: {
     index: typeof routes['product_categories.index']
     store: typeof routes['product_categories.store']
     update: typeof routes['product_categories.update']
-    destroy: typeof routes['product_categories.destroy']
+    archive: typeof routes['product_categories.archive']
+    restore: typeof routes['product_categories.restore']
   }
   inventory: {
     index: typeof routes['inventory.index']
@@ -116,6 +129,7 @@ export interface ApiDefinition {
     reject: typeof routes['quotations.reject']
     convert: typeof routes['quotations.convert']
     suggestPrice: typeof routes['quotations.suggest_price']
+    download: typeof routes['quotations.download']
   }
   sales: {
     index: typeof routes['sales.index']
@@ -129,6 +143,7 @@ export interface ApiDefinition {
     show: typeof routes['invoices.show']
     pay: typeof routes['invoices.pay']
     void: typeof routes['invoices.void']
+    download: typeof routes['invoices.download']
   }
   pos: {
     index: typeof routes['pos.index']

@@ -32,12 +32,20 @@ import DashboardLayout from '@/layouts/dashboard-layout'
 import { ImageUploader } from '@/components/catalog/image-uploader'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
+import { UnitPicker } from '@/components/catalog/unit-picker'
+import { InlineImagePicker } from '@/components/catalog/inline-image-picker'
 import { Puzzle, CheckCircle2, XCircle } from 'lucide-react'
+import {
+  ColumnVisibilityMenu,
+  type ColumnDef,
+} from '@/components/data-table/column-visibility'
+import { useColumnVisibility } from '@/hooks/use-column-visibility'
 
 type Row = {
   id: number
   sku: string
   name: string
+  unit: string
   defaultUnitCost: string
   reorderThresholdQty: number | null
   defaultSupplier: { id: number; name: string } | null
@@ -60,16 +68,24 @@ type PageProps = {
 
 function NewComponentDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
   const [open, setOpen] = useState(false)
+  const [imageFile, setImageFile] = useState<File | null>(null)
   const { data, setData, post, processing, errors, reset, transform } = useForm({
     sku: '',
     name: '',
+    unit: 'pcs',
     defaultSupplierId: '',
     defaultUnitCost: 0,
     reorderThresholdQty: '',
   })
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        setOpen(v)
+        if (!v) setImageFile(null)
+      }}
+    >
       <DialogTrigger asChild>
         <Button>New component</Button>
       </DialogTrigger>
@@ -81,31 +97,42 @@ function NewComponentDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
           className="flex flex-col gap-3"
           onSubmit={(e) => {
             e.preventDefault()
-            transform((d) => ({
-              sku: d.sku,
-              name: d.name,
-              defaultSupplierId: d.defaultSupplierId
-                ? Number(d.defaultSupplierId)
-                : undefined,
-              defaultUnitCost: d.defaultUnitCost,
-              reorderThresholdQty: d.reorderThresholdQty
-                ? Number(d.reorderThresholdQty)
-                : undefined,
-            }))
+            transform((d) => {
+              const out: Record<string, unknown> = {
+                sku: d.sku,
+                name: d.name,
+                unit: d.unit || 'pcs',
+                defaultSupplierId: d.defaultSupplierId
+                  ? Number(d.defaultSupplierId)
+                  : undefined,
+                defaultUnitCost: d.defaultUnitCost,
+                reorderThresholdQty: d.reorderThresholdQty
+                  ? Number(d.reorderThresholdQty)
+                  : undefined,
+              }
+              if (imageFile) out.image = imageFile
+              return out as never
+            })
             post('/catalog/components', {
+              forceFormData: !!imageFile,
               preserveScroll: true,
               onSuccess: () => {
                 reset()
+                setImageFile(null)
                 setOpen(false)
               },
             })
           }}
         >
+          <InlineImagePicker file={imageFile} onChange={setImageFile} />
           <Field label="SKU" error={errors.sku}>
             <Input value={data.sku} onChange={(e) => setData('sku', e.target.value)} />
           </Field>
           <Field label="Name" error={errors.name}>
             <Input value={data.name} onChange={(e) => setData('name', e.target.value)} />
+          </Field>
+          <Field label="Unit of measure" error={errors.unit}>
+            <UnitPicker value={data.unit} onChange={(v) => setData('unit', v)} />
           </Field>
           <Field label="Default supplier" error={errors.defaultSupplierId}>
             <Select
@@ -124,7 +151,10 @@ function NewComponentDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
               </SelectContent>
             </Select>
           </Field>
-          <Field label="Default unit cost" error={errors.defaultUnitCost}>
+          <Field
+            label={`Default unit cost (per ${data.unit || 'unit'})`}
+            error={errors.defaultUnitCost}
+          >
             <Input
               type="number"
               step="0.0001"
@@ -132,7 +162,10 @@ function NewComponentDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
               onChange={(e) => setData('defaultUnitCost', Number(e.target.value))}
             />
           </Field>
-          <Field label="Reorder threshold (pcs)" error={errors.reorderThresholdQty}>
+          <Field
+            label={`Reorder threshold (${data.unit || 'unit'})`}
+            error={errors.reorderThresholdQty}
+          >
             <Input
               type="number"
               value={data.reorderThresholdQty}
@@ -184,6 +217,21 @@ function ArchiveAction({ path, name }: { path: string; name: string }) {
   )
 }
 
+function RestoreAction({ path, name }: { path: string; name: string }) {
+  const { post, processing } = useForm()
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      disabled={processing}
+      onClick={() => post(path, { preserveScroll: true })}
+      title={`Restore ${name}`}
+    >
+      Restore
+    </Button>
+  )
+}
+
 function Thumb({ url, alt }: { url: string | null; alt: string }) {
   if (!url)
     return (
@@ -201,7 +249,20 @@ function Thumb({ url, alt }: { url: string | null; alt: string }) {
   )
 }
 
+const COMPONENT_COLUMNS: ColumnDef[] = [
+  { key: 'image', label: 'Image' },
+  { key: 'sku', label: 'SKU' },
+  { key: 'name', label: 'Name', required: true },
+  { key: 'unit', label: 'Unit' },
+  { key: 'cost', label: 'Default cost' },
+  { key: 'reorder', label: 'Reorder at' },
+  { key: 'supplier', label: 'Supplier' },
+  { key: 'status', label: 'Status' },
+  { key: 'actions', label: 'Actions', required: true },
+]
+
 export default function ComponentsPage({ components, suppliers, filters, counts }: PageProps) {
+  const { isVisible, toggle, reset } = useColumnVisibility('catalog.components')
   return (
     <div className="flex w-full flex-col gap-6 px-6 py-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -264,49 +325,85 @@ export default function ComponentsPage({ components, suppliers, filters, counts 
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-16">Image</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Default cost</TableHead>
-                  <TableHead>Reorder at</TableHead>
-                  <TableHead>Supplier</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-56 text-right">Actions</TableHead>
+                  {isVisible('image') && <TableHead className="w-16">Image</TableHead>}
+                  {isVisible('sku') && <TableHead>SKU</TableHead>}
+                  {isVisible('name') && <TableHead>Name</TableHead>}
+                  {isVisible('unit') && <TableHead>Unit</TableHead>}
+                  {isVisible('cost') && <TableHead>Default cost</TableHead>}
+                  {isVisible('reorder') && <TableHead>Reorder at</TableHead>}
+                  {isVisible('supplier') && <TableHead>Supplier</TableHead>}
+                  {isVisible('status') && <TableHead>Status</TableHead>}
+                  {isVisible('actions') && (
+                    <TableHead className="w-56 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <span>Actions</span>
+                        <ColumnVisibilityMenu
+                          columns={COMPONENT_COLUMNS}
+                          isVisible={isVisible}
+                          onToggle={toggle}
+                          onReset={reset}
+                          compact
+                        />
+                      </div>
+                    </TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {components.map((c) => (
                   <TableRow key={c.id}>
-                    <TableCell>
-                      <Thumb url={c.imageUrl} alt={c.name} />
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">{c.sku}</TableCell>
-                    <TableCell className="font-medium">{c.name}</TableCell>
-                    <TableCell>{c.defaultUnitCost}</TableCell>
-                    <TableCell>{c.reorderThresholdQty ?? '—'} pcs</TableCell>
-                    <TableCell>{c.defaultSupplier?.name ?? '—'}</TableCell>
-                    <TableCell>
-                      {c.isActive ? (
-                        <Badge variant="outline">Active</Badge>
-                      ) : (
-                        <Badge variant="secondary">Archived</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <ImageUploader
-                          uploadPath={`/catalog/components/${c.id}/image`}
-                          deletePath={`/catalog/components/${c.id}/image/delete`}
-                          hasImage={!!c.imageUrl}
-                        />
-                        {c.isActive && (
-                          <ArchiveAction
-                            path={`/catalog/components/${c.id}/archive`}
-                            name={c.name}
-                          />
+                    {isVisible('image') && (
+                      <TableCell>
+                        <Thumb url={c.imageUrl} alt={c.name} />
+                      </TableCell>
+                    )}
+                    {isVisible('sku') && (
+                      <TableCell className="font-mono text-xs">{c.sku}</TableCell>
+                    )}
+                    {isVisible('name') && (
+                      <TableCell className="font-medium">{c.name}</TableCell>
+                    )}
+                    {isVisible('unit') && <TableCell>{c.unit}</TableCell>}
+                    {isVisible('cost') && <TableCell>{c.defaultUnitCost}</TableCell>}
+                    {isVisible('reorder') && (
+                      <TableCell>
+                        {c.reorderThresholdQty ?? '—'} {c.unit}
+                      </TableCell>
+                    )}
+                    {isVisible('supplier') && (
+                      <TableCell>{c.defaultSupplier?.name ?? '—'}</TableCell>
+                    )}
+                    {isVisible('status') && (
+                      <TableCell>
+                        {c.isActive ? (
+                          <Badge variant="outline">Active</Badge>
+                        ) : (
+                          <Badge variant="secondary">Archived</Badge>
                         )}
-                      </div>
-                    </TableCell>
+                      </TableCell>
+                    )}
+                    {isVisible('actions') && (
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <ImageUploader
+                            uploadPath={`/catalog/components/${c.id}/image`}
+                            deletePath={`/catalog/components/${c.id}/image/delete`}
+                            hasImage={!!c.imageUrl}
+                          />
+                          {c.isActive ? (
+                            <ArchiveAction
+                              path={`/catalog/components/${c.id}/archive`}
+                              name={c.name}
+                            />
+                          ) : (
+                            <RestoreAction
+                              path={`/catalog/components/${c.id}/restore`}
+                              name={c.name}
+                            />
+                          )}
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>

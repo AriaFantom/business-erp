@@ -23,6 +23,8 @@ type ColumnVisibilityMenuProps = {
   onToggle: (key: string) => void
   onReset?: () => void
   label?: string
+  /** When true, render only an icon trigger (for use inside a table header cell). */
+  compact?: boolean
 }
 
 export function ColumnVisibilityMenu({
@@ -31,14 +33,21 @@ export function ColumnVisibilityMenu({
   onToggle,
   onReset,
   label = 'Columns',
+  compact = false,
 }: ColumnVisibilityMenuProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Columns3Icon />
-          {label}
-        </Button>
+        {compact ? (
+          <Button variant="ghost" size="icon" aria-label="Toggle columns" className="size-7">
+            <Columns3Icon className="size-4" />
+          </Button>
+        ) : (
+          <Button variant="outline" size="sm">
+            <Columns3Icon />
+            {label}
+          </Button>
+        )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
         <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>

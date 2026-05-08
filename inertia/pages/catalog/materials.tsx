@@ -32,13 +32,21 @@ import DashboardLayout from '@/layouts/dashboard-layout'
 import { ImageUploader } from '@/components/catalog/image-uploader'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
+import { UnitPicker } from '@/components/catalog/unit-picker'
+import { InlineImagePicker } from '@/components/catalog/inline-image-picker'
 import { Boxes, CheckCircle2, XCircle } from 'lucide-react'
+import {
+  ColumnVisibilityMenu,
+  type ColumnDef,
+} from '@/components/data-table/column-visibility'
+import { useColumnVisibility } from '@/hooks/use-column-visibility'
 
 type Row = {
   id: number
   sku: string
   name: string
   type: string
+  unit: string
   defaultUnitCost: string
   reorderThresholdG: string | null
   defaultSupplier: { id: number; name: string } | null
@@ -61,17 +69,27 @@ type PageProps = {
 
 function NewMaterialDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
   const [open, setOpen] = useState(false)
+  const [imageFile, setImageFile] = useState<File | null>(null)
   const { data, setData, post, processing, errors, reset, transform } = useForm({
     sku: '',
     name: '',
     type: 'filament',
+    unit: 'g',
     defaultSupplierId: '' as string,
     defaultUnitCost: 0,
     reorderThresholdG: '' as string,
   })
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        setOpen(v)
+        if (!v) {
+          setImageFile(null)
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <Button>New material</Button>
       </DialogTrigger>
@@ -83,27 +101,35 @@ function NewMaterialDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
           className="flex flex-col gap-3"
           onSubmit={(e) => {
             e.preventDefault()
-            transform((d) => ({
-              sku: d.sku,
-              name: d.name,
-              type: d.type,
-              defaultSupplierId: d.defaultSupplierId
-                ? Number(d.defaultSupplierId)
-                : undefined,
-              defaultUnitCost: d.defaultUnitCost,
-              reorderThresholdG: d.reorderThresholdG
-                ? Number(d.reorderThresholdG)
-                : undefined,
-            }))
+            transform((d) => {
+              const out: Record<string, unknown> = {
+                sku: d.sku,
+                name: d.name,
+                type: d.type,
+                unit: d.unit || 'g',
+                defaultSupplierId: d.defaultSupplierId
+                  ? Number(d.defaultSupplierId)
+                  : undefined,
+                defaultUnitCost: d.defaultUnitCost,
+                reorderThresholdG: d.reorderThresholdG
+                  ? Number(d.reorderThresholdG)
+                  : undefined,
+              }
+              if (imageFile) out.image = imageFile
+              return out as never
+            })
             post('/catalog/materials', {
+              forceFormData: !!imageFile,
               preserveScroll: true,
               onSuccess: () => {
                 reset()
+                setImageFile(null)
                 setOpen(false)
               },
             })
           }}
         >
+          <InlineImagePicker file={imageFile} onChange={setImageFile} />
           <Field label="SKU" error={errors.sku}>
             <Input value={data.sku} onChange={(e) => setData('sku', e.target.value)} />
           </Field>
@@ -122,6 +148,9 @@ function NewMaterialDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
               </SelectContent>
             </Select>
           </Field>
+          <Field label="Unit of measure" error={errors.unit}>
+            <UnitPicker value={data.unit} onChange={(v) => setData('unit', v)} />
+          </Field>
           <Field label="Default supplier" error={errors.defaultSupplierId}>
             <Select
               value={data.defaultSupplierId}
@@ -139,7 +168,10 @@ function NewMaterialDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
               </SelectContent>
             </Select>
           </Field>
-          <Field label="Default unit cost (per g)" error={errors.defaultUnitCost}>
+          <Field
+            label={`Default unit cost (per ${data.unit || 'unit'})`}
+            error={errors.defaultUnitCost}
+          >
             <Input
               type="number"
               step="0.0001"
@@ -147,7 +179,10 @@ function NewMaterialDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
               onChange={(e) => setData('defaultUnitCost', Number(e.target.value))}
             />
           </Field>
-          <Field label="Reorder threshold (g)" error={errors.reorderThresholdG}>
+          <Field
+            label={`Reorder threshold (${data.unit || 'unit'})`}
+            error={errors.reorderThresholdG}
+          >
             <Input
               type="number"
               step="0.001"
@@ -200,6 +235,21 @@ function ArchiveAction({ path, name }: { path: string; name: string }) {
   )
 }
 
+function RestoreAction({ path, name }: { path: string; name: string }) {
+  const { post, processing } = useForm()
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      disabled={processing}
+      onClick={() => post(path, { preserveScroll: true })}
+      title={`Restore ${name}`}
+    >
+      Restore
+    </Button>
+  )
+}
+
 function Thumb({ url, alt }: { url: string | null; alt: string }) {
   if (!url)
     return (
@@ -217,7 +267,21 @@ function Thumb({ url, alt }: { url: string | null; alt: string }) {
   )
 }
 
+const MATERIAL_COLUMNS: ColumnDef[] = [
+  { key: 'image', label: 'Image' },
+  { key: 'sku', label: 'SKU' },
+  { key: 'name', label: 'Name', required: true },
+  { key: 'type', label: 'Type' },
+  { key: 'unit', label: 'Unit' },
+  { key: 'cost', label: 'Default unit cost' },
+  { key: 'reorder', label: 'Reorder at' },
+  { key: 'supplier', label: 'Supplier' },
+  { key: 'status', label: 'Status' },
+  { key: 'actions', label: 'Actions', required: true },
+]
+
 export default function MaterialsPage({ materials, suppliers, filters, counts }: PageProps) {
+  const { isVisible, toggle, reset } = useColumnVisibility('catalog.materials')
   const archivedHref = `/catalog/materials?status=archived${filters.type && filters.type !== 'all' ? `&type=${filters.type}` : ''}`
   const activeHref = `/catalog/materials?status=active${filters.type && filters.type !== 'all' ? `&type=${filters.type}` : ''}`
   const totalHref = `/catalog/materials${filters.type && filters.type !== 'all' ? `?type=${filters.type}` : ''}`
@@ -295,51 +359,87 @@ export default function MaterialsPage({ materials, suppliers, filters, counts }:
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-16">Image</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Default unit cost</TableHead>
-                  <TableHead>Reorder at</TableHead>
-                  <TableHead>Supplier</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-56 text-right">Actions</TableHead>
+                  {isVisible('image') && <TableHead className="w-16">Image</TableHead>}
+                  {isVisible('sku') && <TableHead>SKU</TableHead>}
+                  {isVisible('name') && <TableHead>Name</TableHead>}
+                  {isVisible('type') && <TableHead>Type</TableHead>}
+                  {isVisible('unit') && <TableHead>Unit</TableHead>}
+                  {isVisible('cost') && <TableHead>Default unit cost</TableHead>}
+                  {isVisible('reorder') && <TableHead>Reorder at</TableHead>}
+                  {isVisible('supplier') && <TableHead>Supplier</TableHead>}
+                  {isVisible('status') && <TableHead>Status</TableHead>}
+                  {isVisible('actions') && (
+                    <TableHead className="w-56 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <span>Actions</span>
+                        <ColumnVisibilityMenu
+                          columns={MATERIAL_COLUMNS}
+                          isVisible={isVisible}
+                          onToggle={toggle}
+                          onReset={reset}
+                          compact
+                        />
+                      </div>
+                    </TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {materials.map((m) => (
                   <TableRow key={m.id}>
-                    <TableCell>
-                      <Thumb url={m.imageUrl} alt={m.name} />
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">{m.sku}</TableCell>
-                    <TableCell className="font-medium">{m.name}</TableCell>
-                    <TableCell>{m.type}</TableCell>
-                    <TableCell>{m.defaultUnitCost}</TableCell>
-                    <TableCell>{m.reorderThresholdG ?? '—'} g</TableCell>
-                    <TableCell>{m.defaultSupplier?.name ?? '—'}</TableCell>
-                    <TableCell>
-                      {m.isActive ? (
-                        <Badge variant="outline">Active</Badge>
-                      ) : (
-                        <Badge variant="secondary">Archived</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <ImageUploader
-                          uploadPath={`/catalog/materials/${m.id}/image`}
-                          deletePath={`/catalog/materials/${m.id}/image/delete`}
-                          hasImage={!!m.imageUrl}
-                        />
-                        {m.isActive && (
-                          <ArchiveAction
-                            path={`/catalog/materials/${m.id}/archive`}
-                            name={m.name}
-                          />
+                    {isVisible('image') && (
+                      <TableCell>
+                        <Thumb url={m.imageUrl} alt={m.name} />
+                      </TableCell>
+                    )}
+                    {isVisible('sku') && (
+                      <TableCell className="font-mono text-xs">{m.sku}</TableCell>
+                    )}
+                    {isVisible('name') && (
+                      <TableCell className="font-medium">{m.name}</TableCell>
+                    )}
+                    {isVisible('type') && <TableCell>{m.type}</TableCell>}
+                    {isVisible('unit') && <TableCell>{m.unit}</TableCell>}
+                    {isVisible('cost') && <TableCell>{m.defaultUnitCost}</TableCell>}
+                    {isVisible('reorder') && (
+                      <TableCell>
+                        {m.reorderThresholdG ?? '—'} {m.unit}
+                      </TableCell>
+                    )}
+                    {isVisible('supplier') && (
+                      <TableCell>{m.defaultSupplier?.name ?? '—'}</TableCell>
+                    )}
+                    {isVisible('status') && (
+                      <TableCell>
+                        {m.isActive ? (
+                          <Badge variant="outline">Active</Badge>
+                        ) : (
+                          <Badge variant="secondary">Archived</Badge>
                         )}
-                      </div>
-                    </TableCell>
+                      </TableCell>
+                    )}
+                    {isVisible('actions') && (
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <ImageUploader
+                            uploadPath={`/catalog/materials/${m.id}/image`}
+                            deletePath={`/catalog/materials/${m.id}/image/delete`}
+                            hasImage={!!m.imageUrl}
+                          />
+                          {m.isActive ? (
+                            <ArchiveAction
+                              path={`/catalog/materials/${m.id}/archive`}
+                              name={m.name}
+                            />
+                          ) : (
+                            <RestoreAction
+                              path={`/catalog/materials/${m.id}/restore`}
+                              name={m.name}
+                            />
+                          )}
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>

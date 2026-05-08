@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
+import { Download } from 'lucide-react'
 
 type Invoice = {
   id: number
@@ -214,6 +215,12 @@ export default function InvoiceShow({ invoice, items, payments }: PageProps) {
         </div>
         <div className="flex items-center gap-2">
           <Badge variant={statusVariant(invoice.status)}>{invoice.status}</Badge>
+          <Button asChild variant="outline">
+            <a href={`/invoices/${invoice.id}/download`}>
+              <Download className="size-4" />
+              Download PDF
+            </a>
+          </Button>
           {canPay && <PaymentDialog invoiceId={invoice.id} due={due} />}
           {canVoid && (
             <PostAction

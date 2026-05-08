@@ -68,18 +68,21 @@ export default class ComponentsController {
     const component = await Component.create({
       sku: payload.sku,
       name: payload.name,
-      unit: 'pcs',
+      unit: payload.unit ?? 'pcs',
       defaultSupplierId: payload.defaultSupplierId ?? null,
       defaultUnitCost: String(payload.defaultUnitCost),
       reorderThresholdQty: payload.reorderThresholdQty ?? null,
       isActive: true,
     })
+    if (payload.image) {
+      await storeCatalogImage('component', component, payload.image)
+    }
     await audit({
       actor: auth.user!,
       action: 'component.create',
       targetType: 'component',
       targetId: component.id,
-      payload,
+      payload: { ...payload, image: payload.image ? '<file>' : undefined },
     })
     session.flash('success', `Component "${component.name}" created.`)
     return response.redirect().back()
@@ -92,6 +95,7 @@ export default class ComponentsController {
 
     component.merge({
       ...payload,
+      unit: payload.unit ?? component.unit,
       defaultUnitCost:
         payload.defaultUnitCost !== undefined
           ? String(payload.defaultUnitCost)
@@ -121,6 +125,21 @@ export default class ComponentsController {
       targetId: component.id,
     })
     session.flash('success', 'Component archived.')
+    return response.redirect().back()
+  }
+
+  async restore({ params, auth, bouncer, response, session }: HttpContext) {
+    await bouncer.authorize('components.archive' as never)
+    const component = await Component.findOrFail(params.id)
+    component.isActive = true
+    await component.save()
+    await audit({
+      actor: auth.user!,
+      action: 'component.restore',
+      targetType: 'component',
+      targetId: component.id,
+    })
+    session.flash('success', `Component "${component.name}" restored.`)
     return response.redirect().back()
   }
 }

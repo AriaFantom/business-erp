@@ -198,6 +198,12 @@ const routes = {
     tokens: [{"old":"/catalog/materials/:id/archive","type":0,"val":"catalog","end":""},{"old":"/catalog/materials/:id/archive","type":0,"val":"materials","end":""},{"old":"/catalog/materials/:id/archive","type":1,"val":"id","end":""},{"old":"/catalog/materials/:id/archive","type":0,"val":"archive","end":""}],
     types: placeholder as Registry['materials.archive']['types'],
   },
+  'materials.restore': {
+    methods: ["POST"],
+    pattern: '/catalog/materials/:id/restore',
+    tokens: [{"old":"/catalog/materials/:id/restore","type":0,"val":"catalog","end":""},{"old":"/catalog/materials/:id/restore","type":0,"val":"materials","end":""},{"old":"/catalog/materials/:id/restore","type":1,"val":"id","end":""},{"old":"/catalog/materials/:id/restore","type":0,"val":"restore","end":""}],
+    types: placeholder as Registry['materials.restore']['types'],
+  },
   'materials.image.update': {
     methods: ["POST"],
     pattern: '/catalog/materials/:id/image',
@@ -233,6 +239,12 @@ const routes = {
     pattern: '/catalog/components/:id/archive',
     tokens: [{"old":"/catalog/components/:id/archive","type":0,"val":"catalog","end":""},{"old":"/catalog/components/:id/archive","type":0,"val":"components","end":""},{"old":"/catalog/components/:id/archive","type":1,"val":"id","end":""},{"old":"/catalog/components/:id/archive","type":0,"val":"archive","end":""}],
     types: placeholder as Registry['components.archive']['types'],
+  },
+  'components.restore': {
+    methods: ["POST"],
+    pattern: '/catalog/components/:id/restore',
+    tokens: [{"old":"/catalog/components/:id/restore","type":0,"val":"catalog","end":""},{"old":"/catalog/components/:id/restore","type":0,"val":"components","end":""},{"old":"/catalog/components/:id/restore","type":1,"val":"id","end":""},{"old":"/catalog/components/:id/restore","type":0,"val":"restore","end":""}],
+    types: placeholder as Registry['components.restore']['types'],
   },
   'components.image.update': {
     methods: ["POST"],
@@ -270,6 +282,12 @@ const routes = {
     tokens: [{"old":"/catalog/products/:id/archive","type":0,"val":"catalog","end":""},{"old":"/catalog/products/:id/archive","type":0,"val":"products","end":""},{"old":"/catalog/products/:id/archive","type":1,"val":"id","end":""},{"old":"/catalog/products/:id/archive","type":0,"val":"archive","end":""}],
     types: placeholder as Registry['products.archive']['types'],
   },
+  'products.restore': {
+    methods: ["POST"],
+    pattern: '/catalog/products/:id/restore',
+    tokens: [{"old":"/catalog/products/:id/restore","type":0,"val":"catalog","end":""},{"old":"/catalog/products/:id/restore","type":0,"val":"products","end":""},{"old":"/catalog/products/:id/restore","type":1,"val":"id","end":""},{"old":"/catalog/products/:id/restore","type":0,"val":"restore","end":""}],
+    types: placeholder as Registry['products.restore']['types'],
+  },
   'products.image.update': {
     methods: ["POST"],
     pattern: '/catalog/products/:id/image',
@@ -281,6 +299,42 @@ const routes = {
     pattern: '/catalog/products/:id/image/delete',
     tokens: [{"old":"/catalog/products/:id/image/delete","type":0,"val":"catalog","end":""},{"old":"/catalog/products/:id/image/delete","type":0,"val":"products","end":""},{"old":"/catalog/products/:id/image/delete","type":1,"val":"id","end":""},{"old":"/catalog/products/:id/image/delete","type":0,"val":"image","end":""},{"old":"/catalog/products/:id/image/delete","type":0,"val":"delete","end":""}],
     types: placeholder as Registry['products.image.destroy']['types'],
+  },
+  'products.files.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/catalog/products/:id/files',
+    tokens: [{"old":"/catalog/products/:id/files","type":0,"val":"catalog","end":""},{"old":"/catalog/products/:id/files","type":0,"val":"products","end":""},{"old":"/catalog/products/:id/files","type":1,"val":"id","end":""},{"old":"/catalog/products/:id/files","type":0,"val":"files","end":""}],
+    types: placeholder as Registry['products.files.index']['types'],
+  },
+  'products.files.upload': {
+    methods: ["POST"],
+    pattern: '/catalog/products/:id/files',
+    tokens: [{"old":"/catalog/products/:id/files","type":0,"val":"catalog","end":""},{"old":"/catalog/products/:id/files","type":0,"val":"products","end":""},{"old":"/catalog/products/:id/files","type":1,"val":"id","end":""},{"old":"/catalog/products/:id/files","type":0,"val":"files","end":""}],
+    types: placeholder as Registry['products.files.upload']['types'],
+  },
+  'products.files.download': {
+    methods: ["GET","HEAD"],
+    pattern: '/catalog/products/:id/files/:fileId/download',
+    tokens: [{"old":"/catalog/products/:id/files/:fileId/download","type":0,"val":"catalog","end":""},{"old":"/catalog/products/:id/files/:fileId/download","type":0,"val":"products","end":""},{"old":"/catalog/products/:id/files/:fileId/download","type":1,"val":"id","end":""},{"old":"/catalog/products/:id/files/:fileId/download","type":0,"val":"files","end":""},{"old":"/catalog/products/:id/files/:fileId/download","type":1,"val":"fileId","end":""},{"old":"/catalog/products/:id/files/:fileId/download","type":0,"val":"download","end":""}],
+    types: placeholder as Registry['products.files.download']['types'],
+  },
+  'products.files.destroy': {
+    methods: ["POST"],
+    pattern: '/catalog/products/:id/files/:fileId/delete',
+    tokens: [{"old":"/catalog/products/:id/files/:fileId/delete","type":0,"val":"catalog","end":""},{"old":"/catalog/products/:id/files/:fileId/delete","type":0,"val":"products","end":""},{"old":"/catalog/products/:id/files/:fileId/delete","type":1,"val":"id","end":""},{"old":"/catalog/products/:id/files/:fileId/delete","type":0,"val":"files","end":""},{"old":"/catalog/products/:id/files/:fileId/delete","type":1,"val":"fileId","end":""},{"old":"/catalog/products/:id/files/:fileId/delete","type":0,"val":"delete","end":""}],
+    types: placeholder as Registry['products.files.destroy']['types'],
+  },
+  'products.qr': {
+    methods: ["GET","HEAD"],
+    pattern: '/catalog/products/:id/qr',
+    tokens: [{"old":"/catalog/products/:id/qr","type":0,"val":"catalog","end":""},{"old":"/catalog/products/:id/qr","type":0,"val":"products","end":""},{"old":"/catalog/products/:id/qr","type":1,"val":"id","end":""},{"old":"/catalog/products/:id/qr","type":0,"val":"qr","end":""}],
+    types: placeholder as Registry['products.qr']['types'],
+  },
+  'products.qr.download': {
+    methods: ["GET","HEAD"],
+    pattern: '/catalog/products/:id/qr/download',
+    tokens: [{"old":"/catalog/products/:id/qr/download","type":0,"val":"catalog","end":""},{"old":"/catalog/products/:id/qr/download","type":0,"val":"products","end":""},{"old":"/catalog/products/:id/qr/download","type":1,"val":"id","end":""},{"old":"/catalog/products/:id/qr/download","type":0,"val":"qr","end":""},{"old":"/catalog/products/:id/qr/download","type":0,"val":"download","end":""}],
+    types: placeholder as Registry['products.qr.download']['types'],
   },
   'product_categories.index': {
     methods: ["GET","HEAD"],
@@ -300,11 +354,17 @@ const routes = {
     tokens: [{"old":"/catalog/categories/:id","type":0,"val":"catalog","end":""},{"old":"/catalog/categories/:id","type":0,"val":"categories","end":""},{"old":"/catalog/categories/:id","type":1,"val":"id","end":""}],
     types: placeholder as Registry['product_categories.update']['types'],
   },
-  'product_categories.destroy': {
+  'product_categories.archive': {
     methods: ["POST"],
-    pattern: '/catalog/categories/:id/delete',
-    tokens: [{"old":"/catalog/categories/:id/delete","type":0,"val":"catalog","end":""},{"old":"/catalog/categories/:id/delete","type":0,"val":"categories","end":""},{"old":"/catalog/categories/:id/delete","type":1,"val":"id","end":""},{"old":"/catalog/categories/:id/delete","type":0,"val":"delete","end":""}],
-    types: placeholder as Registry['product_categories.destroy']['types'],
+    pattern: '/catalog/categories/:id/archive',
+    tokens: [{"old":"/catalog/categories/:id/archive","type":0,"val":"catalog","end":""},{"old":"/catalog/categories/:id/archive","type":0,"val":"categories","end":""},{"old":"/catalog/categories/:id/archive","type":1,"val":"id","end":""},{"old":"/catalog/categories/:id/archive","type":0,"val":"archive","end":""}],
+    types: placeholder as Registry['product_categories.archive']['types'],
+  },
+  'product_categories.restore': {
+    methods: ["POST"],
+    pattern: '/catalog/categories/:id/restore',
+    tokens: [{"old":"/catalog/categories/:id/restore","type":0,"val":"catalog","end":""},{"old":"/catalog/categories/:id/restore","type":0,"val":"categories","end":""},{"old":"/catalog/categories/:id/restore","type":1,"val":"id","end":""},{"old":"/catalog/categories/:id/restore","type":0,"val":"restore","end":""}],
+    types: placeholder as Registry['product_categories.restore']['types'],
   },
   'inventory.index': {
     methods: ["GET","HEAD"],
@@ -450,6 +510,12 @@ const routes = {
     tokens: [{"old":"/quotations/suggest-price","type":0,"val":"quotations","end":""},{"old":"/quotations/suggest-price","type":0,"val":"suggest-price","end":""}],
     types: placeholder as Registry['quotations.suggest_price']['types'],
   },
+  'quotations.download': {
+    methods: ["GET","HEAD"],
+    pattern: '/quotations/:id/download',
+    tokens: [{"old":"/quotations/:id/download","type":0,"val":"quotations","end":""},{"old":"/quotations/:id/download","type":1,"val":"id","end":""},{"old":"/quotations/:id/download","type":0,"val":"download","end":""}],
+    types: placeholder as Registry['quotations.download']['types'],
+  },
   'sales.index': {
     methods: ["GET","HEAD"],
     pattern: '/sales',
@@ -503,6 +569,12 @@ const routes = {
     pattern: '/invoices/:id/void',
     tokens: [{"old":"/invoices/:id/void","type":0,"val":"invoices","end":""},{"old":"/invoices/:id/void","type":1,"val":"id","end":""},{"old":"/invoices/:id/void","type":0,"val":"void","end":""}],
     types: placeholder as Registry['invoices.void']['types'],
+  },
+  'invoices.download': {
+    methods: ["GET","HEAD"],
+    pattern: '/invoices/:id/download',
+    tokens: [{"old":"/invoices/:id/download","type":0,"val":"invoices","end":""},{"old":"/invoices/:id/download","type":1,"val":"id","end":""},{"old":"/invoices/:id/download","type":0,"val":"download","end":""}],
+    types: placeholder as Registry['invoices.download']['types'],
   },
   'pos.index': {
     methods: ["GET","HEAD"],

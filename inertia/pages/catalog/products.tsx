@@ -34,6 +34,8 @@ import { AvatarUploader } from '@/components/catalog/avatar-uploader'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { ProductFilesDialog } from '@/components/catalog/product-files-dialog'
+import { ProductQrDialog } from '@/components/catalog/product-qr-dialog'
 import { Package, CheckCircle2, XCircle } from 'lucide-react'
 import {
   ColumnVisibilityMenu,
@@ -53,6 +55,7 @@ type Row = {
   isActive: boolean
   inProductionQty: number
   soldQty: number
+  attachmentCount: number
 }
 
 type CategoryOpt = {
@@ -131,7 +134,18 @@ function NewProductDialog({ categories }: { categories: CategoryOpt[] }) {
           <Field label="Category" error={errors.categoryId}>
             <Select
               value={data.categoryId}
-              onValueChange={(v) => setData('categoryId', v)}
+              onValueChange={(v) => {
+                setData('categoryId', v)
+                const cat = categories.find((c) => String(c.id) === v)
+                if (cat) {
+                  if (!data.defaultProfitPct && cat.defaultProfitPct !== null) {
+                    setData('defaultProfitPct', String(cat.defaultProfitPct))
+                  }
+                  if (!data.taxRatePct && cat.taxRatePct !== null) {
+                    setData('taxRatePct', String(cat.taxRatePct))
+                  }
+                }
+              }}
             >
               <SelectTrigger>
                 <SelectValue placeholder="None" />
@@ -218,6 +232,21 @@ function ArchiveAction({ path, name }: { path: string; name: string }) {
   )
 }
 
+function RestoreAction({ path, name }: { path: string; name: string }) {
+  const { post, processing } = useForm()
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      disabled={processing}
+      onClick={() => post(path, { preserveScroll: true })}
+      title={`Restore ${name}`}
+    >
+      Restore
+    </Button>
+  )
+}
+
 const PRODUCT_COLUMNS: ColumnDef[] = [
   { key: 'image', label: 'Image' },
   { key: 'sku', label: 'SKU' },
@@ -225,6 +254,7 @@ const PRODUCT_COLUMNS: ColumnDef[] = [
   { key: 'category', label: 'Category' },
   { key: 'inProduction', label: 'In production' },
   { key: 'sold', label: 'Sold' },
+  { key: 'files', label: 'Files' },
   { key: 'profit', label: 'Profit %' },
   { key: 'tax', label: 'Tax %' },
   { key: 'status', label: 'Status' },
@@ -248,12 +278,6 @@ export default function ProductsPage({ products, categories, filters, counts }: 
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <ColumnVisibilityMenu
-            columns={PRODUCT_COLUMNS}
-            isVisible={isVisible}
-            onToggle={toggle}
-            onReset={reset}
-          />
           <NewProductDialog categories={categories} />
         </div>
       </div>
@@ -328,11 +352,25 @@ export default function ProductsPage({ products, categories, filters, counts }: 
                   {isVisible('sold') && (
                     <TableHead className="text-right">Sold</TableHead>
                   )}
+                  {isVisible('files') && (
+                    <TableHead className="text-right">Files</TableHead>
+                  )}
                   {isVisible('profit') && <TableHead>Profit %</TableHead>}
                   {isVisible('tax') && <TableHead>Tax %</TableHead>}
                   {isVisible('status') && <TableHead>Status</TableHead>}
                   {isVisible('actions') && (
-                    <TableHead className="w-48 text-right">Actions</TableHead>
+                    <TableHead className="w-72 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <span>Actions</span>
+                        <ColumnVisibilityMenu
+                          columns={PRODUCT_COLUMNS}
+                          isVisible={isVisible}
+                          onToggle={toggle}
+                          onReset={reset}
+                          compact
+                        />
+                      </div>
+                    </TableHead>
                   )}
                 </TableRow>
               </TableHeader>
@@ -367,6 +405,11 @@ export default function ProductsPage({ products, categories, filters, counts }: 
                         {p.soldQty > 0 ? p.soldQty : '—'}
                       </TableCell>
                     )}
+                    {isVisible('files') && (
+                      <TableCell className="text-right tabular-nums">
+                        {p.attachmentCount > 0 ? p.attachmentCount : '—'}
+                      </TableCell>
+                    )}
                     {isVisible('profit') && (
                       <TableCell>{p.defaultProfitPct ?? '—'}</TableCell>
                     )}
@@ -384,15 +427,26 @@ export default function ProductsPage({ products, categories, filters, counts }: 
                     )}
                     {isVisible('actions') && (
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-1">
+                          <ProductFilesDialog
+                            productId={p.id}
+                            productName={p.name}
+                            initialCount={p.attachmentCount}
+                          />
+                          <ProductQrDialog productId={p.id} productName={p.name} />
                           <ImageUploader
                             uploadPath={`/catalog/products/${p.id}/image`}
                             deletePath={`/catalog/products/${p.id}/image/delete`}
                             hasImage={!!p.imageUrl}
                           />
-                          {p.isActive && (
+                          {p.isActive ? (
                             <ArchiveAction
                               path={`/catalog/products/${p.id}/archive`}
+                              name={p.name}
+                            />
+                          ) : (
+                            <RestoreAction
+                              path={`/catalog/products/${p.id}/restore`}
                               name={p.name}
                             />
                           )}

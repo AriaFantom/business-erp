@@ -49,9 +49,7 @@ export default class PosController {
     const categoryIds = [
       ...new Set(products.map((p) => p.categoryId).filter((id): id is number => !!id)),
     ]
-    const cats = categoryIds.length
-      ? await ProductCategory.query().whereIn('id', categoryIds)
-      : []
+    const cats = categoryIds.length ? await ProductCategory.query().whereIn('id', categoryIds) : []
     const catById = new Map(cats.map((c) => [c.id, c]))
 
     // Latest completed-job unit cost per product, weighted by produced_qty.
@@ -90,7 +88,7 @@ export default class PosController {
         const breakdown = computeUnitPrice({
           costPrice: cost,
           product: p,
-          category: p.categoryId ? catById.get(p.categoryId) ?? null : null,
+          category: p.categoryId ? (catById.get(p.categoryId) ?? null) : null,
         })
         return {
           id: p.id,
@@ -130,10 +128,7 @@ export default class PosController {
         paymentReference: payload.paymentReference ?? null,
         actor: auth.user!,
       })
-      session.flash(
-        'success',
-        `Sale completed (${result.total.toFixed(2)}). Invoice ready.`
-      )
+      session.flash('success', `Sale completed (${result.total.toFixed(2)}). Invoice ready.`)
       return response.redirect(`/invoices/${result.invoiceId}`)
     } catch (err) {
       if (err instanceof DomainError) {

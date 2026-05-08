@@ -234,26 +234,36 @@ function NewPurchaseDialog({
                           [{ln.itemKind}] {it?.name ?? '—'}
                         </TableCell>
                         <TableCell>
-                          <Input
-                            type="number"
-                            step="0.001"
-                            value={ln.qty}
-                            onChange={(e) =>
-                              updateLine(i, { qty: Number(e.target.value) })
-                            }
-                            className="w-24"
-                          />
+                          <div className="flex items-center gap-1">
+                            <Input
+                              type="number"
+                              step="0.001"
+                              value={ln.qty}
+                              onChange={(e) =>
+                                updateLine(i, { qty: Number(e.target.value) })
+                              }
+                              className="w-24"
+                            />
+                            <span className="text-xs text-muted-foreground">
+                              {it?.unit ?? ''}
+                            </span>
+                          </div>
                         </TableCell>
                         <TableCell>
-                          <Input
-                            type="number"
-                            step="0.0001"
-                            value={ln.unitCost}
-                            onChange={(e) =>
-                              updateLine(i, { unitCost: Number(e.target.value) })
-                            }
-                            className="w-28"
-                          />
+                          <div className="flex items-center gap-1">
+                            <Input
+                              type="number"
+                              step="0.0001"
+                              value={ln.unitCost}
+                              onChange={(e) =>
+                                updateLine(i, { unitCost: Number(e.target.value) })
+                              }
+                              className="w-28"
+                            />
+                            <span className="text-xs text-muted-foreground">
+                              /{it?.unit ?? ''}
+                            </span>
+                          </div>
                         </TableCell>
                         <TableCell>
                           <Input
@@ -342,12 +352,6 @@ export default function PurchasesIndex({
           <h1 className="text-2xl font-semibold">Purchases</h1>
         </div>
         <div className="flex items-center gap-2">
-          <ColumnVisibilityMenu
-            columns={PURCHASE_COLUMNS}
-            isVisible={isVisible}
-            onToggle={toggle}
-            onReset={reset}
-          />
           <NewPurchaseDialog
             suppliers={suppliers}
             materials={materials}
@@ -418,7 +422,17 @@ export default function PurchasesIndex({
                   {isVisible('total') && (
                     <TableHead className="text-right">Total</TableHead>
                   )}
-                  {isVisible('actions') && <TableHead></TableHead>}
+                  {isVisible('actions') && (
+                    <TableHead className="w-20 text-right">
+                      <ColumnVisibilityMenu
+                        columns={PURCHASE_COLUMNS}
+                        isVisible={isVisible}
+                        onToggle={toggle}
+                        onReset={reset}
+                        compact
+                      />
+                    </TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>

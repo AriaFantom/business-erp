@@ -1,4 +1,5 @@
 import type { HttpContext } from '@adonisjs/core/http'
+import React from 'react'
 import { createQuotationValidator, suggestPriceValidator } from '#validators/quotations'
 import {
   getQuotationShowViewModel,
@@ -13,6 +14,10 @@ import {
 import { suggestPriceFor } from '#services/pricing'
 import { convertQuotationToSale } from '#services/sale_service'
 import { DomainError } from '#services/domain_errors'
+import Quotation from '#models/quotation'
+import env from '#start/env'
+import { ensurePdf, streamPdf } from '#services/document_pdf/render'
+import { QuotationDocument } from '#services/document_pdf/quotation_document'
 
 export default class QuotationsController {
   async index({ request, inertia, bouncer }: HttpContext) {
@@ -52,6 +57,7 @@ export default class QuotationsController {
           description: i.description,
           qty: i.qty,
           unitPrice: i.unitPrice ?? null,
+          profitPctOverride: i.profitPctOverride ?? null,
           taxRatePct: i.taxRatePct ?? null,
         })),
         actor: auth.user!,
@@ -109,6 +115,17 @@ export default class QuotationsController {
     } catch (err) {
       return this._domain(err, response, session)
     }
+  }
+
+  async download({ params, response, bouncer }: HttpContext) {
+    await bouncer.authorize('quotations.view' as never)
+    const quotation = await Quotation.findOrFail(params.id)
+    const vm = await getQuotationShowViewModel(quotation.id)
+    const appName = env.get('APP_NAME')
+    await ensurePdf('quotation', quotation, () =>
+      React.createElement(QuotationDocument, { ...vm, appName })
+    )
+    await streamPdf(quotation.pdfKey!, response, `quotation-${quotation.number}.pdf`)
   }
 
   async suggestPrice({ request, bouncer, response }: HttpContext) {

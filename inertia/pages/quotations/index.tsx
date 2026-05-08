@@ -416,12 +416,6 @@ export default function QuotationsIndex({
           <h1 className="text-2xl font-semibold">Quotations</h1>
         </div>
         <div className="flex items-center gap-2">
-          <ColumnVisibilityMenu
-            columns={QUOTATION_COLUMNS}
-            isVisible={isVisible}
-            onToggle={toggle}
-            onReset={reset}
-          />
           <NewQuotationDialog customers={customers} products={products} />
         </div>
       </div>
@@ -485,7 +479,17 @@ export default function QuotationsIndex({
                   {isVisible('total') && (
                     <TableHead className="text-right">Total</TableHead>
                   )}
-                  {isVisible('actions') && <TableHead></TableHead>}
+                  {isVisible('actions') && (
+                    <TableHead className="w-20 text-right">
+                      <ColumnVisibilityMenu
+                        columns={QUOTATION_COLUMNS}
+                        isVisible={isVisible}
+                        onToggle={toggle}
+                        onReset={reset}
+                        compact
+                      />
+                    </TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>

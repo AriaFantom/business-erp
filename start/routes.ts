@@ -93,6 +93,9 @@ router
       .post('catalog/materials/:id/archive', [MaterialsController, 'archive'])
       .as('materials.archive')
     router
+      .post('catalog/materials/:id/restore', [MaterialsController, 'restore'])
+      .as('materials.restore')
+    router
       .post('catalog/materials/:id/image', [MaterialsController, 'updateImage'])
       .as('materials.image.update')
     router
@@ -105,6 +108,9 @@ router
     router
       .post('catalog/components/:id/archive', [ComponentsController, 'archive'])
       .as('components.archive')
+    router
+      .post('catalog/components/:id/restore', [ComponentsController, 'restore'])
+      .as('components.restore')
     router
       .post('catalog/components/:id/image', [ComponentsController, 'updateImage'])
       .as('components.image.update')
@@ -119,11 +125,30 @@ router
       .post('catalog/products/:id/archive', [ProductsController, 'archive'])
       .as('products.archive')
     router
+      .post('catalog/products/:id/restore', [ProductsController, 'restore'])
+      .as('products.restore')
+    router
       .post('catalog/products/:id/image', [ProductsController, 'updateImage'])
       .as('products.image.update')
     router
       .post('catalog/products/:id/image/delete', [ProductsController, 'destroyImage'])
       .as('products.image.destroy')
+    router
+      .get('catalog/products/:id/files', [ProductsController, 'listFiles'])
+      .as('products.files.index')
+    router
+      .post('catalog/products/:id/files', [ProductsController, 'uploadFile'])
+      .as('products.files.upload')
+    router
+      .get('catalog/products/:id/files/:fileId/download', [ProductsController, 'downloadFile'])
+      .as('products.files.download')
+    router
+      .post('catalog/products/:id/files/:fileId/delete', [ProductsController, 'destroyFile'])
+      .as('products.files.destroy')
+    router.get('catalog/products/:id/qr', [ProductsController, 'qr']).as('products.qr')
+    router
+      .get('catalog/products/:id/qr/download', [ProductsController, 'qrDownload'])
+      .as('products.qr.download')
 
     router
       .get('catalog/categories', [ProductCategoriesController, 'index'])
@@ -135,8 +160,11 @@ router
       .post('catalog/categories/:id', [ProductCategoriesController, 'update'])
       .as('product_categories.update')
     router
-      .post('catalog/categories/:id/delete', [ProductCategoriesController, 'destroy'])
-      .as('product_categories.destroy')
+      .post('catalog/categories/:id/archive', [ProductCategoriesController, 'archive'])
+      .as('product_categories.archive')
+    router
+      .post('catalog/categories/:id/restore', [ProductCategoriesController, 'restore'])
+      .as('product_categories.restore')
 
     // ── Inventory ─────────────────────────────────────────────────────
     router.get('inventory', [InventoryController, 'index']).as('inventory.index')
@@ -173,6 +201,9 @@ router
     router
       .post('quotations/suggest-price', [QuotationsController, 'suggestPrice'])
       .as('quotations.suggest_price')
+    router
+      .get('quotations/:id/download', [QuotationsController, 'download'])
+      .as('quotations.download')
 
     // ── Sales ─────────────────────────────────────────────────────────
     router.get('sales', [SalesController, 'index']).as('sales.index')
@@ -186,6 +217,7 @@ router
     router.get('invoices/:id', [InvoicesController, 'show']).as('invoices.show')
     router.post('invoices/:id/payments', [InvoicesController, 'pay']).as('invoices.pay')
     router.post('invoices/:id/void', [InvoicesController, 'void']).as('invoices.void')
+    router.get('invoices/:id/download', [InvoicesController, 'download']).as('invoices.download')
 
     // ── POS ──────────────────────────────────────────────────────────
     router.get('pos', [PosController, 'index']).as('pos.index')

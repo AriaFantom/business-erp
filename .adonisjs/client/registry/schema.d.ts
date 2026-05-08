@@ -391,6 +391,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/materials_controller').default['archive']>>>
     }
   }
+  'materials.restore': {
+    methods: ["POST"]
+    pattern: '/catalog/materials/:id/restore'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/materials_controller').default['restore']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/materials_controller').default['restore']>>>
+    }
+  }
   'materials.image.update': {
     methods: ["POST"]
     pattern: '/catalog/materials/:id/image'
@@ -461,6 +473,18 @@ export interface Registry {
       query: {}
       response: ExtractResponse<Awaited<ReturnType<import('#controllers/components_controller').default['archive']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/components_controller').default['archive']>>>
+    }
+  }
+  'components.restore': {
+    methods: ["POST"]
+    pattern: '/catalog/components/:id/restore'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/components_controller').default['restore']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/components_controller').default['restore']>>>
     }
   }
   'components.image.update': {
@@ -535,6 +559,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/products_controller').default['archive']>>>
     }
   }
+  'products.restore': {
+    methods: ["POST"]
+    pattern: '/catalog/products/:id/restore'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/products_controller').default['restore']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/products_controller').default['restore']>>>
+    }
+  }
   'products.image.update': {
     methods: ["POST"]
     pattern: '/catalog/products/:id/image'
@@ -557,6 +593,78 @@ export interface Registry {
       query: {}
       response: ExtractResponse<Awaited<ReturnType<import('#controllers/products_controller').default['destroyImage']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/products_controller').default['destroyImage']>>>
+    }
+  }
+  'products.files.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/catalog/products/:id/files'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/products_controller').default['listFiles']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/products_controller').default['listFiles']>>>
+    }
+  }
+  'products.files.upload': {
+    methods: ["POST"]
+    pattern: '/catalog/products/:id/files'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/catalog').uploadProductFileValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#validators/catalog').uploadProductFileValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/products_controller').default['uploadFile']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/products_controller').default['uploadFile']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'products.files.download': {
+    methods: ["GET","HEAD"]
+    pattern: '/catalog/products/:id/files/:fileId/download'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; fileId: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/products_controller').default['downloadFile']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/products_controller').default['downloadFile']>>>
+    }
+  }
+  'products.files.destroy': {
+    methods: ["POST"]
+    pattern: '/catalog/products/:id/files/:fileId/delete'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; fileId: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/products_controller').default['destroyFile']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/products_controller').default['destroyFile']>>>
+    }
+  }
+  'products.qr': {
+    methods: ["GET","HEAD"]
+    pattern: '/catalog/products/:id/qr'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/products_controller').default['qr']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/products_controller').default['qr']>>>
+    }
+  }
+  'products.qr.download': {
+    methods: ["GET","HEAD"]
+    pattern: '/catalog/products/:id/qr/download'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/products_controller').default['qrDownload']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/products_controller').default['qrDownload']>>>
     }
   }
   'product_categories.index': {
@@ -595,16 +703,28 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/product_categories_controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
-  'product_categories.destroy': {
+  'product_categories.archive': {
     methods: ["POST"]
-    pattern: '/catalog/categories/:id/delete'
+    pattern: '/catalog/categories/:id/archive'
     types: {
       body: {}
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/product_categories_controller').default['destroy']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/product_categories_controller').default['destroy']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/product_categories_controller').default['archive']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/product_categories_controller').default['archive']>>>
+    }
+  }
+  'product_categories.restore': {
+    methods: ["POST"]
+    pattern: '/catalog/categories/:id/restore'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/product_categories_controller').default['restore']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/product_categories_controller').default['restore']>>>
     }
   }
   'inventory.index': {
@@ -895,6 +1015,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/quotations_controller').default['suggestPrice']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
+  'quotations.download': {
+    methods: ["GET","HEAD"]
+    pattern: '/quotations/:id/download'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/quotations_controller').default['download']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/quotations_controller').default['download']>>>
+    }
+  }
   'sales.index': {
     methods: ["GET","HEAD"]
     pattern: '/sales'
@@ -1001,6 +1133,18 @@ export interface Registry {
       query: {}
       response: ExtractResponse<Awaited<ReturnType<import('#controllers/invoices_controller').default['void']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/invoices_controller').default['void']>>>
+    }
+  }
+  'invoices.download': {
+    methods: ["GET","HEAD"]
+    pattern: '/invoices/:id/download'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/invoices_controller').default['download']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/invoices_controller').default['download']>>>
     }
   }
   'pos.index': {
