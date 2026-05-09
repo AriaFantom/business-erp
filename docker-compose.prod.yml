@@ -11,6 +11,9 @@ services:
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: 3333
+      LOG_LEVEL: info
+      TZ: UTC
+      SESSION_DRIVER: redis
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USER: dev
@@ -19,10 +22,13 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: dev
+      DRIVE_DISK: s3
       AWS_ACCESS_KEY_ID: devminio
       AWS_SECRET_ACCESS_KEY: devminio
       AWS_REGION: us-east-1
       S3_BUCKET: layerdreams
+      S3_ENDPOINT: http://minio:9000
+      S3_FORCE_PATH_STYLE: 'true'
     ports:
       - '3333:3333'
     depends_on:
@@ -32,6 +38,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      createbuckets:
+        condition: service_completed_successfully
     networks:
       - backend
 
@@ -76,6 +84,9 @@ services:
       MINIO_ROOT_USER: devminio
       MINIO_ROOT_PASSWORD: devminio
     command: server /data --console-address ":9001"
+    ports:
+      - '9000:9000'
+      - '9001:9001'
     volumes:
       - minio_data:/data
     healthcheck:
@@ -83,6 +94,21 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - backend
+
+  createbuckets:
+    image: minio/mc:latest
+    container_name: layerdreams-createbuckets
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 devminio devminio &&
+      mc mb --ignore-existing local/layerdreams &&
+      exit 0
+      "
     networks:
       - backend
 
