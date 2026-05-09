@@ -20,6 +20,20 @@ export const http = defineConfig({
   generateRequestId: true,
 
   /**
+   * Trust X-Forwarded-* headers from the reverse proxy in front of the app
+   * (Nginx Proxy Manager / Caddy / Cloudflare). Without this, request.protocol()
+   * stays "http" behind TLS termination, which breaks `secure` cookies and any
+   * URL generation that relies on the original scheme. Trusts loopback and
+   * private RFC1918 ranges, where the proxy lives in our docker network.
+   */
+  trustProxy: (address: string) => {
+    if (address === '127.0.0.1' || address === '::1' || address.startsWith('::ffff:127.')) return true
+    if (/^10\./.test(address) || /^192\.168\./.test(address)) return true
+    if (/^172\.(1[6-9]|2\d|3[01])\./.test(address)) return true
+    return false
+  },
+
+  /**
    * Allow HTTP method spoofing via the "_method" form/query parameter.
    * This lets HTML forms target PUT/PATCH/DELETE routes while still
    * submitting with POST.

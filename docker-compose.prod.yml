@@ -13,7 +13,7 @@ services:
       PORT: 3333
       LOG_LEVEL: info
       TZ: UTC
-      SESSION_DRIVER: redis
+      SESSION_DRIVER: cookie
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USER: dev
