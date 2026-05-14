@@ -18,25 +18,21 @@ ENV NODE_ENV=development
 COPY . .
 RUN node ace build
 
-# ---------- Production dependencies only ----------
-FROM base AS prod-deps
-COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
-
 # ---------- Final runtime image ----------
 FROM base AS runtime
-ENV NODE_ENV=production \
-    HOST=0.0.0.0 \
-    PORT=3333 \
-    LOG_LEVEL=info
 
-# Run as the non-root user that ships with the node image.
+# Install prod deps against the package.json that `node ace build` writes into
+# build/ — this is the canonical AdonisJS deployment pattern and avoids any
+# drift between root deps and the bundled app.
+COPY --from=build /app/build ./
+RUN npm ci --omit=dev && chown -R node:node /app
+
 USER node
-
-COPY --chown=node:node --from=prod-deps /app/node_modules ./node_modules
-COPY --chown=node:node --from=build /app/build ./
 
 EXPOSE 3333
 
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["node", "bin/server.js"]
+# Use the entrypoint shim so `MIGRATE=true` can opt in to running migrations
+# before the server boots. With MIGRATE unset, this is identical to running
+# `node bin/server.js` directly.
+CMD ["node", "bin/docker-entrypoint.js"]

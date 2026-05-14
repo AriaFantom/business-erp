@@ -6,7 +6,10 @@ services:
     container_name: layerdreams-app
     restart: unless-stopped
     env_file:
-      - .env
+      # Honor the same file as `docker compose --env-file ...`. Defaults to
+      # `.env` so a plain `docker compose -f docker-compose.prod.yml up`
+      # behaves like the documented production setup.
+      - ${ENV_FILE:-.env}
     environment:
       # Values that are stable across all deploys — secrets and per-deploy
       # config (APP_KEY, APP_URL, AWS_*, S3_ENDPOINT, MINIO_*, POSTGRES_*) come
@@ -23,11 +26,21 @@ services:
       REDIS_PORT: 6379
       DRIVE_DISK: s3
       S3_FORCE_PATH_STYLE: 'true'
+      # When set to "true", the entrypoint runs `node ace migration:run --force`
+      # before booting the server. Toggle with `MIGRATE=true ./deploy.sh up`.
+      MIGRATE: ${MIGRATE:-false}
     ports:
       # Bind to loopback only — Nginx Proxy Manager on the host forwards
       # panel.layerdreams.com to 127.0.0.1:3333. The app is never reachable
       # directly from the public internet.
       - '127.0.0.1:3333:3333'
+    healthcheck:
+      test:
+        ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3333/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
     depends_on:
       postgres:
         condition: service_healthy

@@ -1,6 +1,7 @@
 import env from '#start/env'
 import app from '@adonisjs/core/services/app'
 import { defineConfig } from '@adonisjs/core/http'
+import proxyAddr from 'proxy-addr'
 
 /**
  * The app URL can be used in various places where you want to create absolute
@@ -23,15 +24,11 @@ export const http = defineConfig({
    * Trust X-Forwarded-* headers from the reverse proxy in front of the app
    * (Nginx Proxy Manager / Caddy / Cloudflare). Without this, request.protocol()
    * stays "http" behind TLS termination, which breaks `secure` cookies and any
-   * URL generation that relies on the original scheme. Trusts loopback and
-   * private RFC1918 ranges, where the proxy lives in our docker network.
+   * URL generation that relies on the original scheme. `loopback` + `uniquelocal`
+   * covers 127.0.0.0/8, ::1, and all RFC1918 ranges (10/8, 172.16/12, 192.168/16)
+   * — i.e. NPM on the same host or anywhere on the docker network.
    */
-  trustProxy: (address: string) => {
-    if (address === '127.0.0.1' || address === '::1' || address.startsWith('::ffff:127.')) return true
-    if (/^10\./.test(address) || /^192\.168\./.test(address)) return true
-    if (/^172\.(1[6-9]|2\d|3[01])\./.test(address)) return true
-    return false
-  },
+  trustProxy: proxyAddr.compile(['loopback', 'uniquelocal']),
 
   /**
    * Allow HTTP method spoofing via the "_method" form/query parameter.

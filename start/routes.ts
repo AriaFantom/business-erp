@@ -33,6 +33,8 @@ const ReportsController = () => import('#controllers/reports_controller')
 const PosController = () => import('#controllers/pos_controller')
 const RootController = () => import('#controllers/root_controller')
 
+router.get('/health', ({ response }) => response.ok({ status: 'ok' })).as('health')
+
 router.get('/', [RootController, 'index']).use(middleware.firstUserSetup()).as('home')
 
 router
