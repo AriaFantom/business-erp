@@ -18,7 +18,7 @@ if (process.env.MIGRATE === 'true') {
 
 if (process.env.SEED === 'true') {
   console.log('[entrypoint] running seeders…')
-  execSync('node ace db:seed --force', { stdio: 'inherit' })
+  execSync('node ace db:seed', { stdio: 'inherit' })
 }
 
 await import('./server.js')
