@@ -42,6 +42,7 @@ Fill in `.env`. Required:
 | `MINIO_BROWSER_REDIRECT_URL` | Public console URL, e.g. `https://s3-console.layerdreams.com`. |
 | `RESEND_API_KEY` + mail fields | Required for sending invitations. |
 | `MIGRATE` | `true` to run pending migrations on every boot. Safe — migrations are idempotent. |
+| `SEED` | `true` to run `db:seed --force` on every boot. Safe — seeders use `updateOrCreate` to provision the `owner`/`admin`/`member` roles and a default supplier/customer/categories. |
 
 Everything else (`NODE_ENV=production`, `HOST=0.0.0.0`, `PORT=3333`, etc.) is
 already correct in the example.

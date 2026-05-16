@@ -29,6 +29,11 @@ services:
       # When set to "true", the entrypoint runs `node ace migration:run --force`
       # before booting the server. Toggle with `MIGRATE=true ./deploy.sh up`.
       MIGRATE: ${MIGRATE:-false}
+      # When set to "true", the entrypoint runs `node ace db:seed --force`
+      # after migrations. Seeders are idempotent (updateOrCreate), so this is
+      # safe on every boot — leaving it on guarantees roles + default catalog
+      # rows exist on a fresh database.
+      SEED: ${SEED:-false}
     # No host port binding — NPM (running in docker) reaches the app over the
     # shared `npm` network using the container hostname `layerdreams-app:3333`.
     # The app is never reachable directly from the public internet.
