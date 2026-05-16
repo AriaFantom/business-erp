@@ -29,11 +29,9 @@ services:
       # When set to "true", the entrypoint runs `node ace migration:run --force`
       # before booting the server. Toggle with `MIGRATE=true ./deploy.sh up`.
       MIGRATE: ${MIGRATE:-false}
-    ports:
-      # Bind to loopback only — Nginx Proxy Manager on the host forwards
-      # panel.layerdreams.com to 127.0.0.1:3333. The app is never reachable
-      # directly from the public internet.
-      - '127.0.0.1:3333:3333'
+    # No host port binding — NPM (running in docker) reaches the app over the
+    # shared `npm` network using the container hostname `layerdreams-app:3333`.
+    # The app is never reachable directly from the public internet.
     healthcheck:
       test:
         ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3333/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
@@ -52,6 +50,7 @@ services:
         condition: service_completed_successfully
     networks:
       - backend
+      - npm
 
   postgres:
     image: postgres:17-alpine
@@ -101,10 +100,8 @@ services:
       # Allow signed-URL fetches from the panel origin in the browser.
       MINIO_API_CORS_ALLOW_ORIGIN: ${APP_URL}
     command: server /data --console-address ":9001"
-    ports:
-      # Loopback-only — NPM proxies the public subdomains to these ports.
-      - '127.0.0.1:9000:9000'
-      - '127.0.0.1:9001:9001'
+    # No host port binding — NPM reaches MinIO over the shared `npm` network at
+    # `layerdreams-minio:9000` (API) and `layerdreams-minio:9001` (console).
     volumes:
       - minio_data:/data
     healthcheck:
@@ -114,6 +111,7 @@ services:
       retries: 10
     networks:
       - backend
+      - npm
 
   createbuckets:
     image: minio/mc:latest
@@ -142,3 +140,8 @@ volumes:
 networks:
   backend:
     driver: bridge
+  # Shared network with the Nginx Proxy Manager stack so NPM can reach the app
+  # and MinIO by container hostname (no public port exposure required).
+  npm:
+    external: true
+    name: ngnix-proxy-manager_default

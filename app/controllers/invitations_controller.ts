@@ -12,7 +12,6 @@ import { issueInvitationToken } from '#services/invitation_token'
 export default class InvitationsController {
   /** GET /system/invitations — invite form + pending invitations */
   async index({ inertia, auth, bouncer }: HttpContext) {
-    // Same gate as the sidebar nav link to avoid mismatched visibility.
     await bouncer.authorize('users.invite' as never)
     const data = await getInvitationsViewModel(auth.user!)
     return inertia.render('system/invitations', data)
@@ -20,21 +19,16 @@ export default class InvitationsController {
 
   /** POST /invitations — owner/admin invites a new user */
   async store({ request, auth, bouncer, response, session }: HttpContext) {
-    // RBAC check: needs the users.invite permission.
-    // The ability is auto-generated from start/permissions.ts.
     await bouncer.authorize('users.invite' as never)
 
     const { email, roleId } = await request.validateUsing(createInvitationValidator)
 
-    // Refuse to invite somebody who already has an account.
     const role = await Role.find(roleId)
     if (!role) {
       session.flash('errors', { roleId: 'Role not found.' })
       return response.redirect().back()
     }
 
-    // Hierarchy: only roles in the inviter's subtree are assignable.
-    // canAssignRole also enforces the "owner is reserved" rule.
     if (!(await canAssignRole(auth.user!, role))) {
       session.flash('errors', {
         roleId: 'You cannot assign this role — it is at or above your own level.',
