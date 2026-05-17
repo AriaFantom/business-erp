@@ -4,6 +4,7 @@ type ParamValue = string | number | bigint | boolean
 
 export type ScannedRoutes = {
   ALL: {
+    'health': { paramsTuple?: []; params?: {} }
     'home': { paramsTuple?: []; params?: {} }
     'session.create': { paramsTuple?: []; params?: {} }
     'session.store': { paramsTuple?: []; params?: {} }
@@ -107,6 +108,7 @@ export type ScannedRoutes = {
     'reports.jobs': { paramsTuple?: []; params?: {} }
   }
   GET: {
+    'health': { paramsTuple?: []; params?: {} }
     'home': { paramsTuple?: []; params?: {} }
     'session.create': { paramsTuple?: []; params?: {} }
     'invitation.show': { paramsTuple: [ParamValue]; params: {'token': ParamValue} }
@@ -145,6 +147,7 @@ export type ScannedRoutes = {
     'reports.jobs': { paramsTuple?: []; params?: {} }
   }
   HEAD: {
+    'health': { paramsTuple?: []; params?: {} }
     'home': { paramsTuple?: []; params?: {} }
     'session.create': { paramsTuple?: []; params?: {} }
     'invitation.show': { paramsTuple: [ParamValue]; params: {'token': ParamValue} }

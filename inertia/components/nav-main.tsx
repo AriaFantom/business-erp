@@ -16,6 +16,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  useSidebar,
 } from '@/components/ui/sidebar'
 
 import { navItems, type NavItem } from './sidebar_nav'
@@ -46,6 +47,10 @@ export function NavMain() {
     user: SidebarUser | undefined
   }
   const currentUrl = usePage().url
+  const { isMobile, setOpenMobile } = useSidebar()
+  const closeMobile = () => {
+    if (isMobile) setOpenMobile(false)
+  }
 
   return (
     <SidebarGroup>
@@ -59,7 +64,7 @@ export function NavMain() {
               return (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild tooltip={item.title} isActive={active}>
-                    <Link href={item.url} prefetch>
+                    <Link href={item.url} prefetch onClick={closeMobile}>
                       <item.icon />
                       <span>{item.title}</span>
                     </Link>
@@ -93,7 +98,7 @@ export function NavMain() {
                         return (
                           <SidebarMenuSubItem key={child.title}>
                             <SidebarMenuSubButton asChild isActive={active}>
-                              <Link href={child.url} prefetch>
+                              <Link href={child.url} prefetch onClick={closeMobile}>
                                 <child.icon />
                                 <span>{child.title}</span>
                               </Link>

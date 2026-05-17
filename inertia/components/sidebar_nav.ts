@@ -33,8 +33,33 @@ export type NavItem = {
 export const navItems: NavItem[] = [
   {
     title: 'Dashboard',
-    url: '/dashboard',
+    url: '#',
     icon: LayoutDashboard,
+    children: [
+      {
+        title: 'Overview',
+        url: '/dashboard',
+        icon: LayoutDashboard,
+      },
+      {
+        title: 'Profit Report',
+        url: '/reports/profit',
+        icon: ClipboardList,
+        permission: 'reports.view',
+      },
+      {
+        title: 'Inventory Report',
+        url: '/reports/inventory',
+        icon: Warehouse,
+        permission: 'reports.view',
+      },
+      {
+        title: 'Jobs Report',
+        url: '/reports/jobs',
+        icon: Factory,
+        permission: 'reports.view',
+      },
+    ],
   },
   {
     title: 'Catalog',
@@ -132,31 +157,6 @@ export const navItems: NavItem[] = [
         url: '/customers',
         icon: UserSquare,
         permission: 'customers.view',
-      },
-    ],
-  },
-  {
-    title: 'Reports',
-    url: '#',
-    icon: ClipboardList,
-    children: [
-      {
-        title: 'Profit',
-        url: '/reports/profit',
-        icon: ClipboardList,
-        permission: 'reports.view',
-      },
-      {
-        title: 'Inventory',
-        url: '/reports/inventory',
-        icon: Warehouse,
-        permission: 'reports.view',
-      },
-      {
-        title: 'Jobs',
-        url: '/reports/jobs',
-        icon: Factory,
-        permission: 'reports.view',
       },
     ],
   },
