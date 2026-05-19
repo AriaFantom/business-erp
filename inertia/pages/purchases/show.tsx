@@ -1,5 +1,6 @@
 import { type ReactElement, useState } from 'react'
 import { useForm } from '@inertiajs/react'
+import { Link } from '@adonisjs/inertia/react'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -40,6 +41,7 @@ type Item = {
   lineSubtotal: string
   lineTax: string
   lineTotal: string
+  printers?: { id: number; name: string }[]
 }
 
 type PageProps = { purchase: Purchase; items: Item[] }
@@ -88,8 +90,7 @@ export default function PurchaseShow({ purchase, items }: PageProps) {
         <div>
           <h1 className="text-2xl font-semibold">Purchase {purchase.number}</h1>
           <p className="text-sm text-muted-foreground">
-            {purchase.supplier?.name ?? '—'} ·{' '}
-            {purchase.purchasedAt?.slice(0, 10) ?? '—'}
+            {purchase.supplier?.name ?? '—'} · {purchase.purchasedAt?.slice(0, 10) ?? '—'}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -139,9 +140,20 @@ export default function PurchaseShow({ purchase, items }: PageProps) {
                     <TableCell>{it.itemKind}</TableCell>
                     <TableCell>
                       <div className="font-medium">{it.itemName}</div>
-                      <div className="font-mono text-xs text-muted-foreground">
-                        {it.itemSku}
-                      </div>
+                      <div className="font-mono text-xs text-muted-foreground">{it.itemSku}</div>
+                      {it.itemKind === 'printer' && it.printers?.length ? (
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          Printers created:{' '}
+                          {it.printers.map((p, i) => (
+                            <span key={p.id}>
+                              {i > 0 ? ', ' : ''}
+                              <Link href={`/printers/${p.id}`} className="hover:underline">
+                                {p.name}
+                              </Link>
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
                     </TableCell>
                     <TableCell className="text-right">{it.qty}</TableCell>
                     <TableCell className="text-right">{it.unitCost}</TableCell>
@@ -170,9 +182,7 @@ export default function PurchaseShow({ purchase, items }: PageProps) {
             <dt className="font-medium">Total</dt>
             <dd className="text-right font-medium">{purchase.total}</dd>
           </dl>
-          {purchase.note && (
-            <p className="mt-3 text-sm text-muted-foreground">{purchase.note}</p>
-          )}
+          {purchase.note && <p className="mt-3 text-sm text-muted-foreground">{purchase.note}</p>}
         </CardContent>
       </Card>
     </div>

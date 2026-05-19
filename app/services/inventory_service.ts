@@ -8,7 +8,7 @@ import type User from '#models/user'
 import { InsufficientStockError } from '#services/domain_errors'
 import { audit } from '#services/audit'
 
-export type ItemKind = 'material' | 'component' | 'product'
+export type ItemKind = 'material' | 'component' | 'product' | 'printer'
 
 export type MovementReason =
   | 'purchase'
@@ -74,7 +74,12 @@ async function lockInventory(
  * `InsufficientStockError`. Cache invalidation runs at the end so concurrent
  * snapshot readers always see fresh data after commit.
  */
-export async function applyMovement(input: MovementInput): Promise<StockMovement> {
+export async function applyMovement(input: MovementInput): Promise<StockMovement | undefined> {
+  if (input.itemKind === 'printer') {
+    // Printers are not fungible stock; they exist as rows in `printers` instead.
+    return
+  }
+
   const { trx, actor } = input
 
   if (input.qty === 0) {
@@ -170,6 +175,9 @@ export async function adjustStock(opts: {
         actor: opts.actor,
         trx,
       })
+      if (!move) {
+        throw new Error('adjustStock cannot target a printer')
+      }
       return move
     })
     .finally(() => invalidateSnapshotCache())

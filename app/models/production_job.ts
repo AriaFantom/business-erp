@@ -4,7 +4,9 @@ import { ProductionJobSchema } from '#database/schema'
 import Product from '#models/product'
 import User from '#models/user'
 import JobMaterialConsumption from '#models/job_material_consumption'
-import JobExpense from '#models/job_expense'
+import Expense from '#models/expense'
+import Printer from '#models/printer'
+import ProductionJobStage from '#models/production_job_stage'
 
 export default class ProductionJob extends ProductionJobSchema {
   @belongsTo(() => Product)
@@ -16,9 +18,18 @@ export default class ProductionJob extends ProductionJobSchema {
   @hasMany(() => JobMaterialConsumption, { foreignKey: 'jobId' })
   declare consumptions: HasMany<typeof JobMaterialConsumption>
 
-  @hasMany(() => JobExpense, { foreignKey: 'jobId' })
-  declare expenses: HasMany<typeof JobExpense>
+  @hasMany(() => Expense, { foreignKey: 'jobId' })
+  declare expenses: HasMany<typeof Expense>
 
   @belongsTo(() => User, { foreignKey: 'createdByUserId' })
   declare createdBy: BelongsTo<typeof User>
+
+  @belongsTo(() => Printer, { foreignKey: 'printerId' })
+  declare printer: BelongsTo<typeof Printer>
+
+  @hasMany(() => ProductionJobStage, { foreignKey: 'jobId' })
+  declare stages: HasMany<typeof ProductionJobStage>
+
+  @belongsTo(() => ProductionJobStage, { foreignKey: 'currentStageId' })
+  declare currentStage: BelongsTo<typeof ProductionJobStage>
 }

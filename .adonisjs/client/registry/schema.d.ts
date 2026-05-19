@@ -875,12 +875,48 @@ export interface Registry {
     methods: ["POST"]
     pattern: '/jobs/:id/start'
     types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/jobs').startJobValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#validators/jobs').startJobValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/jobs_controller').default['start']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/jobs_controller').default['start']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'jobs.pause': {
+    methods: ["POST"]
+    pattern: '/jobs/:id/pause'
+    types: {
       body: {}
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/jobs_controller').default['start']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/jobs_controller').default['start']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/jobs_controller').default['pause']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/jobs_controller').default['pause']>>>
+    }
+  }
+  'jobs.resume': {
+    methods: ["POST"]
+    pattern: '/jobs/:id/resume'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/jobs_controller').default['resume']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/jobs_controller').default['resume']>>>
+    }
+  }
+  'jobs.skipStage': {
+    methods: ["POST"]
+    pattern: '/jobs/:id/skip-stage'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/jobs_controller').default['skipStage']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/jobs_controller').default['skipStage']>>>
     }
   }
   'jobs.consume': {
@@ -907,16 +943,16 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/jobs_controller').default['addExpense']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
-  'jobs.complete': {
+  'jobs.confirm': {
     methods: ["POST"]
-    pattern: '/jobs/:id/complete'
+    pattern: '/jobs/:id/confirm'
     types: {
-      body: ExtractBody<InferInput<(typeof import('#validators/jobs').completeJobValidator)>>
+      body: ExtractBody<InferInput<(typeof import('#validators/jobs').confirmJobValidator)>>
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
-      query: ExtractQuery<InferInput<(typeof import('#validators/jobs').completeJobValidator)>>
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/jobs_controller').default['complete']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/jobs_controller').default['complete']>>> | { status: 422; response: { errors: SimpleError[] } }
+      query: ExtractQuery<InferInput<(typeof import('#validators/jobs').confirmJobValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/jobs_controller').default['confirm']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/jobs_controller').default['confirm']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
   'jobs.fail': {
@@ -941,6 +977,102 @@ export interface Registry {
       query: {}
       response: ExtractResponse<Awaited<ReturnType<import('#controllers/jobs_controller').default['cancel']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/jobs_controller').default['cancel']>>>
+    }
+  }
+  'printers.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/printers'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['index']>>>
+    }
+  }
+  'printers.new': {
+    methods: ["GET","HEAD"]
+    pattern: '/printers/new'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['create']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['create']>>>
+    }
+  }
+  'printers.store': {
+    methods: ["POST"]
+    pattern: '/printers'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/printers').createPrinterValidator)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#validators/printers').createPrinterValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'printers.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/printers/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['show']>>>
+    }
+  }
+  'printers.update': {
+    methods: ["POST"]
+    pattern: '/printers/:id'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/printers').updatePrinterValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#validators/printers').updatePrinterValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'printers.retire': {
+    methods: ["POST"]
+    pattern: '/printers/:id/retire'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['retire']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['retire']>>>
+    }
+  }
+  'printers.maintenance': {
+    methods: ["POST"]
+    pattern: '/printers/:id/maintenance'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['toggleMaintenance']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['toggleMaintenance']>>>
+    }
+  }
+  'printers.expense': {
+    methods: ["POST"]
+    pattern: '/printers/:id/expense'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/printers').printerExpenseValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#validators/printers').printerExpenseValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['addExpense']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['addExpense']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
   'quotations.index': {

@@ -1,5 +1,5 @@
 import { type ReactElement, useState } from 'react'
-import { useForm } from '@inertiajs/react'
+import { useForm, router } from '@inertiajs/react'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -30,11 +30,22 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
+import { JobStagesList, type StageView } from '@/components/jobs/job-stages-list'
+import { JobStagesRepeater, type StageDraft } from '@/components/jobs/job-stages-repeater'
+
+type JobStatus =
+  | 'draft'
+  | 'in_progress'
+  | 'paused'
+  | 'awaiting_confirmation'
+  | 'completed'
+  | 'failed'
+  | 'cancelled'
 
 type Job = {
   id: number
   number: string
-  status: string
+  status: JobStatus
   productId: number
   productName: string
   plannedQty: number
@@ -49,6 +60,14 @@ type Job = {
   unitCost: string
   chainCost: string
   note: string | null
+  // new fields
+  printerId: number | null
+  printerName: string | null
+  autoCompleteAt: string | null
+  estimatedDurationMin: number | null
+  pausedAt: string | null
+  remainingSeconds: number | null
+  currentStageId: number | null
 }
 
 type Consumption = {
@@ -82,11 +101,18 @@ type InventoryItem = {
   onHand: string
 }
 
+type IdlePrinter = {
+  id: number
+  name: string
+}
+
 type PageProps = {
   job: Job
   consumptions: Consumption[]
   expenses: Expense[]
   inventoryItems: InventoryItem[]
+  stages: StageView[]
+  idlePrinters: IdlePrinter[]
 }
 
 function PostAction({
@@ -188,9 +214,7 @@ function ConsumeDialog({ jobId, items }: { jobId: number; items: InventoryItem[]
           <Field
             label={`Qty consumed${
               target
-                ? ` (${
-                    items.find((it) => `${it.itemKind}:${it.itemId}` === target)?.unit ?? ''
-                  })`
+                ? ` (${items.find((it) => `${it.itemKind}:${it.itemId}` === target)?.unit ?? ''})`
                 : ''
             }`}
             error={errors.qtyConsumed}
@@ -205,9 +229,7 @@ function ConsumeDialog({ jobId, items }: { jobId: number; items: InventoryItem[]
           <Field
             label={`Of which wasted${
               target
-                ? ` (${
-                    items.find((it) => `${it.itemKind}:${it.itemId}` === target)?.unit ?? ''
-                  })`
+                ? ` (${items.find((it) => `${it.itemKind}:${it.itemId}` === target)?.unit ?? ''})`
                 : ''
             }`}
             error={errors.qtyWasted}
@@ -318,51 +340,6 @@ function ExpenseDialog({ jobId }: { jobId: number }) {
   )
 }
 
-function CompleteDialog({ jobId }: { jobId: number }) {
-  const [open, setOpen] = useState(false)
-  const { data, setData, post, processing, errors, reset } = useForm({
-    producedQty: 1,
-  })
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>Complete</Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Complete job</DialogTitle>
-        </DialogHeader>
-        <form
-          className="flex flex-col gap-3"
-          onSubmit={(e) => {
-            e.preventDefault()
-            post(`/jobs/${jobId}/complete`, {
-              preserveScroll: true,
-              onSuccess: () => {
-                reset()
-                setOpen(false)
-              },
-            })
-          }}
-        >
-          <Field label="Produced qty" error={errors.producedQty}>
-            <Input
-              type="number"
-              value={data.producedQty}
-              onChange={(e) => setData('producedQty', Number(e.target.value))}
-            />
-          </Field>
-          <DialogFooter>
-            <Button type="submit" disabled={processing}>
-              {processing ? 'Saving…' : 'Complete'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
 function FailDialog({ jobId }: { jobId: number }) {
   const [open, setOpen] = useState(false)
   const { data, setData, post, processing, errors, reset } = useForm({
@@ -371,7 +348,7 @@ function FailDialog({ jobId }: { jobId: number }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="destructive">Fail</Button>
+        <Button variant="destructive">Mark failed</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -391,10 +368,7 @@ function FailDialog({ jobId }: { jobId: number }) {
           }}
         >
           <Field label="Reason" error={errors.reason}>
-            <Input
-              value={data.reason}
-              onChange={(e) => setData('reason', e.target.value)}
-            />
+            <Input value={data.reason} onChange={(e) => setData('reason', e.target.value)} />
           </Field>
           <DialogFooter>
             <Button type="submit" variant="destructive" disabled={processing}>
@@ -404,6 +378,89 @@ function FailDialog({ jobId }: { jobId: number }) {
         </form>
       </DialogContent>
     </Dialog>
+  )
+}
+
+function ConfirmJobCard({ jobId, plannedQty }: { jobId: number; plannedQty: number }) {
+  const [producedQty, setProducedQty] = useState(plannedQty)
+  const [submitting, setSubmitting] = useState(false)
+  const submit = () => {
+    setSubmitting(true)
+    router.post(`/jobs/${jobId}/confirm`, { producedQty }, { preserveScroll: true })
+  }
+  return (
+    <Card className="border-primary">
+      <CardHeader>
+        <CardTitle>Confirm job completion</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <p className="text-sm text-muted-foreground">
+          The print has finished. Confirm the produced quantity to complete the job.
+        </p>
+        <Field label="Produced qty">
+          <Input
+            type="number"
+            min={0}
+            value={producedQty}
+            onChange={(e) => setProducedQty(Number(e.target.value))}
+          />
+        </Field>
+        <div className="flex gap-2">
+          <Button onClick={submit} disabled={submitting}>
+            {submitting ? 'Confirming…' : 'Confirm'}
+          </Button>
+          <FailDialog jobId={jobId} />
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function StartForm({ jobId, idlePrinters }: { jobId: number; idlePrinters: IdlePrinter[] }) {
+  const [printerId, setPrinterId] = useState<string>('')
+  const [stages, setStages] = useState<StageDraft[]>([{ name: 'Stage 1', durationMinutes: 30 }])
+  const [submitting, setSubmitting] = useState(false)
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    setSubmitting(true)
+    router.post(
+      `/jobs/${jobId}/start`,
+      { printerId: printerId ? Number(printerId) : null, stages },
+      { preserveScroll: true }
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Start job</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form className="flex flex-col gap-4" onSubmit={submit}>
+          <Field label="Printer">
+            <Select value={printerId} onValueChange={setPrinterId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a printer (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                {idlePrinters.map((p) => (
+                  <SelectItem key={p.id} value={String(p.id)}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <JobStagesRepeater value={stages} onChange={setStages} />
+          <div>
+            <Button type="submit" disabled={submitting}>
+              {submitting ? 'Starting…' : 'Start'}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -430,8 +487,14 @@ export default function JobShow({
   consumptions,
   expenses,
   inventoryItems,
+  stages,
+  idlePrinters,
 }: PageProps) {
-  const isActive = job.status === 'draft' || job.status === 'in_progress'
+  const isActive =
+    job.status === 'draft' ||
+    job.status === 'in_progress' ||
+    job.status === 'paused' ||
+    job.status === 'awaiting_confirmation'
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-8">
@@ -441,30 +504,18 @@ export default function JobShow({
           <p className="text-sm text-muted-foreground">
             {job.productName} · planned {job.plannedQty} · produced {job.producedQty}
             {job.parentJobId ? ` · reprint of #${job.parentJobId}` : ''}
+            {job.printerName ? ` · printer: ${job.printerName}` : ''}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline">{job.status}</Badge>
-          {job.status === 'draft' && (
-            <PostAction
-              path={`/jobs/${job.id}/start`}
-              label="Start"
-              confirmText="Start this job?"
-            />
-          )}
           {isActive && (
             <>
               <ConsumeDialog jobId={job.id} items={inventoryItems} />
               <ExpenseDialog jobId={job.id} />
             </>
           )}
-          {job.status === 'in_progress' && (
-            <>
-              <CompleteDialog jobId={job.id} />
-              <FailDialog jobId={job.id} />
-            </>
-          )}
-          {job.status === 'draft' && (
+          {(job.status === 'draft' || job.status === 'in_progress') && (
             <PostAction
               path={`/jobs/${job.id}/cancel`}
               label="Cancel"
@@ -474,6 +525,56 @@ export default function JobShow({
           )}
         </div>
       </div>
+
+      {/* Stage list — shown whenever there are stages */}
+      {stages.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Stages</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <JobStagesList
+              stages={stages}
+              paused={!!job.pausedAt}
+              remainingSeconds={job.remainingSeconds}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Status actions */}
+      {job.status === 'in_progress' && (
+        <div className="flex flex-wrap items-center gap-2">
+          <PostAction path={`/jobs/${job.id}/pause`} label="Pause" variant="outline" />
+          <PostAction
+            path={`/jobs/${job.id}/skip-stage`}
+            label="Skip stage"
+            variant="outline"
+            confirmText="Skip the current stage?"
+          />
+          <FailDialog jobId={job.id} />
+        </div>
+      )}
+
+      {job.status === 'paused' && (
+        <div className="flex flex-wrap items-center gap-2">
+          <PostAction path={`/jobs/${job.id}/resume`} label="Resume" />
+          <PostAction
+            path={`/jobs/${job.id}/skip-stage`}
+            label="Skip stage"
+            variant="outline"
+            confirmText="Skip the current stage?"
+          />
+          <FailDialog jobId={job.id} />
+        </div>
+      )}
+
+      {job.status === 'awaiting_confirmation' && (
+        <ConfirmJobCard jobId={job.id} plannedQty={job.plannedQty} />
+      )}
+
+      {/* Start form — only on draft */}
+      {job.status === 'draft' && <StartForm jobId={job.id} idlePrinters={idlePrinters} />}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card>
@@ -512,10 +613,22 @@ export default function JobShow({
               <dd className="text-right font-mono text-xs">
                 {job.completedAt?.slice(0, 19).replace('T', ' ') ?? '—'}
               </dd>
+              {job.estimatedDurationMin != null && (
+                <>
+                  <dt className="text-muted-foreground">Est. duration</dt>
+                  <dd className="text-right">{job.estimatedDurationMin} min</dd>
+                </>
+              )}
+              {job.pausedAt && (
+                <>
+                  <dt className="text-muted-foreground">Paused at</dt>
+                  <dd className="text-right font-mono text-xs">
+                    {job.pausedAt.slice(0, 19).replace('T', ' ')}
+                  </dd>
+                </>
+              )}
             </dl>
-            {job.note && (
-              <p className="mt-3 text-sm text-muted-foreground">{job.note}</p>
-            )}
+            {job.note && <p className="mt-3 text-sm text-muted-foreground">{job.note}</p>}
           </CardContent>
         </Card>
       </div>

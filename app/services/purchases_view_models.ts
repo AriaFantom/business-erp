@@ -3,6 +3,7 @@ import PurchaseItem from '#models/purchase_item'
 import Supplier from '#models/supplier'
 import Material from '#models/material'
 import Component from '#models/component'
+import Printer from '#models/printer'
 
 export async function getPurchasesIndexViewModel(
   filters: { q?: string; status?: string; supplierId?: number } = {}
@@ -73,6 +74,16 @@ export async function getPurchaseShowViewModel(id: number) {
   const matById = new Map(materials.map((m) => [m.id, m]))
   const compById = new Map(components.map((c) => [c.id, c]))
 
+  const itemIds = items.map((i) => i.id)
+  const printers = itemIds.length ? await Printer.query().whereIn('purchase_item_id', itemIds) : []
+  const printersByItem = new Map<number, Array<{ id: number; name: string }>>()
+  for (const p of printers) {
+    if (!p.purchaseItemId) continue
+    const arr = printersByItem.get(p.purchaseItemId) ?? []
+    arr.push({ id: p.id, name: p.name })
+    printersByItem.set(p.purchaseItemId, arr)
+  }
+
   return {
     purchase: {
       id: purchase.id,
@@ -101,6 +112,7 @@ export async function getPurchaseShowViewModel(id: number) {
         lineSubtotal: it.lineSubtotal,
         lineTax: it.lineTax,
         lineTotal: it.lineTotal,
+        printers: printersByItem.get(it.id) ?? [],
       }
     }),
   }

@@ -26,6 +26,7 @@ const ProductCategoriesController = () => import('#controllers/product_categorie
 const InventoryController = () => import('#controllers/inventory_controller')
 const PurchasesController = () => import('#controllers/purchases_controller')
 const JobsController = () => import('#controllers/jobs_controller')
+const PrintersController = () => import('#controllers/printers_controller')
 const QuotationsController = () => import('#controllers/quotations_controller')
 const SalesController = () => import('#controllers/sales_controller')
 const InvoicesController = () => import('#controllers/invoices_controller')
@@ -185,11 +186,26 @@ router
     router.get('jobs/:id', [JobsController, 'show']).as('jobs.show')
     router.post('jobs', [JobsController, 'store']).as('jobs.store')
     router.post('jobs/:id/start', [JobsController, 'start']).as('jobs.start')
+    router.post('jobs/:id/pause', [JobsController, 'pause']).as('jobs.pause')
+    router.post('jobs/:id/resume', [JobsController, 'resume']).as('jobs.resume')
+    router.post('jobs/:id/skip-stage', [JobsController, 'skipStage']).as('jobs.skipStage')
     router.post('jobs/:id/consumptions', [JobsController, 'consume']).as('jobs.consume')
     router.post('jobs/:id/expenses', [JobsController, 'addExpense']).as('jobs.expense')
-    router.post('jobs/:id/complete', [JobsController, 'complete']).as('jobs.complete')
+    router.post('jobs/:id/confirm', [JobsController, 'confirm']).as('jobs.confirm')
     router.post('jobs/:id/fail', [JobsController, 'fail']).as('jobs.fail')
     router.post('jobs/:id/cancel', [JobsController, 'cancel']).as('jobs.cancel')
+
+    // ── Printers ──────────────────────────────────────────────────────
+    router.get('printers', [PrintersController, 'index']).as('printers.index')
+    router.get('printers/new', [PrintersController, 'create']).as('printers.new')
+    router.post('printers', [PrintersController, 'store']).as('printers.store')
+    router.get('printers/:id', [PrintersController, 'show']).as('printers.show')
+    router.post('printers/:id', [PrintersController, 'update']).as('printers.update')
+    router.post('printers/:id/retire', [PrintersController, 'retire']).as('printers.retire')
+    router
+      .post('printers/:id/maintenance', [PrintersController, 'toggleMaintenance'])
+      .as('printers.maintenance')
+    router.post('printers/:id/expense', [PrintersController, 'addExpense']).as('printers.expense')
 
     // ── Quotations ────────────────────────────────────────────────────
     router.get('quotations', [QuotationsController, 'index']).as('quotations.index')

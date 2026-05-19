@@ -95,6 +95,31 @@ export class DocSequenceSchema extends BaseModel {
   declare year: number
 }
 
+export class ExpenseSchema extends BaseModel {
+  static $columns = ['amount', 'createdAt', 'createdByUserId', 'description', 'id', 'incurredAt', 'jobId', 'kind', 'printerId', 'updatedAt'] as const
+  $columns = ExpenseSchema.$columns
+  @column()
+  declare amount: string
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare createdByUserId: number | null
+  @column()
+  declare description: string
+  @column({ isPrimary: true })
+  declare id: number
+  @column.dateTime()
+  declare incurredAt: DateTime
+  @column()
+  declare jobId: number | null
+  @column()
+  declare kind: string
+  @column()
+  declare printerId: number | null
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
 export class IdempotencyKeySchema extends BaseModel {
   static $columns = ['actorUserId', 'createdAt', 'expiresAt', 'id', 'key', 'responseBody', 'responseStatus', 'route'] as const
   $columns = IdempotencyKeySchema.$columns
@@ -251,29 +276,6 @@ export class InvoiceSchema extends BaseModel {
   declare updatedAt: DateTime
 }
 
-export class JobExpenseSchema extends BaseModel {
-  static $columns = ['amount', 'createdAt', 'createdByUserId', 'description', 'id', 'incurredAt', 'jobId', 'kind', 'updatedAt'] as const
-  $columns = JobExpenseSchema.$columns
-  @column()
-  declare amount: string
-  @column.dateTime({ autoCreate: true })
-  declare createdAt: DateTime
-  @column()
-  declare createdByUserId: number | null
-  @column()
-  declare description: string
-  @column({ isPrimary: true })
-  declare id: number
-  @column.dateTime()
-  declare incurredAt: DateTime
-  @column()
-  declare jobId: number
-  @column()
-  declare kind: string
-  @column.dateTime({ autoCreate: true, autoUpdate: true })
-  declare updatedAt: DateTime
-}
-
 export class JobMaterialConsumptionSchema extends BaseModel {
   static $columns = ['createdAt', 'createdByUserId', 'id', 'itemId', 'itemKind', 'jobId', 'lineCost', 'qtyConsumed', 'qtyWasted', 'reason', 'unitCostAtConsume'] as const
   $columns = JobMaterialConsumptionSchema.$columns
@@ -326,6 +328,33 @@ export class MaterialSchema extends BaseModel {
   declare type: string
   @column()
   declare unit: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
+export class PrinterSchema extends BaseModel {
+  static $columns = ['acquiredAt', 'createdAt', 'currentJobId', 'id', 'model', 'name', 'notes', 'purchaseItemId', 'serialNumber', 'status', 'updatedAt'] as const
+  $columns = PrinterSchema.$columns
+  @column.dateTime()
+  declare acquiredAt: DateTime | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare currentJobId: number | null
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare model: string | null
+  @column()
+  declare name: string
+  @column()
+  declare notes: string | null
+  @column()
+  declare purchaseItemId: number | null
+  @column()
+  declare serialNumber: string | null
+  @column()
+  declare status: string
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
 }
@@ -393,15 +422,48 @@ export class ProductRecipeSchema extends BaseModel {
   declare updatedAt: DateTime
 }
 
+export class ProductionJobStageSchema extends BaseModel {
+  static $columns = ['autoCompleteAt', 'completedAt', 'createdAt', 'estimatedDurationMin', 'id', 'jobId', 'name', 'sequence', 'startedAt', 'status', 'updatedAt'] as const
+  $columns = ProductionJobStageSchema.$columns
+  @column.dateTime()
+  declare autoCompleteAt: DateTime | null
+  @column.dateTime()
+  declare completedAt: DateTime | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare estimatedDurationMin: number
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare jobId: number
+  @column()
+  declare name: string
+  @column()
+  declare sequence: number
+  @column.dateTime()
+  declare startedAt: DateTime | null
+  @column()
+  declare status: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
 export class ProductionJobSchema extends BaseModel {
-  static $columns = ['completedAt', 'createdAt', 'createdByUserId', 'id', 'note', 'number', 'parentJobId', 'plannedQty', 'producedQty', 'productId', 'startedAt', 'status', 'totalComponentCost', 'totalCost', 'totalExpense', 'totalMaterialCost', 'unitCost', 'updatedAt'] as const
+  static $columns = ['autoCompleteAt', 'completedAt', 'createdAt', 'createdByUserId', 'currentStageId', 'estimatedDurationMin', 'id', 'note', 'number', 'parentJobId', 'pausedAt', 'plannedQty', 'printerId', 'producedQty', 'productId', 'remainingSeconds', 'startedAt', 'status', 'totalComponentCost', 'totalCost', 'totalExpense', 'totalMaterialCost', 'unitCost', 'updatedAt'] as const
   $columns = ProductionJobSchema.$columns
+  @column.dateTime()
+  declare autoCompleteAt: DateTime | null
   @column.dateTime()
   declare completedAt: DateTime | null
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column()
   declare createdByUserId: number | null
+  @column()
+  declare currentStageId: number | null
+  @column()
+  declare estimatedDurationMin: number | null
   @column({ isPrimary: true })
   declare id: number
   @column()
@@ -410,12 +472,18 @@ export class ProductionJobSchema extends BaseModel {
   declare number: string
   @column()
   declare parentJobId: number | null
+  @column.dateTime()
+  declare pausedAt: DateTime | null
   @column()
   declare plannedQty: number
+  @column()
+  declare printerId: number | null
   @column()
   declare producedQty: number
   @column()
   declare productId: number
+  @column()
+  declare remainingSeconds: number | null
   @column.dateTime()
   declare startedAt: DateTime | null
   @column()

@@ -116,11 +116,24 @@ export interface ApiDefinition {
     show: typeof routes['jobs.show']
     store: typeof routes['jobs.store']
     start: typeof routes['jobs.start']
+    pause: typeof routes['jobs.pause']
+    resume: typeof routes['jobs.resume']
+    skipStage: typeof routes['jobs.skipStage']
     consume: typeof routes['jobs.consume']
     expense: typeof routes['jobs.expense']
-    complete: typeof routes['jobs.complete']
+    confirm: typeof routes['jobs.confirm']
     fail: typeof routes['jobs.fail']
     cancel: typeof routes['jobs.cancel']
+  }
+  printers: {
+    index: typeof routes['printers.index']
+    new: typeof routes['printers.new']
+    store: typeof routes['printers.store']
+    show: typeof routes['printers.show']
+    update: typeof routes['printers.update']
+    retire: typeof routes['printers.retire']
+    maintenance: typeof routes['printers.maintenance']
+    expense: typeof routes['printers.expense']
   }
   quotations: {
     index: typeof routes['quotations.index']

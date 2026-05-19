@@ -1,19 +1,23 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import {
   addExpenseValidator,
-  completeJobValidator,
+  confirmJobValidator,
   consumeMaterialValidator,
   createJobValidator,
   failJobValidator,
+  startJobValidator,
 } from '#validators/jobs'
 import { getJobShowViewModel, getJobsIndexViewModel } from '#services/jobs_view_models'
 import {
   cancelJob,
-  completeJob,
+  confirmJob,
   createJob,
   failJob,
+  pauseJob,
   recordConsumption,
   recordExpense,
+  resumeJob,
+  skipStage,
   startJob,
 } from '#services/job_costing'
 import { DomainError } from '#services/domain_errors'
@@ -61,10 +65,16 @@ export default class JobsController {
     }
   }
 
-  async start({ params, auth, bouncer, response, session }: HttpContext) {
+  async start({ params, request, auth, bouncer, response, session }: HttpContext) {
     await bouncer.authorize('jobs.create' as never)
+    const payload = await request.validateUsing(startJobValidator)
     try {
-      await startJob(Number(params.id), auth.user!)
+      await startJob({
+        jobId: Number(params.id),
+        printerId: payload.printerId,
+        stages: payload.stages,
+        actor: auth.user!,
+      })
       session.flash('success', 'Job started.')
     } catch (err) {
       return this._domain(err, response, session)
@@ -111,16 +121,49 @@ export default class JobsController {
     return response.redirect().back()
   }
 
-  async complete({ params, request, auth, bouncer, response, session }: HttpContext) {
-    await bouncer.authorize('jobs.complete' as never)
-    const payload = await request.validateUsing(completeJobValidator)
+  async pause({ params, auth, bouncer, response, session }: HttpContext) {
+    await bouncer.authorize('jobs.create' as never)
     try {
-      await completeJob({
+      await pauseJob(Number(params.id), auth.user!)
+      session.flash('success', 'Job paused.')
+    } catch (err) {
+      return this._domain(err, response, session)
+    }
+    return response.redirect().back()
+  }
+
+  async resume({ params, auth, bouncer, response, session }: HttpContext) {
+    await bouncer.authorize('jobs.create' as never)
+    try {
+      await resumeJob(Number(params.id), auth.user!)
+      session.flash('success', 'Job resumed.')
+    } catch (err) {
+      return this._domain(err, response, session)
+    }
+    return response.redirect().back()
+  }
+
+  async skipStage({ params, auth, bouncer, response, session }: HttpContext) {
+    await bouncer.authorize('jobs.create' as never)
+    try {
+      await skipStage(Number(params.id), auth.user!)
+      session.flash('success', 'Stage skipped.')
+    } catch (err) {
+      return this._domain(err, response, session)
+    }
+    return response.redirect().back()
+  }
+
+  async confirm({ params, request, auth, bouncer, response, session }: HttpContext) {
+    await bouncer.authorize('jobs.complete' as never)
+    const payload = await request.validateUsing(confirmJobValidator)
+    try {
+      await confirmJob({
         jobId: Number(params.id),
         producedQty: payload.producedQty,
         actor: auth.user!,
       })
-      session.flash('success', 'Job completed.')
+      session.flash('success', 'Job confirmed.')
     } catch (err) {
       return this._domain(err, response, session)
     }

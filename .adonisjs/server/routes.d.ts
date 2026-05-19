@@ -77,11 +77,22 @@ export type ScannedRoutes = {
     'jobs.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.store': { paramsTuple?: []; params?: {} }
     'jobs.start': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'jobs.pause': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'jobs.resume': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'jobs.skipStage': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.consume': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.expense': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
-    'jobs.complete': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'jobs.confirm': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.fail': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.cancel': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'printers.index': { paramsTuple?: []; params?: {} }
+    'printers.new': { paramsTuple?: []; params?: {} }
+    'printers.store': { paramsTuple?: []; params?: {} }
+    'printers.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'printers.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'printers.retire': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'printers.maintenance': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'printers.expense': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'quotations.index': { paramsTuple?: []; params?: {} }
     'quotations.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'quotations.store': { paramsTuple?: []; params?: {} }
@@ -133,6 +144,9 @@ export type ScannedRoutes = {
     'purchases.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.index': { paramsTuple?: []; params?: {} }
     'jobs.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'printers.index': { paramsTuple?: []; params?: {} }
+    'printers.new': { paramsTuple?: []; params?: {} }
+    'printers.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'quotations.index': { paramsTuple?: []; params?: {} }
     'quotations.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'quotations.download': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
@@ -172,6 +186,9 @@ export type ScannedRoutes = {
     'purchases.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.index': { paramsTuple?: []; params?: {} }
     'jobs.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'printers.index': { paramsTuple?: []; params?: {} }
+    'printers.new': { paramsTuple?: []; params?: {} }
+    'printers.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'quotations.index': { paramsTuple?: []; params?: {} }
     'quotations.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'quotations.download': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
@@ -234,11 +251,19 @@ export type ScannedRoutes = {
     'purchases.cancel': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.store': { paramsTuple?: []; params?: {} }
     'jobs.start': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'jobs.pause': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'jobs.resume': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'jobs.skipStage': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.consume': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.expense': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
-    'jobs.complete': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'jobs.confirm': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.fail': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.cancel': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'printers.store': { paramsTuple?: []; params?: {} }
+    'printers.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'printers.retire': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'printers.maintenance': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'printers.expense': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'quotations.store': { paramsTuple?: []; params?: {} }
     'quotations.send': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'quotations.accept': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }

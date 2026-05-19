@@ -39,3 +39,27 @@ export const failJobValidator = vine.compile(
     reason: vine.string().trim().maxLength(500).optional(),
   })
 )
+
+export const startJobValidator = vine.compile(
+  vine.object({
+    printerId: vine.number().positive(),
+    stages: vine
+      .array(
+        vine.object({
+          name: vine.string().trim().minLength(1).maxLength(80),
+          durationMinutes: vine
+            .number()
+            .min(1)
+            .max(60 * 24 * 14), // up to 14 days
+        })
+      )
+      .minLength(1)
+      .maxLength(20),
+  })
+)
+
+export const confirmJobValidator = vine.compile(
+  vine.object({
+    producedQty: vine.number().min(0).max(1_000_000),
+  })
+)

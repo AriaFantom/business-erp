@@ -444,6 +444,24 @@ const routes = {
     tokens: [{"old":"/jobs/:id/start","type":0,"val":"jobs","end":""},{"old":"/jobs/:id/start","type":1,"val":"id","end":""},{"old":"/jobs/:id/start","type":0,"val":"start","end":""}],
     types: placeholder as Registry['jobs.start']['types'],
   },
+  'jobs.pause': {
+    methods: ["POST"],
+    pattern: '/jobs/:id/pause',
+    tokens: [{"old":"/jobs/:id/pause","type":0,"val":"jobs","end":""},{"old":"/jobs/:id/pause","type":1,"val":"id","end":""},{"old":"/jobs/:id/pause","type":0,"val":"pause","end":""}],
+    types: placeholder as Registry['jobs.pause']['types'],
+  },
+  'jobs.resume': {
+    methods: ["POST"],
+    pattern: '/jobs/:id/resume',
+    tokens: [{"old":"/jobs/:id/resume","type":0,"val":"jobs","end":""},{"old":"/jobs/:id/resume","type":1,"val":"id","end":""},{"old":"/jobs/:id/resume","type":0,"val":"resume","end":""}],
+    types: placeholder as Registry['jobs.resume']['types'],
+  },
+  'jobs.skipStage': {
+    methods: ["POST"],
+    pattern: '/jobs/:id/skip-stage',
+    tokens: [{"old":"/jobs/:id/skip-stage","type":0,"val":"jobs","end":""},{"old":"/jobs/:id/skip-stage","type":1,"val":"id","end":""},{"old":"/jobs/:id/skip-stage","type":0,"val":"skip-stage","end":""}],
+    types: placeholder as Registry['jobs.skipStage']['types'],
+  },
   'jobs.consume': {
     methods: ["POST"],
     pattern: '/jobs/:id/consumptions',
@@ -456,11 +474,11 @@ const routes = {
     tokens: [{"old":"/jobs/:id/expenses","type":0,"val":"jobs","end":""},{"old":"/jobs/:id/expenses","type":1,"val":"id","end":""},{"old":"/jobs/:id/expenses","type":0,"val":"expenses","end":""}],
     types: placeholder as Registry['jobs.expense']['types'],
   },
-  'jobs.complete': {
+  'jobs.confirm': {
     methods: ["POST"],
-    pattern: '/jobs/:id/complete',
-    tokens: [{"old":"/jobs/:id/complete","type":0,"val":"jobs","end":""},{"old":"/jobs/:id/complete","type":1,"val":"id","end":""},{"old":"/jobs/:id/complete","type":0,"val":"complete","end":""}],
-    types: placeholder as Registry['jobs.complete']['types'],
+    pattern: '/jobs/:id/confirm',
+    tokens: [{"old":"/jobs/:id/confirm","type":0,"val":"jobs","end":""},{"old":"/jobs/:id/confirm","type":1,"val":"id","end":""},{"old":"/jobs/:id/confirm","type":0,"val":"confirm","end":""}],
+    types: placeholder as Registry['jobs.confirm']['types'],
   },
   'jobs.fail': {
     methods: ["POST"],
@@ -473,6 +491,54 @@ const routes = {
     pattern: '/jobs/:id/cancel',
     tokens: [{"old":"/jobs/:id/cancel","type":0,"val":"jobs","end":""},{"old":"/jobs/:id/cancel","type":1,"val":"id","end":""},{"old":"/jobs/:id/cancel","type":0,"val":"cancel","end":""}],
     types: placeholder as Registry['jobs.cancel']['types'],
+  },
+  'printers.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/printers',
+    tokens: [{"old":"/printers","type":0,"val":"printers","end":""}],
+    types: placeholder as Registry['printers.index']['types'],
+  },
+  'printers.new': {
+    methods: ["GET","HEAD"],
+    pattern: '/printers/new',
+    tokens: [{"old":"/printers/new","type":0,"val":"printers","end":""},{"old":"/printers/new","type":0,"val":"new","end":""}],
+    types: placeholder as Registry['printers.new']['types'],
+  },
+  'printers.store': {
+    methods: ["POST"],
+    pattern: '/printers',
+    tokens: [{"old":"/printers","type":0,"val":"printers","end":""}],
+    types: placeholder as Registry['printers.store']['types'],
+  },
+  'printers.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/printers/:id',
+    tokens: [{"old":"/printers/:id","type":0,"val":"printers","end":""},{"old":"/printers/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['printers.show']['types'],
+  },
+  'printers.update': {
+    methods: ["POST"],
+    pattern: '/printers/:id',
+    tokens: [{"old":"/printers/:id","type":0,"val":"printers","end":""},{"old":"/printers/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['printers.update']['types'],
+  },
+  'printers.retire': {
+    methods: ["POST"],
+    pattern: '/printers/:id/retire',
+    tokens: [{"old":"/printers/:id/retire","type":0,"val":"printers","end":""},{"old":"/printers/:id/retire","type":1,"val":"id","end":""},{"old":"/printers/:id/retire","type":0,"val":"retire","end":""}],
+    types: placeholder as Registry['printers.retire']['types'],
+  },
+  'printers.maintenance': {
+    methods: ["POST"],
+    pattern: '/printers/:id/maintenance',
+    tokens: [{"old":"/printers/:id/maintenance","type":0,"val":"printers","end":""},{"old":"/printers/:id/maintenance","type":1,"val":"id","end":""},{"old":"/printers/:id/maintenance","type":0,"val":"maintenance","end":""}],
+    types: placeholder as Registry['printers.maintenance']['types'],
+  },
+  'printers.expense': {
+    methods: ["POST"],
+    pattern: '/printers/:id/expense',
+    tokens: [{"old":"/printers/:id/expense","type":0,"val":"printers","end":""},{"old":"/printers/:id/expense","type":1,"val":"id","end":""},{"old":"/printers/:id/expense","type":0,"val":"expense","end":""}],
+    types: placeholder as Registry['printers.expense']['types'],
   },
   'quotations.index': {
     methods: ["GET","HEAD"],

@@ -4,6 +4,7 @@ import Purchase from '#models/purchase'
 import PurchaseItem from '#models/purchase_item'
 import Material from '#models/material'
 import Component from '#models/component'
+import Printer from '#models/printer'
 import Supplier from '#models/supplier'
 import type User from '#models/user'
 import { applyMovement, invalidateSnapshotCache } from '#services/inventory_service'
@@ -142,6 +143,19 @@ export async function confirmPurchase(purchaseId: number, actor: User): Promise<
     const lines = await PurchaseItem.query({ client: trx }).where('purchase_id', purchaseId)
 
     for (const l of lines) {
+      if (l.itemKind === 'printer') {
+        const qty = Math.floor(Number(l.qty))
+        for (let i = 0; i < qty; i++) {
+          const printer = new Printer()
+          printer.name = `${purchase.supplierId ? `Supplier-${purchase.supplierId}` : 'Printer'} #${purchase.id}-${l.id}-${i + 1}`
+          printer.purchaseItemId = l.id
+          printer.acquiredAt = DateTime.now()
+          printer.status = 'idle'
+          printer.useTransaction(trx)
+          await printer.save()
+        }
+        continue
+      }
       await applyMovement({
         itemKind: l.itemKind as 'material' | 'component',
         itemId: l.itemId,

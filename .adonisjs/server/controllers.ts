@@ -16,6 +16,7 @@ export const controllers = {
   Jobs: () => import('#controllers/jobs_controller'),
   Materials: () => import('#controllers/materials_controller'),
   Pos: () => import('#controllers/pos_controller'),
+  Printers: () => import('#controllers/printers_controller'),
   ProductCategories: () => import('#controllers/product_categories_controller'),
   Products: () => import('#controllers/products_controller'),
   Profile: () => import('#controllers/profile_controller'),
