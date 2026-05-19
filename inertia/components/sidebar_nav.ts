@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Mail,
   Package,
+  Printer as PrinterIcon,
   Receipt,
   ScrollText,
   Settings2,
@@ -109,6 +110,12 @@ export const navItems: NavItem[] = [
     url: '/jobs',
     icon: Factory,
     permission: 'jobs.view',
+  },
+  {
+    title: 'Printers',
+    url: '/printers',
+    icon: PrinterIcon,
+    permission: 'printers.view',
   },
   {
     title: 'POS',

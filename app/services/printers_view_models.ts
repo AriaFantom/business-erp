@@ -4,10 +4,34 @@ import Expense from '#models/expense'
 import ProductionJob from '#models/production_job'
 import db from '@adonisjs/lucid/services/db'
 
-export async function getPrintersIndexViewModel() {
-  const printers = await Printer.query().orderBy('name', 'asc')
+type IndexFilters = { q?: string; status?: string }
 
-  // Sum lifetime expenses per printer.
+export async function getPrintersIndexViewModel(filters: IndexFilters = {}) {
+  const q = (filters.q ?? '').trim()
+  const status = filters.status ?? 'all'
+
+  const all = await Printer.query().orderBy('name', 'asc')
+
+  const counts = {
+    total: all.length,
+    idle: all.filter((p) => p.status === 'idle').length,
+    printing: all.filter((p) => p.status === 'printing').length,
+    maintenance: all.filter((p) => p.status === 'maintenance').length,
+    offline: all.filter((p) => p.status === 'offline').length,
+    retired: all.filter((p) => p.status === 'retired').length,
+  }
+
+  const filtered = all.filter((p) => {
+    if (status !== 'all' && p.status !== status) return false
+    if (q) {
+      const hay = `${p.name} ${p.model ?? ''} ${p.serialNumber ?? ''}`.toLowerCase()
+      if (!hay.includes(q.toLowerCase())) return false
+    }
+    return true
+  })
+
+  // Sum lifetime expenses per printer (across the unfiltered set is fine —
+  // we're displaying totals on rows we render).
   const expenseSums = await db
     .from('expenses')
     .whereNotNull('printer_id')
@@ -20,12 +44,12 @@ export async function getPrintersIndexViewModel() {
   }
 
   // Resolve purchase cost via purchase_item_id when present.
-  const itemIds = printers.map((p) => p.purchaseItemId).filter((x): x is number => !!x)
+  const itemIds = filtered.map((p) => p.purchaseItemId).filter((x): x is number => !!x)
   const items = itemIds.length ? await PurchaseItem.query().whereIn('id', itemIds) : []
   const itemById = new Map(items.map((i) => [i.id, i]))
 
   return {
-    printers: printers.map((p) => {
+    printers: filtered.map((p) => {
       const item = p.purchaseItemId ? itemById.get(p.purchaseItemId) : null
       const purchaseCost = item ? Number(item.lineTotal) : 0
       const expenseTotal = expensesById.get(p.id) ?? 0
@@ -33,6 +57,7 @@ export async function getPrintersIndexViewModel() {
         id: p.id,
         name: p.name,
         model: p.model,
+        serialNumber: p.serialNumber,
         status: p.status,
         currentJobId: p.currentJobId,
         purchaseCost: String(purchaseCost),
@@ -41,6 +66,8 @@ export async function getPrintersIndexViewModel() {
         acquiredAt: p.acquiredAt?.toISO() ?? null,
       }
     }),
+    filters: { q, status },
+    counts,
   }
 }
 

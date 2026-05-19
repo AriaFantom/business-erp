@@ -1,7 +1,25 @@
-import { Head, router, useForm, usePage } from '@inertiajs/react'
+import { type ReactElement, useState } from 'react'
+import { Head, useForm, usePage } from '@inertiajs/react'
 import { Link } from '@adonisjs/inertia/react'
+import { ChevronLeft } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import { ConfirmDialog } from '@/components/confirm-dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -11,13 +29,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import DashboardLayout from '@/layouts/dashboard-layout'
+
+type PrinterStatus = 'idle' | 'printing' | 'maintenance' | 'offline' | 'retired'
 
 interface PrinterDetail {
   id: number
   name: string
   model: string | null
   serialNumber: string | null
-  status: string
+  status: PrinterStatus
   currentJobId: number | null
   notes: string | null
   acquiredAt: string | null
@@ -41,88 +70,47 @@ interface ExpenseRow {
   incurredAt: string
 }
 
-export default function PrinterShow() {
-  const { props } = usePage<{ printer: PrinterDetail; jobs: JobRow[]; expenses: ExpenseRow[] }>()
-  const { printer, jobs, expenses } = props
-  const form = useForm({ kind: 'maintenance', description: '', amount: 0 })
+const STATUS_VARIANT: Record<PrinterStatus, 'default' | 'secondary' | 'outline' | 'destructive'> = {
+  idle: 'outline',
+  printing: 'default',
+  maintenance: 'secondary',
+  offline: 'secondary',
+  retired: 'destructive',
+}
+
+function AddExpenseDialog({ printerId }: { printerId: number }) {
+  const [open, setOpen] = useState(false)
+  const { data, setData, post, processing, errors, reset } = useForm({
+    kind: 'maintenance',
+    description: '',
+    amount: 0,
+  })
 
   return (
-    <>
-      <Head title={printer.name} />
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">{printer.name}</h1>
-          <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
-            <Badge>{printer.status}</Badge>
-            <span>{printer.model ?? '—'}</span>
-            <span>SN: {printer.serialNumber ?? '—'}</span>
-            <span>Total spent: {printer.totalSpent}</span>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          {printer.status !== 'retired' ? (
-            <Button
-              variant="outline"
-              onClick={() => router.post(`/printers/${printer.id}/maintenance`)}
-            >
-              {printer.status === 'maintenance' ? 'End maintenance' : 'Start maintenance'}
-            </Button>
-          ) : null}
-          {printer.status !== 'retired' ? (
-            <Button
-              variant="destructive"
-              onClick={() => router.post(`/printers/${printer.id}/retire`)}
-            >
-              Retire
-            </Button>
-          ) : null}
-        </div>
-      </div>
-
-      <section className="mb-6">
-        <h2 className="mb-2 text-lg font-medium">Job history</h2>
-        <div className="rounded border">
-          <table className="w-full">
-            <thead className="border-b text-left text-sm text-muted-foreground">
-              <tr>
-                <th className="p-3">Number</th>
-                <th className="p-3">Status</th>
-                <th className="p-3">Started</th>
-                <th className="p-3">Completed</th>
-                <th className="p-3 text-right">Total cost</th>
-              </tr>
-            </thead>
-            <tbody>
-              {jobs.map((j) => (
-                <tr key={j.id} className="border-b last:border-0">
-                  <td className="p-3">
-                    <Link href={`/jobs/${j.id}`} className="hover:underline">
-                      {j.number}
-                    </Link>
-                  </td>
-                  <td className="p-3">{j.status}</td>
-                  <td className="p-3 text-muted-foreground">{j.startedAt ?? '—'}</td>
-                  <td className="p-3 text-muted-foreground">{j.completedAt ?? '—'}</td>
-                  <td className="p-3 text-right font-mono">{j.totalCost}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section>
-        <h2 className="mb-2 text-lg font-medium">Expenses</h2>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline">Add expense</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add printer expense</DialogTitle>
+        </DialogHeader>
         <form
-          className="mb-4 flex items-end gap-2"
+          className="flex flex-col gap-3"
           onSubmit={(e) => {
             e.preventDefault()
-            form.post(`/printers/${printer.id}/expense`)
+            post(`/printers/${printerId}/expense`, {
+              preserveScroll: true,
+              onSuccess: () => {
+                reset()
+                setOpen(false)
+              },
+            })
           }}
         >
-          <div className="w-40">
+          <div className="flex flex-col gap-1">
             <Label>Kind</Label>
-            <Select value={form.data.kind} onValueChange={(v) => form.setData('kind', v)}>
+            <Select value={data.kind} onValueChange={(v) => setData('kind', v)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -133,53 +121,277 @@ export default function PrinterShow() {
                 <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
+            {errors.kind && <span className="text-xs text-destructive">{errors.kind}</span>}
           </div>
-          <div className="flex-1">
+          <div className="flex flex-col gap-1">
             <Label>Description</Label>
             <Input
-              value={form.data.description}
-              onChange={(e) => form.setData('description', e.target.value)}
+              value={data.description}
+              onChange={(e) => setData('description', e.target.value)}
               required
             />
+            {errors.description && (
+              <span className="text-xs text-destructive">{errors.description}</span>
+            )}
           </div>
-          <div className="w-32">
+          <div className="flex flex-col gap-1">
             <Label>Amount</Label>
             <Input
               type="number"
               step="0.01"
               min={0.01}
-              value={form.data.amount}
-              onChange={(e) => form.setData('amount', Number(e.target.value))}
+              value={data.amount}
+              onChange={(e) => setData('amount', Number(e.target.value))}
               required
             />
+            {errors.amount && <span className="text-xs text-destructive">{errors.amount}</span>}
           </div>
-          <Button type="submit" disabled={form.processing}>
-            Add
-          </Button>
+          <DialogFooter>
+            <Button type="submit" disabled={processing}>
+              {processing ? 'Saving…' : 'Add expense'}
+            </Button>
+          </DialogFooter>
         </form>
-        <div className="rounded border">
-          <table className="w-full">
-            <thead className="border-b text-left text-sm text-muted-foreground">
-              <tr>
-                <th className="p-3">Date</th>
-                <th className="p-3">Kind</th>
-                <th className="p-3">Description</th>
-                <th className="p-3 text-right">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {expenses.map((e) => (
-                <tr key={e.id} className="border-b last:border-0">
-                  <td className="p-3 text-muted-foreground">{e.incurredAt}</td>
-                  <td className="p-3">{e.kind}</td>
-                  <td className="p-3">{e.description}</td>
-                  <td className="p-3 text-right font-mono">{e.amount}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function PostAction({
+  path,
+  label,
+  variant = 'default',
+  confirmText,
+}: {
+  path: string
+  label: string
+  variant?: 'default' | 'destructive' | 'outline'
+  confirmText?: string
+}) {
+  const { post, processing } = useForm()
+  const [open, setOpen] = useState(false)
+  const submit = () => post(path, { preserveScroll: true })
+  return (
+    <>
+      <Button
+        variant={variant}
+        disabled={processing}
+        onClick={() => (confirmText ? setOpen(true) : submit())}
+      >
+        {label}
+      </Button>
+      {confirmText && (
+        <ConfirmDialog
+          open={open}
+          onOpenChange={setOpen}
+          title={confirmText}
+          confirmLabel={label}
+          variant={variant === 'destructive' ? 'destructive' : 'default'}
+          onConfirm={submit}
+        />
+      )}
     </>
   )
 }
+
+export default function PrinterShow() {
+  const { props } = usePage<{ printer: PrinterDetail; jobs: JobRow[]; expenses: ExpenseRow[] }>()
+  const { printer, jobs, expenses } = props
+  const isRetired = printer.status === 'retired'
+
+  return (
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-8">
+      <Head title={printer.name} />
+      <div>
+        <Link
+          href="/printers"
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ChevronLeft className="size-4" /> Back to printers
+        </Link>
+        <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold">{printer.name}</h1>
+            <p className="text-sm text-muted-foreground">
+              {printer.model ?? '—'}
+              {printer.serialNumber ? ` · SN: ${printer.serialNumber}` : ''}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant={STATUS_VARIANT[printer.status]}>{printer.status}</Badge>
+            {!isRetired && <AddExpenseDialog printerId={printer.id} />}
+            {!isRetired && (
+              <PostAction
+                path={`/printers/${printer.id}/maintenance`}
+                label={printer.status === 'maintenance' ? 'End maintenance' : 'Start maintenance'}
+                variant="outline"
+              />
+            )}
+            {!isRetired && (
+              <PostAction
+                path={`/printers/${printer.id}/retire`}
+                label="Retire"
+                variant="destructive"
+                confirmText={`Retire ${printer.name}? This cannot be undone.`}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Purchase cost
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold tabular-nums">{printer.purchaseCost}</p>
+            {printer.acquiredAt && (
+              <p className="text-xs text-muted-foreground">
+                Acquired {printer.acquiredAt.slice(0, 10)}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Lifetime expenses
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold tabular-nums">{printer.expenseTotal}</p>
+            <p className="text-xs text-muted-foreground">
+              Maintenance, parts, and add-ons over time
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total spent
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold tabular-nums">{printer.totalSpent}</p>
+            <p className="text-xs text-muted-foreground">Purchase + expenses</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {printer.currentJobId && (
+        <Card className="border-primary/40">
+          <CardHeader>
+            <CardTitle>Currently printing</CardTitle>
+            <CardDescription>
+              This printer is locked to{' '}
+              <Link href={`/jobs/${printer.currentJobId}`} className="font-medium hover:underline">
+                Job #{printer.currentJobId}
+              </Link>
+              .
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      )}
+
+      {printer.notes && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Notes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="whitespace-pre-wrap text-sm text-muted-foreground">{printer.notes}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Job history</CardTitle>
+          <CardDescription>Up to 50 most recent jobs run on this printer.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {jobs.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No jobs have run on this printer yet.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Number</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Started</TableHead>
+                  <TableHead>Completed</TableHead>
+                  <TableHead className="text-right">Total cost</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {jobs.map((j) => (
+                  <TableRow key={j.id}>
+                    <TableCell className="font-medium">
+                      <Link href={`/jobs/${j.id}`} className="hover:underline">
+                        {j.number}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{j.status}</Badge>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {j.startedAt?.slice(0, 19).replace('T', ' ') ?? '—'}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {j.completedAt?.slice(0, 19).replace('T', ' ') ?? '—'}
+                    </TableCell>
+                    <TableCell className="text-right font-mono tabular-nums">
+                      {j.totalCost}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Expenses</CardTitle>
+          <CardDescription>
+            Maintenance, repair parts, and add-ons charged to this printer.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {expenses.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No expenses logged yet.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Kind</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {expenses.map((e) => (
+                  <TableRow key={e.id}>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {e.incurredAt.slice(0, 10)}
+                    </TableCell>
+                    <TableCell>{e.kind}</TableCell>
+                    <TableCell>{e.description}</TableCell>
+                    <TableCell className="text-right font-mono tabular-nums">{e.amount}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+PrinterShow.layout = (page: ReactElement) => <DashboardLayout>{page}</DashboardLayout>

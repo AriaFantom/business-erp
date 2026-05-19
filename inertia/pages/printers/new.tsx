@@ -1,59 +1,122 @@
+import { type ReactElement } from 'react'
 import { Head, useForm } from '@inertiajs/react'
+import { Link } from '@adonisjs/inertia/react'
+import { ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import DashboardLayout from '@/layouts/dashboard-layout'
 
 export default function PrinterNew() {
   const form = useForm({ name: '', model: '', serialNumber: '', notes: '' })
+
   return (
-    <>
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-6 py-8">
       <Head title="Add printer" />
-      <h1 className="mb-4 text-2xl font-semibold">Add printer</h1>
-      <form
-        className="max-w-lg space-y-4"
-        onSubmit={(e) => {
-          e.preventDefault()
-          form.post('/printers')
-        }}
-      >
-        <div>
-          <Label htmlFor="name">Name</Label>
-          <Input
-            id="name"
-            value={form.data.name}
-            onChange={(e) => form.setData('name', e.target.value)}
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="model">Model</Label>
-          <Input
-            id="model"
-            value={form.data.model}
-            onChange={(e) => form.setData('model', e.target.value)}
-          />
-        </div>
-        <div>
-          <Label htmlFor="serialNumber">Serial number</Label>
-          <Input
-            id="serialNumber"
-            value={form.data.serialNumber}
-            onChange={(e) => form.setData('serialNumber', e.target.value)}
-          />
-        </div>
-        <div>
-          <Label htmlFor="notes">Notes</Label>
-          <Textarea
-            id="notes"
-            value={form.data.notes}
-            onChange={(e) => form.setData('notes', e.target.value)}
-          />
-        </div>
-        <Button type="submit" disabled={form.processing}>
-          Add printer
-        </Button>
-      </form>
-    </>
+      <div>
+        <Link
+          href="/printers"
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ChevronLeft className="size-4" /> Back to printers
+        </Link>
+        <h1 className="mt-2 text-2xl font-semibold">Add printer</h1>
+        <p className="text-sm text-muted-foreground">
+          Register a physical printer so jobs can be assigned to it.
+        </p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Printer details</CardTitle>
+          <CardDescription>Only the name is required.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form
+            className="flex flex-col gap-4"
+            onSubmit={(e) => {
+              e.preventDefault()
+              form.post('/printers')
+            }}
+          >
+            <Field
+              label="Name"
+              required
+              value={form.data.name}
+              error={form.errors.name}
+              onChange={(v) => form.setData('name', v)}
+            />
+            <Field
+              label="Model"
+              value={form.data.model}
+              error={form.errors.model}
+              onChange={(v) => form.setData('model', v)}
+            />
+            <Field
+              label="Serial number"
+              value={form.data.serialNumber}
+              error={form.errors.serialNumber}
+              onChange={(v) => form.setData('serialNumber', v)}
+            />
+            <div className="flex flex-col gap-1">
+              <Label>Notes</Label>
+              <Textarea
+                value={form.data.notes}
+                onChange={(e) => form.setData('notes', e.target.value)}
+                rows={4}
+              />
+              {form.errors.notes && (
+                <span className="text-xs text-destructive">{form.errors.notes}</span>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button type="submit" disabled={form.processing}>
+                {form.processing ? 'Saving…' : 'Add printer'}
+              </Button>
+              <Link href="/printers">
+                <Button type="button" variant="outline">
+                  Cancel
+                </Button>
+              </Link>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   )
 }
+
+function Field({
+  label,
+  value,
+  error,
+  onChange,
+  required,
+}: {
+  label: string
+  value: string
+  error?: string
+  onChange: (v: string) => void
+  required?: boolean
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <Label>
+        {label}
+        {required && <span className="ml-0.5 text-destructive">*</span>}
+      </Label>
+      <Input value={value} onChange={(e) => onChange(e.target.value)} required={required} />
+      {error && <span className="text-xs text-destructive">{error}</span>}
+    </div>
+  )
+}
+
+PrinterNew.layout = (page: ReactElement) => <DashboardLayout>{page}</DashboardLayout>

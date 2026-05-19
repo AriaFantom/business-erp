@@ -15,9 +15,12 @@ import { getPrinterShowViewModel, getPrintersIndexViewModel } from '#services/pr
 import { DomainError } from '#services/domain_errors'
 
 export default class PrintersController {
-  async index({ inertia, bouncer }: HttpContext) {
+  async index({ inertia, bouncer, request }: HttpContext) {
     await bouncer.authorize('printers.view' as never)
-    const data = await getPrintersIndexViewModel()
+    const data = await getPrintersIndexViewModel({
+      q: request.input('q'),
+      status: request.input('status'),
+    })
     return inertia.render('printers/index', data)
   }
 
