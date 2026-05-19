@@ -6,6 +6,7 @@ import JobMaterialConsumption from '#models/job_material_consumption'
 import JobExpense from '#models/job_expense'
 import Inventory from '#models/inventory'
 import Product from '#models/product'
+import ProductRecipe from '#models/product_recipe'
 import type User from '#models/user'
 import { applyMovement, invalidateSnapshotCache } from '#services/inventory_service'
 import { audit } from '#services/audit'
@@ -99,7 +100,7 @@ export async function createJob(input: {
 }
 
 export async function startJob(jobId: number, actor: User): Promise<ProductionJob> {
-  return db.transaction(async (trx) => {
+  const result = await db.transaction(async (trx) => {
     const job = await ProductionJob.query({ client: trx })
       .where('id', jobId)
       .forUpdate()
@@ -121,8 +122,125 @@ export async function startJob(jobId: number, actor: User): Promise<ProductionJo
       targetId: job.id,
       trx,
     })
+
+    // Auto-consume the product recipe (BOM) learned from prior completed jobs.
+    // Insufficient stock here rolls back the start so the user can purchase
+    // missing inputs first.
+    const recipe = await ProductRecipe.query({ client: trx }).where('product_id', job.productId)
+    for (const r of recipe) {
+      const qty = round4(Number(r.qtyPerUnit) * job.plannedQty)
+      if (qty <= 0) continue
+      await recordConsumptionInTrx(
+        {
+          jobId: job.id,
+          itemKind: r.itemKind as 'material' | 'component',
+          itemId: r.itemId,
+          qtyConsumed: qty,
+          reason: 'consume',
+          actor,
+        },
+        trx
+      )
+    }
     return job
   })
+
+  await invalidateSnapshotCache()
+  return result
+}
+
+async function recordConsumptionInTrx(
+  input: {
+    jobId: number
+    itemKind: 'material' | 'component'
+    itemId: number
+    qtyConsumed: number
+    qtyWasted?: number
+    reason?: 'consume' | 'reprint' | 'waste'
+    actor: User
+  },
+  trx: TransactionClientContract
+): Promise<JobMaterialConsumption> {
+  const job = await ProductionJob.query({ client: trx })
+    .where('id', input.jobId)
+    .forUpdate()
+    .firstOrFail()
+  if (!['draft', 'in_progress'].includes(job.status)) {
+    throw new InvalidStateError({
+      entity: 'job',
+      from: job.status,
+      to: 'consume',
+    })
+  }
+
+  // Capture avg cost at consume time so historical job costs stay stable
+  // even if later purchases shift the average.
+  const inv = await Inventory.query({ client: trx })
+    .where('itemKind', input.itemKind)
+    .where('itemId', input.itemId)
+    .forUpdate()
+    .first()
+  if (!inv || Number(inv.qty) < input.qtyConsumed) {
+    throw new InsufficientStockError({
+      itemKind: input.itemKind,
+      itemId: input.itemId,
+      available: inv ? Number(inv.qty) : 0,
+      requested: input.qtyConsumed,
+    })
+  }
+  const unitCost = Number(inv.avgUnitCost)
+  const lineCost = round2(unitCost * input.qtyConsumed)
+
+  // Outbound stock movement; the inventory service handles the lock release.
+  await applyMovement({
+    itemKind: input.itemKind,
+    itemId: input.itemId,
+    qty: -input.qtyConsumed,
+    unitCost,
+    reason: 'job_consume',
+    referenceType: 'job',
+    referenceId: input.jobId,
+    note: null,
+    actor: input.actor,
+    trx,
+  })
+
+  const consumption = new JobMaterialConsumption()
+  consumption.jobId = input.jobId
+  consumption.itemKind = input.itemKind
+  consumption.itemId = input.itemId
+  consumption.qtyConsumed = String(input.qtyConsumed)
+  consumption.qtyWasted = String(input.qtyWasted ?? 0)
+  consumption.unitCostAtConsume = String(unitCost)
+  consumption.lineCost = String(lineCost)
+  consumption.reason = input.reason ?? 'consume'
+  consumption.createdByUserId = input.actor.id
+  consumption.createdAt = DateTime.now()
+  consumption.useTransaction(trx)
+  await consumption.save()
+
+  // Bump status to in_progress on first consumption while in draft.
+  if (job.status === 'draft') {
+    job.status = 'in_progress'
+    job.startedAt = DateTime.now()
+    await job.save()
+  }
+
+  await recomputeJobTotals(input.jobId, trx)
+  await audit({
+    actor: input.actor,
+    action: 'job.consume',
+    targetType: 'job',
+    targetId: input.jobId,
+    payload: {
+      itemKind: input.itemKind,
+      itemId: input.itemId,
+      qty: input.qtyConsumed,
+      unitCost,
+    },
+    trx,
+  })
+  return consumption
 }
 
 export async function recordConsumption(input: {
@@ -134,89 +252,7 @@ export async function recordConsumption(input: {
   reason?: 'consume' | 'reprint' | 'waste'
   actor: User
 }): Promise<JobMaterialConsumption> {
-  const result = await db.transaction(async (trx) => {
-    const job = await ProductionJob.query({ client: trx })
-      .where('id', input.jobId)
-      .forUpdate()
-      .firstOrFail()
-    if (!['draft', 'in_progress'].includes(job.status)) {
-      throw new InvalidStateError({
-        entity: 'job',
-        from: job.status,
-        to: 'consume',
-      })
-    }
-
-    // Capture avg cost at consume time so historical job costs stay stable
-    // even if later purchases shift the average.
-    const inv = await Inventory.query({ client: trx })
-      .where('itemKind', input.itemKind)
-      .where('itemId', input.itemId)
-      .forUpdate()
-      .first()
-    if (!inv || Number(inv.qty) < input.qtyConsumed) {
-      throw new InsufficientStockError({
-        itemKind: input.itemKind,
-        itemId: input.itemId,
-        available: inv ? Number(inv.qty) : 0,
-        requested: input.qtyConsumed,
-      })
-    }
-    const unitCost = Number(inv.avgUnitCost)
-    const lineCost = round2(unitCost * input.qtyConsumed)
-
-    // Outbound stock movement; the inventory service handles the lock release.
-    await applyMovement({
-      itemKind: input.itemKind,
-      itemId: input.itemId,
-      qty: -input.qtyConsumed,
-      unitCost,
-      reason: 'job_consume',
-      referenceType: 'job',
-      referenceId: input.jobId,
-      note: null,
-      actor: input.actor,
-      trx,
-    })
-
-    const consumption = new JobMaterialConsumption()
-    consumption.jobId = input.jobId
-    consumption.itemKind = input.itemKind
-    consumption.itemId = input.itemId
-    consumption.qtyConsumed = String(input.qtyConsumed)
-    consumption.qtyWasted = String(input.qtyWasted ?? 0)
-    consumption.unitCostAtConsume = String(unitCost)
-    consumption.lineCost = String(lineCost)
-    consumption.reason = input.reason ?? 'consume'
-    consumption.createdByUserId = input.actor.id
-    consumption.createdAt = DateTime.now()
-    consumption.useTransaction(trx)
-    await consumption.save()
-
-    // Bump status to in_progress on first consumption while in draft.
-    if (job.status === 'draft') {
-      job.status = 'in_progress'
-      job.startedAt = DateTime.now()
-      await job.save()
-    }
-
-    await recomputeJobTotals(input.jobId, trx)
-    await audit({
-      actor: input.actor,
-      action: 'job.consume',
-      targetType: 'job',
-      targetId: input.jobId,
-      payload: {
-        itemKind: input.itemKind,
-        itemId: input.itemId,
-        qty: input.qtyConsumed,
-        unitCost,
-      },
-      trx,
-    })
-    return consumption
-  })
-
+  const result = await db.transaction(async (trx) => recordConsumptionInTrx(input, trx))
   await invalidateSnapshotCache()
   return result
 }
@@ -323,11 +359,57 @@ export async function completeJob(input: {
       payload: { producedQty: input.producedQty, unitCost: perUnitCost },
       trx,
     })
+
+    await upsertProductRecipeFromJob(refreshed, trx)
+
     return refreshed
   })
 
   await invalidateSnapshotCache()
   return result
+}
+
+/**
+ * Refresh the product recipe (BOM) from the just-completed job's actual
+ * consumptions, normalised to per-unit. Replaces any prior recipe for this
+ * product so the latest run is the source of truth used by future startJob()
+ * auto-consumption.
+ */
+async function upsertProductRecipeFromJob(
+  job: ProductionJob,
+  trx: TransactionClientContract
+): Promise<void> {
+  if (job.producedQty <= 0) return
+  const consumptions = await JobMaterialConsumption.query({ client: trx }).where(
+    'job_id',
+    job.id
+  )
+  if (consumptions.length === 0) {
+    await ProductRecipe.query({ client: trx }).where('product_id', job.productId).delete()
+    return
+  }
+
+  const totals = new Map<string, { itemKind: string; itemId: number; qty: number }>()
+  for (const c of consumptions) {
+    const key = `${c.itemKind}:${c.itemId}`
+    const row = totals.get(key)
+    if (row) row.qty += Number(c.qtyConsumed)
+    else totals.set(key, { itemKind: c.itemKind, itemId: c.itemId, qty: Number(c.qtyConsumed) })
+  }
+
+  await ProductRecipe.query({ client: trx }).where('product_id', job.productId).delete()
+  for (const row of totals.values()) {
+    const qtyPerUnit = round4(row.qty / job.producedQty)
+    if (qtyPerUnit <= 0) continue
+    const recipe = new ProductRecipe()
+    recipe.productId = job.productId
+    recipe.itemKind = row.itemKind
+    recipe.itemId = row.itemId
+    recipe.qtyPerUnit = String(qtyPerUnit)
+    recipe.learnedFromJobId = job.id
+    recipe.useTransaction(trx)
+    await recipe.save()
+  }
 }
 
 export async function failJob(input: {

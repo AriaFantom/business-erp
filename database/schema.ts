@@ -372,6 +372,27 @@ export class ProductCategorySchema extends BaseModel {
   declare updatedAt: DateTime
 }
 
+export class ProductRecipeSchema extends BaseModel {
+  static $columns = ['createdAt', 'id', 'itemId', 'itemKind', 'learnedFromJobId', 'productId', 'qtyPerUnit', 'updatedAt'] as const
+  $columns = ProductRecipeSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare itemId: number
+  @column()
+  declare itemKind: string
+  @column()
+  declare learnedFromJobId: number | null
+  @column()
+  declare productId: number
+  @column()
+  declare qtyPerUnit: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
 export class ProductionJobSchema extends BaseModel {
   static $columns = ['completedAt', 'createdAt', 'createdByUserId', 'id', 'note', 'number', 'parentJobId', 'plannedQty', 'producedQty', 'productId', 'startedAt', 'status', 'totalComponentCost', 'totalCost', 'totalExpense', 'totalMaterialCost', 'unitCost', 'updatedAt'] as const
   $columns = ProductionJobSchema.$columns

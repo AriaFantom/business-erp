@@ -138,12 +138,14 @@ function NewProductDialog({ categories }: { categories: CategoryOpt[] }) {
                 setData('categoryId', v)
                 const cat = categories.find((c) => String(c.id) === v)
                 if (cat) {
-                  if (!data.defaultProfitPct && cat.defaultProfitPct !== null) {
-                    setData('defaultProfitPct', String(cat.defaultProfitPct))
-                  }
-                  if (!data.taxRatePct && cat.taxRatePct !== null) {
-                    setData('taxRatePct', String(cat.taxRatePct))
-                  }
+                  setData(
+                    'defaultProfitPct',
+                    cat.defaultProfitPct !== null ? String(cat.defaultProfitPct) : ''
+                  )
+                  setData(
+                    'taxRatePct',
+                    cat.taxRatePct !== null ? String(cat.taxRatePct) : ''
+                  )
                 }
               }}
             >
