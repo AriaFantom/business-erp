@@ -380,10 +380,7 @@ async function upsertProductRecipeFromJob(
   trx: TransactionClientContract
 ): Promise<void> {
   if (job.producedQty <= 0) return
-  const consumptions = await JobMaterialConsumption.query({ client: trx }).where(
-    'job_id',
-    job.id
-  )
+  const consumptions = await JobMaterialConsumption.query({ client: trx }).where('job_id', job.id)
   if (consumptions.length === 0) {
     await ProductRecipe.query({ client: trx }).where('product_id', job.productId).delete()
     return
