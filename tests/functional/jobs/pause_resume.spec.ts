@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import testUtils from '@adonisjs/core/services/test_utils'
-import Printer from '#models/printer'
+import Machine from '#models/machine'
 import ProductionJob from '#models/production_job'
 import { pauseJob, resumeJob, startJob } from '#services/job_costing'
 import { setupJobFixture } from '#tests/helpers/job_fixtures'
@@ -10,10 +10,10 @@ test.group('pauseJob / resumeJob', (group) => {
 
   test('pause clears auto_complete_at, sets remaining_seconds', async ({ assert }) => {
     const { job, actor } = await setupJobFixture({ withRecipe: false })
-    const printer = await Printer.create({ name: 'P1', status: 'idle' })
+    const machine = await Machine.create({ name: 'P1', status: 'idle' })
     await startJob({
       jobId: job.id,
-      printerId: printer.id,
+      machineId: machine.id,
       stages: [{ name: 's', durationMinutes: 60 }],
       actor,
     })
@@ -28,10 +28,10 @@ test.group('pauseJob / resumeJob', (group) => {
 
   test('resume restores auto_complete_at = now + remaining_seconds', async ({ assert }) => {
     const { job, actor } = await setupJobFixture({ withRecipe: false })
-    const printer = await Printer.create({ name: 'P2', status: 'idle' })
+    const machine = await Machine.create({ name: 'P2', status: 'idle' })
     await startJob({
       jobId: job.id,
-      printerId: printer.id,
+      machineId: machine.id,
       stages: [{ name: 's', durationMinutes: 60 }],
       actor,
     })

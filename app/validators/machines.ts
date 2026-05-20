@@ -1,6 +1,6 @@
 import vine from '@vinejs/vine'
 
-export const createPrinterValidator = vine.compile(
+export const createMachineValidator = vine.compile(
   vine.object({
     name: vine.string().trim().minLength(1).maxLength(80),
     model: vine.string().trim().maxLength(80).optional(),
@@ -9,7 +9,7 @@ export const createPrinterValidator = vine.compile(
   })
 )
 
-export const updatePrinterValidator = vine.compile(
+export const updateMachineValidator = vine.compile(
   vine.object({
     name: vine.string().trim().minLength(1).maxLength(80).optional(),
     model: vine.string().trim().maxLength(80).nullable().optional(),
@@ -18,7 +18,7 @@ export const updatePrinterValidator = vine.compile(
   })
 )
 
-export const printerExpenseValidator = vine.compile(
+export const machineExpenseValidator = vine.compile(
   vine.object({
     kind: vine.enum(['maintenance', 'parts', 'addon', 'other']),
     description: vine.string().trim().minLength(1).maxLength(280),

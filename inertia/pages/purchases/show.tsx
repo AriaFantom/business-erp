@@ -41,7 +41,7 @@ type Item = {
   lineSubtotal: string
   lineTax: string
   lineTotal: string
-  printers?: { id: number; name: string }[]
+  machines?: { id: number; name: string }[]
 }
 
 type PageProps = { purchase: Purchase; items: Item[] }
@@ -141,14 +141,14 @@ export default function PurchaseShow({ purchase, items }: PageProps) {
                     <TableCell>
                       <div className="font-medium">{it.itemName}</div>
                       <div className="font-mono text-xs text-muted-foreground">{it.itemSku}</div>
-                      {it.itemKind === 'printer' && it.printers?.length ? (
+                      {it.itemKind === 'machine' && it.machines?.length ? (
                         <div className="mt-1 text-xs text-muted-foreground">
-                          Printers created:{' '}
-                          {it.printers.map((p, i) => (
-                            <span key={p.id}>
+                          Machines created:{' '}
+                          {it.machines.map((m, i) => (
+                            <span key={m.id}>
                               {i > 0 ? ', ' : ''}
-                              <Link href={`/printers/${p.id}`} className="hover:underline">
-                                {p.name}
+                              <Link href={`/machines/${m.id}`} className="hover:underline">
+                                {m.name}
                               </Link>
                             </span>
                           ))}

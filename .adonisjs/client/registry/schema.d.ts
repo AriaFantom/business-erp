@@ -979,100 +979,100 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/jobs_controller').default['cancel']>>>
     }
   }
-  'printers.index': {
+  'machines.index': {
     methods: ["GET","HEAD"]
-    pattern: '/printers'
+    pattern: '/machines'
     types: {
       body: {}
       paramsTuple: []
       params: {}
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['index']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['index']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/machines_controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/machines_controller').default['index']>>>
     }
   }
-  'printers.new': {
+  'machines.new': {
     methods: ["GET","HEAD"]
-    pattern: '/printers/new'
+    pattern: '/machines/new'
     types: {
       body: {}
       paramsTuple: []
       params: {}
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['create']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['create']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/machines_controller').default['create']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/machines_controller').default['create']>>>
     }
   }
-  'printers.store': {
+  'machines.store': {
     methods: ["POST"]
-    pattern: '/printers'
+    pattern: '/machines'
     types: {
-      body: ExtractBody<InferInput<(typeof import('#validators/printers').createPrinterValidator)>>
+      body: ExtractBody<InferInput<(typeof import('#validators/machines').createMachineValidator)>>
       paramsTuple: []
       params: {}
-      query: ExtractQuery<InferInput<(typeof import('#validators/printers').createPrinterValidator)>>
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['store']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+      query: ExtractQuery<InferInput<(typeof import('#validators/machines').createMachineValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/machines_controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/machines_controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
-  'printers.show': {
+  'machines.show': {
     methods: ["GET","HEAD"]
-    pattern: '/printers/:id'
+    pattern: '/machines/:id'
     types: {
       body: {}
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['show']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['show']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/machines_controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/machines_controller').default['show']>>>
     }
   }
-  'printers.update': {
+  'machines.update': {
     methods: ["POST"]
-    pattern: '/printers/:id'
+    pattern: '/machines/:id'
     types: {
-      body: ExtractBody<InferInput<(typeof import('#validators/printers').updatePrinterValidator)>>
+      body: ExtractBody<InferInput<(typeof import('#validators/machines').updateMachineValidator)>>
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
-      query: ExtractQuery<InferInput<(typeof import('#validators/printers').updatePrinterValidator)>>
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['update']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+      query: ExtractQuery<InferInput<(typeof import('#validators/machines').updateMachineValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/machines_controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/machines_controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
-  'printers.retire': {
+  'machines.retire': {
     methods: ["POST"]
-    pattern: '/printers/:id/retire'
-    types: {
-      body: {}
-      paramsTuple: [ParamValue]
-      params: { id: ParamValue }
-      query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['retire']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['retire']>>>
-    }
-  }
-  'printers.maintenance': {
-    methods: ["POST"]
-    pattern: '/printers/:id/maintenance'
+    pattern: '/machines/:id/retire'
     types: {
       body: {}
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['toggleMaintenance']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['toggleMaintenance']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/machines_controller').default['retire']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/machines_controller').default['retire']>>>
     }
   }
-  'printers.expense': {
+  'machines.maintenance': {
     methods: ["POST"]
-    pattern: '/printers/:id/expense'
+    pattern: '/machines/:id/maintenance'
     types: {
-      body: ExtractBody<InferInput<(typeof import('#validators/printers').printerExpenseValidator)>>
+      body: {}
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
-      query: ExtractQuery<InferInput<(typeof import('#validators/printers').printerExpenseValidator)>>
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['addExpense']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/printers_controller').default['addExpense']>>> | { status: 422; response: { errors: SimpleError[] } }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/machines_controller').default['toggleMaintenance']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/machines_controller').default['toggleMaintenance']>>>
+    }
+  }
+  'machines.expense': {
+    methods: ["POST"]
+    pattern: '/machines/:id/expense'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/machines').machineExpenseValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#validators/machines').machineExpenseValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/machines_controller').default['addExpense']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/machines_controller').default['addExpense']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
   'quotations.index': {

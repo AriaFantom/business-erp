@@ -5,7 +5,7 @@ import Product from '#models/product'
 import Material from '#models/material'
 import Component from '#models/component'
 import Inventory from '#models/inventory'
-import Printer from '#models/printer'
+import Machine from '#models/machine'
 import ProductionJobStage from '#models/production_job_stage'
 import { totalChainCost } from '#services/job_costing'
 
@@ -35,7 +35,7 @@ export async function getJobsIndexViewModel(
       unitCost: j.unitCost,
       parentJobId: j.parentJobId,
       createdAt: j.createdAt.toISO(),
-      printerId: j.printerId,
+      machineId: j.machineId,
       autoCompleteAt: j.autoCompleteAt?.toISO() ?? null,
     })),
     products: products.map((p) => ({
@@ -48,7 +48,7 @@ export async function getJobsIndexViewModel(
 
 export async function getJobShowViewModel(jobId: number) {
   const job = await ProductionJob.findOrFail(jobId)
-  const [product, consumptions, expenses, materials, components, inventory, stages, printerRow] =
+  const [product, consumptions, expenses, materials, components, inventory, stages, machineRow] =
     await Promise.all([
       Product.find(job.productId),
       JobMaterialConsumption.query().where('job_id', jobId).orderBy('created_at', 'asc'),
@@ -57,7 +57,7 @@ export async function getJobShowViewModel(jobId: number) {
       Component.query().where('is_active', true).orderBy('name', 'asc'),
       Inventory.query(),
       ProductionJobStage.query().where('job_id', jobId).orderBy('sequence', 'asc'),
-      job.printerId ? Printer.find(job.printerId) : Promise.resolve(null),
+      job.machineId ? Machine.find(job.machineId) : Promise.resolve(null),
     ])
 
   const matById = new Map(materials.map((m) => [m.id, m]))
@@ -65,7 +65,7 @@ export async function getJobShowViewModel(jobId: number) {
   const invByKey = new Map(inventory.map((i) => [`${i.itemKind}:${i.itemId}`, i] as const))
 
   const chainCost = await totalChainCost(jobId)
-  const idlePrinters = await Printer.query().where('status', 'idle').orderBy('name', 'asc')
+  const idleMachines = await Machine.query().where('status', 'idle').orderBy('name', 'asc')
 
   return {
     job: {
@@ -86,8 +86,8 @@ export async function getJobShowViewModel(jobId: number) {
       unitCost: job.unitCost,
       chainCost: String(chainCost),
       note: job.note,
-      printerId: job.printerId,
-      printerName: printerRow?.name ?? null,
+      machineId: job.machineId,
+      machineName: machineRow?.name ?? null,
       autoCompleteAt: job.autoCompleteAt?.toISO() ?? null,
       estimatedDurationMin: job.estimatedDurationMin,
       pausedAt: job.pausedAt?.toISO() ?? null,
@@ -145,6 +145,6 @@ export async function getJobShowViewModel(jobId: number) {
       completedAt: s.completedAt?.toISO() ?? null,
       autoCompleteAt: s.autoCompleteAt?.toISO() ?? null,
     })),
-    idlePrinters: idlePrinters.map((p) => ({ id: p.id, name: p.name })),
+    idleMachines: idleMachines.map((m) => ({ id: m.id, name: m.name })),
   }
 }

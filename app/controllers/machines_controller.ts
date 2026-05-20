@@ -1,58 +1,58 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import {
-  createPrinterValidator,
-  printerExpenseValidator,
-  updatePrinterValidator,
-} from '#validators/printers'
+  createMachineValidator,
+  machineExpenseValidator,
+  updateMachineValidator,
+} from '#validators/machines'
 import {
-  createPrinter,
-  retirePrinter,
+  createMachine,
+  retireMachine,
   toggleMaintenance,
-  updatePrinter,
-} from '#services/printer_service'
+  updateMachine,
+} from '#services/machine_service'
 import { recordExpense } from '#services/job_costing'
-import { getPrinterShowViewModel, getPrintersIndexViewModel } from '#services/printers_view_models'
+import { getMachineShowViewModel, getMachinesIndexViewModel } from '#services/machines_view_models'
 import { DomainError } from '#services/domain_errors'
 
-export default class PrintersController {
+export default class MachinesController {
   async index({ inertia, bouncer, request }: HttpContext) {
-    await bouncer.authorize('printers.view' as never)
-    const data = await getPrintersIndexViewModel({
+    await bouncer.authorize('machines.view' as never)
+    const data = await getMachinesIndexViewModel({
       q: request.input('q'),
       status: request.input('status'),
     })
-    return inertia.render('printers/index', data)
+    return inertia.render('machines/index', data)
   }
 
   async create({ inertia, bouncer }: HttpContext) {
-    await bouncer.authorize('printers.create' as never)
-    return inertia.render('printers/new', {})
+    await bouncer.authorize('machines.create' as never)
+    return inertia.render('machines/new', {})
   }
 
   async store({ request, auth, bouncer, response, session }: HttpContext) {
-    await bouncer.authorize('printers.create' as never)
-    const payload = await request.validateUsing(createPrinterValidator)
+    await bouncer.authorize('machines.create' as never)
+    const payload = await request.validateUsing(createMachineValidator)
     try {
-      const printer = await createPrinter({ ...payload, actor: auth.user! })
-      session.flash('success', `Printer "${printer.name}" added.`)
-      return response.redirect().toPath(`/printers/${printer.id}`)
+      const machine = await createMachine({ ...payload, actor: auth.user! })
+      session.flash('success', `Machine "${machine.name}" added.`)
+      return response.redirect().toPath(`/machines/${machine.id}`)
     } catch (err) {
       return this._domain(err, response, session)
     }
   }
 
   async show({ params, inertia, bouncer }: HttpContext) {
-    await bouncer.authorize('printers.view' as never)
-    const data = await getPrinterShowViewModel(Number(params.id))
-    return inertia.render('printers/show', data)
+    await bouncer.authorize('machines.view' as never)
+    const data = await getMachineShowViewModel(Number(params.id))
+    return inertia.render('machines/show', data)
   }
 
   async update({ params, request, auth, bouncer, response, session }: HttpContext) {
-    await bouncer.authorize('printers.edit' as never)
-    const payload = await request.validateUsing(updatePrinterValidator)
+    await bouncer.authorize('machines.edit' as never)
+    const payload = await request.validateUsing(updateMachineValidator)
     try {
-      await updatePrinter(Number(params.id), payload, auth.user!)
-      session.flash('success', 'Printer updated.')
+      await updateMachine(Number(params.id), payload, auth.user!)
+      session.flash('success', 'Machine updated.')
     } catch (err) {
       return this._domain(err, response, session)
     }
@@ -60,10 +60,10 @@ export default class PrintersController {
   }
 
   async retire({ params, auth, bouncer, response, session }: HttpContext) {
-    await bouncer.authorize('printers.retire' as never)
+    await bouncer.authorize('machines.retire' as never)
     try {
-      await retirePrinter(Number(params.id), auth.user!)
-      session.flash('success', 'Printer retired.')
+      await retireMachine(Number(params.id), auth.user!)
+      session.flash('success', 'Machine retired.')
     } catch (err) {
       return this._domain(err, response, session)
     }
@@ -71,10 +71,10 @@ export default class PrintersController {
   }
 
   async toggleMaintenance({ params, auth, bouncer, response, session }: HttpContext) {
-    await bouncer.authorize('printers.edit' as never)
+    await bouncer.authorize('machines.edit' as never)
     try {
       await toggleMaintenance(Number(params.id), auth.user!)
-      session.flash('success', 'Printer maintenance state toggled.')
+      session.flash('success', 'Machine maintenance state toggled.')
     } catch (err) {
       return this._domain(err, response, session)
     }
@@ -82,11 +82,11 @@ export default class PrintersController {
   }
 
   async addExpense({ params, request, auth, bouncer, response, session }: HttpContext) {
-    await bouncer.authorize('printers.edit' as never)
-    const payload = await request.validateUsing(printerExpenseValidator)
+    await bouncer.authorize('machines.edit' as never)
+    const payload = await request.validateUsing(machineExpenseValidator)
     try {
       await recordExpense({
-        printerId: Number(params.id),
+        machineId: Number(params.id),
         kind: payload.kind,
         description: payload.description,
         amount: payload.amount,

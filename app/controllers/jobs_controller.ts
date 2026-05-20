@@ -71,7 +71,7 @@ export default class JobsController {
     try {
       await startJob({
         jobId: Number(params.id),
-        printerId: payload.printerId,
+        machineId: payload.machineId,
         stages: payload.stages,
         actor: auth.user!,
       })

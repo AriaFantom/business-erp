@@ -125,15 +125,15 @@ export interface ApiDefinition {
     fail: typeof routes['jobs.fail']
     cancel: typeof routes['jobs.cancel']
   }
-  printers: {
-    index: typeof routes['printers.index']
-    new: typeof routes['printers.new']
-    store: typeof routes['printers.store']
-    show: typeof routes['printers.show']
-    update: typeof routes['printers.update']
-    retire: typeof routes['printers.retire']
-    maintenance: typeof routes['printers.maintenance']
-    expense: typeof routes['printers.expense']
+  machines: {
+    index: typeof routes['machines.index']
+    new: typeof routes['machines.new']
+    store: typeof routes['machines.store']
+    show: typeof routes['machines.show']
+    update: typeof routes['machines.update']
+    retire: typeof routes['machines.retire']
+    maintenance: typeof routes['machines.maintenance']
+    expense: typeof routes['machines.expense']
   }
   quotations: {
     index: typeof routes['quotations.index']

@@ -42,7 +42,7 @@ export const failJobValidator = vine.compile(
 
 export const startJobValidator = vine.compile(
   vine.object({
-    printerId: vine.number().positive(),
+    machineId: vine.number().positive(),
     stages: vine
       .array(
         vine.object({

@@ -3,7 +3,7 @@ import PurchaseItem from '#models/purchase_item'
 import Supplier from '#models/supplier'
 import Material from '#models/material'
 import Component from '#models/component'
-import Printer from '#models/printer'
+import Machine from '#models/machine'
 
 export async function getPurchasesIndexViewModel(
   filters: { q?: string; status?: string; supplierId?: number } = {}
@@ -75,13 +75,13 @@ export async function getPurchaseShowViewModel(id: number) {
   const compById = new Map(components.map((c) => [c.id, c]))
 
   const itemIds = items.map((i) => i.id)
-  const printers = itemIds.length ? await Printer.query().whereIn('purchase_item_id', itemIds) : []
-  const printersByItem = new Map<number, Array<{ id: number; name: string }>>()
-  for (const p of printers) {
-    if (!p.purchaseItemId) continue
-    const arr = printersByItem.get(p.purchaseItemId) ?? []
-    arr.push({ id: p.id, name: p.name })
-    printersByItem.set(p.purchaseItemId, arr)
+  const machines = itemIds.length ? await Machine.query().whereIn('purchase_item_id', itemIds) : []
+  const machinesByItem = new Map<number, Array<{ id: number; name: string }>>()
+  for (const m of machines) {
+    if (!m.purchaseItemId) continue
+    const arr = machinesByItem.get(m.purchaseItemId) ?? []
+    arr.push({ id: m.id, name: m.name })
+    machinesByItem.set(m.purchaseItemId, arr)
   }
 
   return {
@@ -112,7 +112,7 @@ export async function getPurchaseShowViewModel(id: number) {
         lineSubtotal: it.lineSubtotal,
         lineTax: it.lineTax,
         lineTotal: it.lineTotal,
-        printers: printersByItem.get(it.id) ?? [],
+        machines: machinesByItem.get(it.id) ?? [],
       }
     }),
   }

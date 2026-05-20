@@ -61,8 +61,8 @@ type Job = {
   chainCost: string
   note: string | null
   // new fields
-  printerId: number | null
-  printerName: string | null
+  machineId: number | null
+  machineName: string | null
   autoCompleteAt: string | null
   estimatedDurationMin: number | null
   pausedAt: string | null
@@ -101,7 +101,7 @@ type InventoryItem = {
   onHand: string
 }
 
-type IdlePrinter = {
+type IdleMachine = {
   id: number
   name: string
 }
@@ -112,7 +112,7 @@ type PageProps = {
   expenses: Expense[]
   inventoryItems: InventoryItem[]
   stages: StageView[]
-  idlePrinters: IdlePrinter[]
+  idleMachines: IdleMachine[]
 }
 
 function PostAction({
@@ -416,8 +416,8 @@ function ConfirmJobCard({ jobId, plannedQty }: { jobId: number; plannedQty: numb
   )
 }
 
-function StartForm({ jobId, idlePrinters }: { jobId: number; idlePrinters: IdlePrinter[] }) {
-  const [printerId, setPrinterId] = useState<string>('')
+function StartForm({ jobId, idleMachines }: { jobId: number; idleMachines: IdleMachine[] }) {
+  const [machineId, setMachineId] = useState<string>('')
   const [stages, setStages] = useState<StageDraft[]>([{ name: 'Stage 1', durationMinutes: 30 }])
   const [submitting, setSubmitting] = useState(false)
 
@@ -426,7 +426,7 @@ function StartForm({ jobId, idlePrinters }: { jobId: number; idlePrinters: IdleP
     setSubmitting(true)
     router.post(
       `/jobs/${jobId}/start`,
-      { printerId: printerId ? Number(printerId) : null, stages },
+      { machineId: machineId ? Number(machineId) : null, stages },
       { preserveScroll: true }
     )
   }
@@ -438,15 +438,15 @@ function StartForm({ jobId, idlePrinters }: { jobId: number; idlePrinters: IdleP
       </CardHeader>
       <CardContent>
         <form className="flex flex-col gap-4" onSubmit={submit}>
-          <Field label="Printer">
-            <Select value={printerId} onValueChange={setPrinterId}>
+          <Field label="Machine">
+            <Select value={machineId} onValueChange={setMachineId}>
               <SelectTrigger>
-                <SelectValue placeholder="Select a printer (optional)" />
+                <SelectValue placeholder="Select a machine (optional)" />
               </SelectTrigger>
               <SelectContent>
-                {idlePrinters.map((p) => (
-                  <SelectItem key={p.id} value={String(p.id)}>
-                    {p.name}
+                {idleMachines.map((m) => (
+                  <SelectItem key={m.id} value={String(m.id)}>
+                    {m.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -488,7 +488,7 @@ export default function JobShow({
   expenses,
   inventoryItems,
   stages,
-  idlePrinters,
+  idleMachines,
 }: PageProps) {
   const isActive =
     job.status === 'draft' ||
@@ -504,7 +504,7 @@ export default function JobShow({
           <p className="text-sm text-muted-foreground">
             {job.productName} · planned {job.plannedQty} · produced {job.producedQty}
             {job.parentJobId ? ` · reprint of #${job.parentJobId}` : ''}
-            {job.printerName ? ` · printer: ${job.printerName}` : ''}
+            {job.machineName ? ` · machine: ${job.machineName}` : ''}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -574,7 +574,7 @@ export default function JobShow({
       )}
 
       {/* Start form — only on draft */}
-      {job.status === 'draft' && <StartForm jobId={job.id} idlePrinters={idlePrinters} />}
+      {job.status === 'draft' && <StartForm jobId={job.id} idleMachines={idleMachines} />}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card>

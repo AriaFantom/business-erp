@@ -39,14 +39,14 @@ import {
 } from '@/components/ui/table'
 import DashboardLayout from '@/layouts/dashboard-layout'
 
-type PrinterStatus = 'idle' | 'printing' | 'maintenance' | 'offline' | 'retired'
+type MachineStatus = 'idle' | 'running' | 'maintenance' | 'offline' | 'retired'
 
-interface PrinterDetail {
+interface MachineDetail {
   id: number
   name: string
   model: string | null
   serialNumber: string | null
-  status: PrinterStatus
+  status: MachineStatus
   currentJobId: number | null
   notes: string | null
   acquiredAt: string | null
@@ -70,15 +70,15 @@ interface ExpenseRow {
   incurredAt: string
 }
 
-const STATUS_VARIANT: Record<PrinterStatus, 'default' | 'secondary' | 'outline' | 'destructive'> = {
+const STATUS_VARIANT: Record<MachineStatus, 'default' | 'secondary' | 'outline' | 'destructive'> = {
   idle: 'outline',
-  printing: 'default',
+  running: 'default',
   maintenance: 'secondary',
   offline: 'secondary',
   retired: 'destructive',
 }
 
-function AddExpenseDialog({ printerId }: { printerId: number }) {
+function AddExpenseDialog({ machineId }: { machineId: number }) {
   const [open, setOpen] = useState(false)
   const { data, setData, post, processing, errors, reset } = useForm({
     kind: 'maintenance',
@@ -93,13 +93,13 @@ function AddExpenseDialog({ printerId }: { printerId: number }) {
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add printer expense</DialogTitle>
+          <DialogTitle>Add machine expense</DialogTitle>
         </DialogHeader>
         <form
           className="flex flex-col gap-3"
           onSubmit={(e) => {
             e.preventDefault()
-            post(`/printers/${printerId}/expense`, {
+            post(`/machines/${machineId}/expense`, {
               preserveScroll: true,
               onSuccess: () => {
                 reset()
@@ -194,45 +194,45 @@ function PostAction({
   )
 }
 
-export default function PrinterShow() {
-  const { props } = usePage<{ printer: PrinterDetail; jobs: JobRow[]; expenses: ExpenseRow[] }>()
-  const { printer, jobs, expenses } = props
-  const isRetired = printer.status === 'retired'
+export default function MachineShow() {
+  const { props } = usePage<{ machine: MachineDetail; jobs: JobRow[]; expenses: ExpenseRow[] }>()
+  const { machine, jobs, expenses } = props
+  const isRetired = machine.status === 'retired'
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-8">
-      <Head title={printer.name} />
+      <Head title={machine.name} />
       <div>
         <Link
-          href="/printers"
+          href="/machines"
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
-          <ChevronLeft className="size-4" /> Back to printers
+          <ChevronLeft className="size-4" /> Back to machines
         </Link>
         <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold">{printer.name}</h1>
+            <h1 className="text-2xl font-semibold">{machine.name}</h1>
             <p className="text-sm text-muted-foreground">
-              {printer.model ?? '—'}
-              {printer.serialNumber ? ` · SN: ${printer.serialNumber}` : ''}
+              {machine.model ?? '—'}
+              {machine.serialNumber ? ` · SN: ${machine.serialNumber}` : ''}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={STATUS_VARIANT[printer.status]}>{printer.status}</Badge>
-            {!isRetired && <AddExpenseDialog printerId={printer.id} />}
+            <Badge variant={STATUS_VARIANT[machine.status]}>{machine.status}</Badge>
+            {!isRetired && <AddExpenseDialog machineId={machine.id} />}
             {!isRetired && (
               <PostAction
-                path={`/printers/${printer.id}/maintenance`}
-                label={printer.status === 'maintenance' ? 'End maintenance' : 'Start maintenance'}
+                path={`/machines/${machine.id}/maintenance`}
+                label={machine.status === 'maintenance' ? 'End maintenance' : 'Start maintenance'}
                 variant="outline"
               />
             )}
             {!isRetired && (
               <PostAction
-                path={`/printers/${printer.id}/retire`}
+                path={`/machines/${machine.id}/retire`}
                 label="Retire"
                 variant="destructive"
-                confirmText={`Retire ${printer.name}? This cannot be undone.`}
+                confirmText={`Retire ${machine.name}? This cannot be undone.`}
               />
             )}
           </div>
@@ -247,10 +247,10 @@ export default function PrinterShow() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold tabular-nums">{printer.purchaseCost}</p>
-            {printer.acquiredAt && (
+            <p className="text-2xl font-semibold tabular-nums">{machine.purchaseCost}</p>
+            {machine.acquiredAt && (
               <p className="text-xs text-muted-foreground">
-                Acquired {printer.acquiredAt.slice(0, 10)}
+                Acquired {machine.acquiredAt.slice(0, 10)}
               </p>
             )}
           </CardContent>
@@ -262,7 +262,7 @@ export default function PrinterShow() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold tabular-nums">{printer.expenseTotal}</p>
+            <p className="text-2xl font-semibold tabular-nums">{machine.expenseTotal}</p>
             <p className="text-xs text-muted-foreground">
               Maintenance, parts, and add-ons over time
             </p>
@@ -275,20 +275,20 @@ export default function PrinterShow() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold tabular-nums">{printer.totalSpent}</p>
+            <p className="text-2xl font-semibold tabular-nums">{machine.totalSpent}</p>
             <p className="text-xs text-muted-foreground">Purchase + expenses</p>
           </CardContent>
         </Card>
       </div>
 
-      {printer.currentJobId && (
+      {machine.currentJobId && (
         <Card className="border-primary/40">
           <CardHeader>
-            <CardTitle>Currently printing</CardTitle>
+            <CardTitle>Currently running</CardTitle>
             <CardDescription>
-              This printer is locked to{' '}
-              <Link href={`/jobs/${printer.currentJobId}`} className="font-medium hover:underline">
-                Job #{printer.currentJobId}
+              This machine is locked to{' '}
+              <Link href={`/jobs/${machine.currentJobId}`} className="font-medium hover:underline">
+                Job #{machine.currentJobId}
               </Link>
               .
             </CardDescription>
@@ -296,13 +296,13 @@ export default function PrinterShow() {
         </Card>
       )}
 
-      {printer.notes && (
+      {machine.notes && (
         <Card>
           <CardHeader>
             <CardTitle>Notes</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="whitespace-pre-wrap text-sm text-muted-foreground">{printer.notes}</p>
+            <p className="whitespace-pre-wrap text-sm text-muted-foreground">{machine.notes}</p>
           </CardContent>
         </Card>
       )}
@@ -310,11 +310,11 @@ export default function PrinterShow() {
       <Card>
         <CardHeader>
           <CardTitle>Job history</CardTitle>
-          <CardDescription>Up to 50 most recent jobs run on this printer.</CardDescription>
+          <CardDescription>Up to 50 most recent jobs run on this machine.</CardDescription>
         </CardHeader>
         <CardContent>
           {jobs.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No jobs have run on this printer yet.</p>
+            <p className="text-sm text-muted-foreground">No jobs have run on this machine yet.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -358,7 +358,7 @@ export default function PrinterShow() {
         <CardHeader>
           <CardTitle>Expenses</CardTitle>
           <CardDescription>
-            Maintenance, repair parts, and add-ons charged to this printer.
+            Maintenance, repair parts, and add-ons charged to this machine.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -394,4 +394,4 @@ export default function PrinterShow() {
   )
 }
 
-PrinterShow.layout = (page: ReactElement) => <DashboardLayout>{page}</DashboardLayout>
+MachineShow.layout = (page: ReactElement) => <DashboardLayout>{page}</DashboardLayout>

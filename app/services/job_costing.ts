@@ -7,7 +7,7 @@ import Expense from '#models/expense'
 import Inventory from '#models/inventory'
 import Product from '#models/product'
 import ProductRecipe from '#models/product_recipe'
-import Printer from '#models/printer'
+import Machine from '#models/machine'
 import ProductionJobStage from '#models/production_job_stage'
 import type User from '#models/user'
 import { applyMovement, invalidateSnapshotCache } from '#services/inventory_service'
@@ -18,16 +18,16 @@ import { DomainError, InsufficientStockError, InvalidStateError } from '#service
 
 const MAX_REPRINT_CHAIN = 50
 
-async function freePrinter(job: ProductionJob, trx: TransactionClientContract): Promise<void> {
-  if (!job.printerId) return
-  const printer = await Printer.query({ client: trx })
-    .where('id', job.printerId)
+async function freeMachine(job: ProductionJob, trx: TransactionClientContract): Promise<void> {
+  if (!job.machineId) return
+  const machine = await Machine.query({ client: trx })
+    .where('id', job.machineId)
     .forUpdate()
     .first()
-  if (!printer) return
-  printer.status = 'idle'
-  printer.currentJobId = null
-  await printer.save()
+  if (!machine) return
+  machine.status = 'idle'
+  machine.currentJobId = null
+  await machine.save()
 }
 
 function round2(n: number): number {
@@ -121,7 +121,7 @@ export interface StartJobStageInput {
 
 export async function startJob(input: {
   jobId: number
-  printerId: number
+  machineId: number
   stages: StartJobStageInput[]
   actor: User
 }): Promise<ProductionJob> {
@@ -138,14 +138,14 @@ export async function startJob(input: {
       throw new InvalidStateError({ entity: 'job', from: job.status, to: 'in_progress' })
     }
 
-    const printer = await Printer.query({ client: trx })
-      .where('id', input.printerId)
+    const machine = await Machine.query({ client: trx })
+      .where('id', input.machineId)
       .forUpdate()
       .firstOrFail()
-    if (printer.status !== 'idle') {
+    if (machine.status !== 'idle') {
       throw new InvalidStateError({
-        entity: 'printer',
-        from: printer.status,
+        entity: 'machine',
+        from: machine.status,
         to: `assign job ${job.id}`,
       })
     }
@@ -172,15 +172,15 @@ export async function startJob(input: {
 
     job.status = 'in_progress'
     job.startedAt = now
-    job.printerId = printer.id
+    job.machineId = machine.id
     job.currentStageId = stageRows[0].id
     job.estimatedDurationMin = stageRows[0].estimatedDurationMin
     job.autoCompleteAt = stageRows[0].autoCompleteAt
     await job.save()
 
-    printer.status = 'printing'
-    printer.currentJobId = job.id
-    await printer.save()
+    machine.status = 'running'
+    machine.currentJobId = job.id
+    await machine.save()
 
     await audit({
       actor: input.actor,
@@ -188,7 +188,7 @@ export async function startJob(input: {
       targetType: 'job',
       targetId: job.id,
       payload: {
-        printerId: printer.id,
+        machineId: machine.id,
         stages: input.stages.map((s) => ({ name: s.name, durationMinutes: s.durationMinutes })),
       },
       trx,
@@ -329,17 +329,17 @@ export async function recordConsumption(input: {
 
 export async function recordExpense(input: {
   jobId?: number | null
-  printerId?: number | null
+  machineId?: number | null
   kind: 'electricity' | 'labor' | 'overhead' | 'maintenance' | 'parts' | 'addon' | 'other'
   description: string
   amount: number
   incurredAt?: DateTime
   actor: User
 }): Promise<Expense> {
-  if (!input.jobId && !input.printerId) {
+  if (!input.jobId && !input.machineId) {
     throw new DomainError({
       code: 'INVALID_INPUT',
-      message: 'Expense must be tied to a job or a printer.',
+      message: 'Expense must be tied to a job or a machine.',
     })
   }
   return db.transaction(async (trx) => {
@@ -365,12 +365,12 @@ export async function recordExpense(input: {
         })
       }
     }
-    if (input.printerId) {
-      await Printer.findOrFail(input.printerId)
+    if (input.machineId) {
+      await Machine.findOrFail(input.machineId)
     }
     const expense = new Expense()
     expense.jobId = input.jobId ?? null
-    expense.printerId = input.printerId ?? null
+    expense.machineId = input.machineId ?? null
     expense.kind = input.kind
     expense.description = input.description
     expense.amount = String(input.amount)
@@ -389,7 +389,7 @@ export async function recordExpense(input: {
       targetId: expense.id,
       payload: {
         jobId: input.jobId ?? null,
-        printerId: input.printerId ?? null,
+        machineId: input.machineId ?? null,
         kind: input.kind,
         amount: input.amount,
       },
@@ -431,8 +431,6 @@ export async function completeJob(input: {
 
     await recomputeJobTotals(input.jobId, trx)
 
-    // Credit the produced product into inventory at the per-unit cost just
-    // recomputed. Re-read the job to pick up the freshly persisted unitCost.
     const refreshed = await ProductionJob.query({ client: trx })
       .where('id', input.jobId)
       .firstOrFail()
@@ -449,7 +447,7 @@ export async function completeJob(input: {
       actor: input.actor,
       trx,
     })
-    await freePrinter(refreshed, trx)
+    await freeMachine(refreshed, trx)
 
     await audit({
       actor: input.actor,
@@ -474,7 +472,6 @@ export async function confirmJob(input: {
   producedQty: number
   actor: User
 }): Promise<ProductionJob> {
-  // Pre-check status: confirm allowed from in_progress, paused, or awaiting_confirmation.
   const current = await ProductionJob.findOrFail(input.jobId)
   if (!['in_progress', 'paused', 'awaiting_confirmation'].includes(current.status)) {
     throw new InvalidStateError({ entity: 'job', from: current.status, to: 'completed' })
@@ -489,12 +486,6 @@ export async function confirmJob(input: {
   })
 }
 
-/**
- * Refresh the product recipe (BOM) from the just-completed job's actual
- * consumptions, normalised to per-unit. Replaces any prior recipe for this
- * product so the latest run is the source of truth used by future startJob()
- * auto-consumption.
- */
 async function upsertProductRecipeFromJob(
   job: ProductionJob,
   trx: TransactionClientContract
@@ -550,7 +541,7 @@ export async function failJob(input: {
     job.completedAt = DateTime.now()
     if (input.reason) job.note = (job.note ? job.note + '\n\n' : '') + `Failed: ${input.reason}`
     await job.save()
-    await freePrinter(job, trx)
+    await freeMachine(job, trx)
     await audit({
       actor: input.actor,
       action: 'job.fail',
@@ -588,7 +579,7 @@ export async function cancelJob(jobId: number, actor: User): Promise<ProductionJ
     }
     job.status = 'cancelled'
     await job.save()
-    await freePrinter(job, trx)
+    await freeMachine(job, trx)
     await audit({
       actor,
       action: 'job.cancel',
@@ -620,11 +611,6 @@ export async function totalChainCost(jobId: number): Promise<number> {
   return round2(total)
 }
 
-/**
- * Returns the latest finished unit cost for a product, used by the pricing
- * service. Falls back to weighted average across the most recent N completed
- * jobs when the latest job has produced_qty=0 (shouldn't happen, but defensive).
- */
 export async function latestProductCost(productId: number): Promise<number | null> {
   const jobs = await ProductionJob.query()
     .where('product_id', productId)
@@ -704,11 +690,6 @@ export async function resumeJob(jobId: number, actor: User): Promise<ProductionJ
   })
 }
 
-/**
- * After marking the current stage finished (completed or skipped), activate
- * the next pending stage or move the job to awaiting_confirmation. Caller
- * provides the just-finished stage and the up-to-date job (locked).
- */
 async function advanceStageOrAwaitConfirmation(
   job: ProductionJob,
   finishedSequence: number,
@@ -778,8 +759,6 @@ export async function skipStage(jobId: number, actor: User): Promise<ProductionJ
     stage.completedAt = DateTime.now()
     await stage.save()
 
-    // If the job was paused, advancing restores it to in_progress through
-    // the next stage's started_at; if it was already in_progress, same.
     job.status = 'in_progress'
     await advanceStageOrAwaitConfirmation(job, stage.sequence, trx, actor)
     await audit({

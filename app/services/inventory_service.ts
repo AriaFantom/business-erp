@@ -8,7 +8,7 @@ import type User from '#models/user'
 import { InsufficientStockError } from '#services/domain_errors'
 import { audit } from '#services/audit'
 
-export type ItemKind = 'material' | 'component' | 'product' | 'printer'
+export type ItemKind = 'material' | 'component' | 'product' | 'machine'
 
 export type MovementReason =
   | 'purchase'
@@ -75,8 +75,8 @@ async function lockInventory(
  * snapshot readers always see fresh data after commit.
  */
 export async function applyMovement(input: MovementInput): Promise<StockMovement | undefined> {
-  if (input.itemKind === 'printer') {
-    // Printers are not fungible stock; they exist as rows in `printers` instead.
+  if (input.itemKind === 'machine') {
+    // Machines are not fungible stock; they exist as rows in `machines` instead.
     return
   }
 
@@ -176,7 +176,7 @@ export async function adjustStock(opts: {
         trx,
       })
       if (!move) {
-        throw new Error('adjustStock cannot target a printer')
+        throw new Error('adjustStock cannot target a machine')
       }
       return move
     })

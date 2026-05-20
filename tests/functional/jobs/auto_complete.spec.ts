@@ -2,7 +2,7 @@ import { test } from '@japa/runner'
 import testUtils from '@adonisjs/core/services/test_utils'
 import { DateTime } from 'luxon'
 import ProductionJob from '#models/production_job'
-import Printer from '#models/printer'
+import Machine from '#models/machine'
 import { startJob } from '#services/job_costing'
 import { tick } from '#services/job_auto_complete_scheduler'
 import { setupJobFixture } from '#tests/helpers/job_fixtures'
@@ -12,10 +12,10 @@ test.group('scheduler auto-complete (single stage)', (group) => {
 
   test('moves in_progress past deadline to awaiting_confirmation', async ({ assert }) => {
     const { job, actor } = await setupJobFixture({ withRecipe: false })
-    const printer = await Printer.create({ name: 'X1', status: 'idle' })
+    const machine = await Machine.create({ name: 'X1', status: 'idle' })
     await startJob({
       jobId: job.id,
-      printerId: printer.id,
+      machineId: machine.id,
       stages: [{ name: 's', durationMinutes: 1 }],
       actor,
     })
@@ -34,10 +34,10 @@ test.group('scheduler auto-complete (single stage)', (group) => {
 
   test('ignores paused jobs', async ({ assert }) => {
     const { job, actor } = await setupJobFixture({ withRecipe: false })
-    const printer = await Printer.create({ name: 'X2', status: 'idle' })
+    const machine = await Machine.create({ name: 'X2', status: 'idle' })
     await startJob({
       jobId: job.id,
-      printerId: printer.id,
+      machineId: machine.id,
       stages: [{ name: 's', durationMinutes: 1 }],
       actor,
     })

@@ -15,28 +15,28 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import DashboardLayout from '@/layouts/dashboard-layout'
 
-export default function PrinterNew() {
+export default function MachineNew() {
   const form = useForm({ name: '', model: '', serialNumber: '', notes: '' })
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-6 py-8">
-      <Head title="Add printer" />
+      <Head title="Add machine" />
       <div>
         <Link
-          href="/printers"
+          href="/machines"
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
-          <ChevronLeft className="size-4" /> Back to printers
+          <ChevronLeft className="size-4" /> Back to machines
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold">Add printer</h1>
+        <h1 className="mt-2 text-2xl font-semibold">Add machine</h1>
         <p className="text-sm text-muted-foreground">
-          Register a physical printer so jobs can be assigned to it.
+          Register a machine so jobs can be assigned to it.
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Printer details</CardTitle>
+          <CardTitle>Machine details</CardTitle>
           <CardDescription>Only the name is required.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -44,7 +44,7 @@ export default function PrinterNew() {
             className="flex flex-col gap-4"
             onSubmit={(e) => {
               e.preventDefault()
-              form.post('/printers')
+              form.post('/machines')
             }}
           >
             <Field
@@ -79,9 +79,9 @@ export default function PrinterNew() {
             </div>
             <div className="flex gap-2">
               <Button type="submit" disabled={form.processing}>
-                {form.processing ? 'Saving…' : 'Add printer'}
+                {form.processing ? 'Saving…' : 'Add machine'}
               </Button>
-              <Link href="/printers">
+              <Link href="/machines">
                 <Button type="button" variant="outline">
                   Cancel
                 </Button>
@@ -119,4 +119,4 @@ function Field({
   )
 }
 
-PrinterNew.layout = (page: ReactElement) => <DashboardLayout>{page}</DashboardLayout>
+MachineNew.layout = (page: ReactElement) => <DashboardLayout>{page}</DashboardLayout>

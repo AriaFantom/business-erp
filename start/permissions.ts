@@ -80,11 +80,11 @@ export const permissions = definePermissions({
     complete: 'Move a job to completed/failed',
     cancel: 'Cancel a draft job',
   },
-  printers: {
-    view: 'View 3D printers',
-    create: 'Add a new printer',
-    edit: 'Edit printer details and record expenses',
-    retire: 'Retire a printer',
+  machines: {
+    view: 'View machines',
+    create: 'Add a new machine',
+    edit: 'Edit machine details and record expenses',
+    retire: 'Retire a machine',
   },
 
   // ── Sales ────────────────────────────────────────────────────────────

@@ -85,14 +85,14 @@ export type ScannedRoutes = {
     'jobs.confirm': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.fail': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.cancel': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
-    'printers.index': { paramsTuple?: []; params?: {} }
-    'printers.new': { paramsTuple?: []; params?: {} }
-    'printers.store': { paramsTuple?: []; params?: {} }
-    'printers.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
-    'printers.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
-    'printers.retire': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
-    'printers.maintenance': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
-    'printers.expense': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'machines.index': { paramsTuple?: []; params?: {} }
+    'machines.new': { paramsTuple?: []; params?: {} }
+    'machines.store': { paramsTuple?: []; params?: {} }
+    'machines.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'machines.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'machines.retire': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'machines.maintenance': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'machines.expense': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'quotations.index': { paramsTuple?: []; params?: {} }
     'quotations.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'quotations.store': { paramsTuple?: []; params?: {} }
@@ -144,9 +144,9 @@ export type ScannedRoutes = {
     'purchases.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.index': { paramsTuple?: []; params?: {} }
     'jobs.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
-    'printers.index': { paramsTuple?: []; params?: {} }
-    'printers.new': { paramsTuple?: []; params?: {} }
-    'printers.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'machines.index': { paramsTuple?: []; params?: {} }
+    'machines.new': { paramsTuple?: []; params?: {} }
+    'machines.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'quotations.index': { paramsTuple?: []; params?: {} }
     'quotations.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'quotations.download': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
@@ -186,9 +186,9 @@ export type ScannedRoutes = {
     'purchases.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.index': { paramsTuple?: []; params?: {} }
     'jobs.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
-    'printers.index': { paramsTuple?: []; params?: {} }
-    'printers.new': { paramsTuple?: []; params?: {} }
-    'printers.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'machines.index': { paramsTuple?: []; params?: {} }
+    'machines.new': { paramsTuple?: []; params?: {} }
+    'machines.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'quotations.index': { paramsTuple?: []; params?: {} }
     'quotations.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'quotations.download': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
@@ -259,11 +259,11 @@ export type ScannedRoutes = {
     'jobs.confirm': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.fail': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.cancel': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
-    'printers.store': { paramsTuple?: []; params?: {} }
-    'printers.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
-    'printers.retire': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
-    'printers.maintenance': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
-    'printers.expense': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'machines.store': { paramsTuple?: []; params?: {} }
+    'machines.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'machines.retire': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'machines.maintenance': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'machines.expense': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'quotations.store': { paramsTuple?: []; params?: {} }
     'quotations.send': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'quotations.accept': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }

@@ -1,21 +1,21 @@
 import { test } from '@japa/runner'
 import testUtils from '@adonisjs/core/services/test_utils'
-import Printer from '#models/printer'
+import Machine from '#models/machine'
 import ProductionJob from '#models/production_job'
 import ProductionJobStage from '#models/production_job_stage'
 import { startJob } from '#services/job_costing'
 import { setupJobFixture } from '#tests/helpers/job_fixtures'
 
-test.group('startJob with printer', (group) => {
+test.group('startJob with machine', (group) => {
   group.each.setup(() => testUtils.db().withGlobalTransaction())
 
-  test('assigns printer, stages, and timer; flips printer to printing', async ({ assert }) => {
+  test('assigns machine, stages, and timer; flips machine to running', async ({ assert }) => {
     const { job, actor } = await setupJobFixture({ plannedQty: 1, withRecipe: false })
-    const printer = await Printer.create({ name: 'A1', status: 'idle' })
+    const machine = await Machine.create({ name: 'A1', status: 'idle' })
 
     await startJob({
       jobId: job.id,
-      printerId: printer.id,
+      machineId: machine.id,
       stages: [
         { name: 'Layer 1', durationMinutes: 30 },
         { name: 'Layer 2', durationMinutes: 60 },
@@ -25,7 +25,7 @@ test.group('startJob with printer', (group) => {
 
     const reloaded = await ProductionJob.findOrFail(job.id)
     assert.equal(reloaded.status, 'in_progress')
-    assert.equal(reloaded.printerId, printer.id)
+    assert.equal(reloaded.machineId, machine.id)
     assert.equal(reloaded.estimatedDurationMin, 30)
     assert.isNotNull(reloaded.autoCompleteAt)
     assert.isNotNull(reloaded.currentStageId)
@@ -35,35 +35,32 @@ test.group('startJob with printer', (group) => {
     assert.equal(stages[0].status, 'in_progress')
     assert.equal(stages[1].status, 'pending')
 
-    const printerR = await Printer.findOrFail(printer.id)
-    assert.equal(printerR.status, 'printing')
-    assert.equal(printerR.currentJobId, job.id)
+    const machineR = await Machine.findOrFail(machine.id)
+    assert.equal(machineR.status, 'running')
+    assert.equal(machineR.currentJobId, job.id)
   })
 
-  test('rejects starting when printer is not idle', async ({ assert }) => {
+  test('rejects starting when machine is not idle', async ({ assert }) => {
     const { job, actor } = await setupJobFixture({ withRecipe: false })
-    const printer = await Printer.create({ name: 'A2', status: 'printing' })
+    const machine = await Machine.create({ name: 'A2', status: 'running' })
     await assert.rejects(() =>
       startJob({
         jobId: job.id,
-        printerId: printer.id,
+        machineId: machine.id,
         stages: [{ name: 's', durationMinutes: 10 }],
         actor,
       })
     )
   })
 
-  test('two concurrent starts on the same printer cannot both succeed', async ({ assert }) => {
-    // Create two draft jobs and one idle printer; run startJob twice
-    // concurrently and assert exactly one resolves while the other rejects
-    // (DB unique-index violation translated into a DomainError).
+  test('two concurrent starts on the same machine cannot both succeed', async ({ assert }) => {
     const { job: jobA, actor } = await setupJobFixture({ withRecipe: false })
     const { job: jobB } = await setupJobFixture({ withRecipe: false, actor })
-    const printer = await Printer.create({ name: 'A3', status: 'idle' })
+    const machine = await Machine.create({ name: 'A3', status: 'idle' })
 
     const args = (id: number) => ({
       jobId: id,
-      printerId: printer.id,
+      machineId: machine.id,
       stages: [{ name: 's', durationMinutes: 10 }],
       actor,
     })

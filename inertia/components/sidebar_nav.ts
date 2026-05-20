@@ -7,7 +7,7 @@ import {
   LayoutDashboard,
   Mail,
   Package,
-  Printer as PrinterIcon,
+  Cpu as MachineIcon,
   Receipt,
   ScrollText,
   Settings2,
@@ -112,10 +112,10 @@ export const navItems: NavItem[] = [
     permission: 'jobs.view',
   },
   {
-    title: 'Printers',
-    url: '/printers',
-    icon: PrinterIcon,
-    permission: 'printers.view',
+    title: 'Machines',
+    url: '/machines',
+    icon: MachineIcon,
+    permission: 'machines.view',
   },
   {
     title: 'POS',

@@ -492,53 +492,53 @@ const routes = {
     tokens: [{"old":"/jobs/:id/cancel","type":0,"val":"jobs","end":""},{"old":"/jobs/:id/cancel","type":1,"val":"id","end":""},{"old":"/jobs/:id/cancel","type":0,"val":"cancel","end":""}],
     types: placeholder as Registry['jobs.cancel']['types'],
   },
-  'printers.index': {
+  'machines.index': {
     methods: ["GET","HEAD"],
-    pattern: '/printers',
-    tokens: [{"old":"/printers","type":0,"val":"printers","end":""}],
-    types: placeholder as Registry['printers.index']['types'],
+    pattern: '/machines',
+    tokens: [{"old":"/machines","type":0,"val":"machines","end":""}],
+    types: placeholder as Registry['machines.index']['types'],
   },
-  'printers.new': {
+  'machines.new': {
     methods: ["GET","HEAD"],
-    pattern: '/printers/new',
-    tokens: [{"old":"/printers/new","type":0,"val":"printers","end":""},{"old":"/printers/new","type":0,"val":"new","end":""}],
-    types: placeholder as Registry['printers.new']['types'],
+    pattern: '/machines/new',
+    tokens: [{"old":"/machines/new","type":0,"val":"machines","end":""},{"old":"/machines/new","type":0,"val":"new","end":""}],
+    types: placeholder as Registry['machines.new']['types'],
   },
-  'printers.store': {
+  'machines.store': {
     methods: ["POST"],
-    pattern: '/printers',
-    tokens: [{"old":"/printers","type":0,"val":"printers","end":""}],
-    types: placeholder as Registry['printers.store']['types'],
+    pattern: '/machines',
+    tokens: [{"old":"/machines","type":0,"val":"machines","end":""}],
+    types: placeholder as Registry['machines.store']['types'],
   },
-  'printers.show': {
+  'machines.show': {
     methods: ["GET","HEAD"],
-    pattern: '/printers/:id',
-    tokens: [{"old":"/printers/:id","type":0,"val":"printers","end":""},{"old":"/printers/:id","type":1,"val":"id","end":""}],
-    types: placeholder as Registry['printers.show']['types'],
+    pattern: '/machines/:id',
+    tokens: [{"old":"/machines/:id","type":0,"val":"machines","end":""},{"old":"/machines/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['machines.show']['types'],
   },
-  'printers.update': {
+  'machines.update': {
     methods: ["POST"],
-    pattern: '/printers/:id',
-    tokens: [{"old":"/printers/:id","type":0,"val":"printers","end":""},{"old":"/printers/:id","type":1,"val":"id","end":""}],
-    types: placeholder as Registry['printers.update']['types'],
+    pattern: '/machines/:id',
+    tokens: [{"old":"/machines/:id","type":0,"val":"machines","end":""},{"old":"/machines/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['machines.update']['types'],
   },
-  'printers.retire': {
+  'machines.retire': {
     methods: ["POST"],
-    pattern: '/printers/:id/retire',
-    tokens: [{"old":"/printers/:id/retire","type":0,"val":"printers","end":""},{"old":"/printers/:id/retire","type":1,"val":"id","end":""},{"old":"/printers/:id/retire","type":0,"val":"retire","end":""}],
-    types: placeholder as Registry['printers.retire']['types'],
+    pattern: '/machines/:id/retire',
+    tokens: [{"old":"/machines/:id/retire","type":0,"val":"machines","end":""},{"old":"/machines/:id/retire","type":1,"val":"id","end":""},{"old":"/machines/:id/retire","type":0,"val":"retire","end":""}],
+    types: placeholder as Registry['machines.retire']['types'],
   },
-  'printers.maintenance': {
+  'machines.maintenance': {
     methods: ["POST"],
-    pattern: '/printers/:id/maintenance',
-    tokens: [{"old":"/printers/:id/maintenance","type":0,"val":"printers","end":""},{"old":"/printers/:id/maintenance","type":1,"val":"id","end":""},{"old":"/printers/:id/maintenance","type":0,"val":"maintenance","end":""}],
-    types: placeholder as Registry['printers.maintenance']['types'],
+    pattern: '/machines/:id/maintenance',
+    tokens: [{"old":"/machines/:id/maintenance","type":0,"val":"machines","end":""},{"old":"/machines/:id/maintenance","type":1,"val":"id","end":""},{"old":"/machines/:id/maintenance","type":0,"val":"maintenance","end":""}],
+    types: placeholder as Registry['machines.maintenance']['types'],
   },
-  'printers.expense': {
+  'machines.expense': {
     methods: ["POST"],
-    pattern: '/printers/:id/expense',
-    tokens: [{"old":"/printers/:id/expense","type":0,"val":"printers","end":""},{"old":"/printers/:id/expense","type":1,"val":"id","end":""},{"old":"/printers/:id/expense","type":0,"val":"expense","end":""}],
-    types: placeholder as Registry['printers.expense']['types'],
+    pattern: '/machines/:id/expense',
+    tokens: [{"old":"/machines/:id/expense","type":0,"val":"machines","end":""},{"old":"/machines/:id/expense","type":1,"val":"id","end":""},{"old":"/machines/:id/expense","type":0,"val":"expense","end":""}],
+    types: placeholder as Registry['machines.expense']['types'],
   },
   'quotations.index': {
     methods: ["GET","HEAD"],

@@ -28,10 +28,10 @@ declare module '@adonisjs/inertia/types' {
     'invoices/show': ExtractProps<(typeof import('../../inertia/pages/invoices/show.tsx'))['default']>
     'jobs/index': ExtractProps<(typeof import('../../inertia/pages/jobs/index.tsx'))['default']>
     'jobs/show': ExtractProps<(typeof import('../../inertia/pages/jobs/show.tsx'))['default']>
+    'machines/index': ExtractProps<(typeof import('../../inertia/pages/machines/index.tsx'))['default']>
+    'machines/new': ExtractProps<(typeof import('../../inertia/pages/machines/new.tsx'))['default']>
+    'machines/show': ExtractProps<(typeof import('../../inertia/pages/machines/show.tsx'))['default']>
     'pos/index': ExtractProps<(typeof import('../../inertia/pages/pos/index.tsx'))['default']>
-    'printers/index': ExtractProps<(typeof import('../../inertia/pages/printers/index.tsx'))['default']>
-    'printers/new': ExtractProps<(typeof import('../../inertia/pages/printers/new.tsx'))['default']>
-    'printers/show': ExtractProps<(typeof import('../../inertia/pages/printers/show.tsx'))['default']>
     'profile/edit': ExtractProps<(typeof import('../../inertia/pages/profile/edit.tsx'))['default']>
     'purchases/index': ExtractProps<(typeof import('../../inertia/pages/purchases/index.tsx'))['default']>
     'purchases/show': ExtractProps<(typeof import('../../inertia/pages/purchases/show.tsx'))['default']>

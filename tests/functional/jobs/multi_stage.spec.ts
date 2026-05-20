@@ -3,7 +3,7 @@ import testUtils from '@adonisjs/core/services/test_utils'
 import { DateTime } from 'luxon'
 import ProductionJob from '#models/production_job'
 import ProductionJobStage from '#models/production_job_stage'
-import Printer from '#models/printer'
+import Machine from '#models/machine'
 import { skipStage, startJob } from '#services/job_costing'
 import { tick } from '#services/job_auto_complete_scheduler'
 import { setupJobFixture } from '#tests/helpers/job_fixtures'
@@ -13,10 +13,10 @@ test.group('multi-stage job advancement', (group) => {
 
   test('scheduler walks through three stages then awaits confirmation', async ({ assert }) => {
     const { job, actor } = await setupJobFixture({ withRecipe: false })
-    const printer = await Printer.create({ name: 'M1', status: 'idle' })
+    const machine = await Machine.create({ name: 'M1', status: 'idle' })
     await startJob({
       jobId: job.id,
-      printerId: printer.id,
+      machineId: machine.id,
       stages: [
         { name: '1', durationMinutes: 1 },
         { name: '2', durationMinutes: 1 },
@@ -45,10 +45,10 @@ test.group('multi-stage job advancement', (group) => {
 
   test('skipStage advances mid-job', async ({ assert }) => {
     const { job, actor } = await setupJobFixture({ withRecipe: false })
-    const printer = await Printer.create({ name: 'M2', status: 'idle' })
+    const machine = await Machine.create({ name: 'M2', status: 'idle' })
     await startJob({
       jobId: job.id,
-      printerId: printer.id,
+      machineId: machine.id,
       stages: [
         { name: '1', durationMinutes: 60 },
         { name: '2', durationMinutes: 60 },
