@@ -129,7 +129,15 @@ export async function getInvoiceShowViewModel(id: number) {
       taxTotal: invoice.taxTotal,
       total: invoice.total,
       paidTotal: invoice.paidTotal,
-      customer: customer ? { id: customer.id, name: customer.name } : null,
+      customer: customer
+        ? {
+            id: customer.id,
+            name: customer.name,
+            email: customer.email,
+            phone: customer.phone,
+            address: customer.billingAddress,
+          }
+        : null,
       replacesInvoiceId: invoice.replacesInvoiceId,
     },
     items: items.map((it) => ({

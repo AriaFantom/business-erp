@@ -95,7 +95,15 @@ export async function getQuotationShowViewModel(id: number) {
       id: q.id,
       number: q.number,
       status: q.status,
-      customer: customer ? { id: customer.id, name: customer.name } : null,
+      customer: customer
+        ? {
+            id: customer.id,
+            name: customer.name,
+            email: customer.email,
+            phone: customer.phone,
+            address: customer.billingAddress,
+          }
+        : null,
       issuedAt: q.issuedAt.toISO(),
       validUntil: q.validUntil.toISO(),
       subtotal: q.subtotal,

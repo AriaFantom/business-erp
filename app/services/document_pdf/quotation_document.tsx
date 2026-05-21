@@ -7,7 +7,15 @@ export type QuotationPdfData = {
     id: number
     number: string
     status: string
-    customer: { id: number; name: string } | null
+    customer:
+      | {
+          id: number
+          name: string
+          email: string | null
+          phone: string | null
+          address: string | null
+        }
+      | null
     issuedAt: string | null
     validUntil: string | null
     subtotal: string
@@ -28,85 +36,134 @@ export type QuotationPdfData = {
   appName?: string
 }
 
-function fmt(n: string | number): string {
+function money(n: string | number): string {
   const v = Number(n)
   if (!Number.isFinite(v)) return String(n)
-  return v.toFixed(2)
+  return `$${v.toFixed(2)}`
 }
 
-export function QuotationDocument({ quotation, items, appName }: QuotationPdfData) {
+function num(n: string | number, digits = 2): string {
+  const v = Number(n)
+  if (!Number.isFinite(v)) return String(n)
+  return v.toFixed(digits)
+}
+
+function fmtDate(iso: string | null): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso.slice(0, 10)
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  return `${months[d.getUTCMonth()]} ${String(d.getUTCDate()).padStart(2, '0')}, ${d.getUTCFullYear()}`
+}
+
+function MetaLine({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.metaRow}>
+      <Text style={styles.metaLabel}>{label}</Text>
+      <Text style={styles.metaValue}>{value}</Text>
+    </View>
+  )
+}
+
+export function QuotationDocument({ quotation, items }: QuotationPdfData) {
+  const c = quotation.customer
   return (
     <Document title={`Quotation ${quotation.number}`}>
       <Page size="A4" style={styles.page}>
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.title}>Quotation {quotation.number}</Text>
-            <Text style={styles.subtle}>
-              Issued {quotation.issuedAt?.slice(0, 10) ?? '—'} · Valid until{' '}
-              {quotation.validUntil?.slice(0, 10) ?? '—'}
-            </Text>
-          </View>
-          <View>
-            <Text style={styles.badge}>{quotation.status.toUpperCase()}</Text>
-            {appName ? (
-              <Text style={[styles.subtle, { marginTop: 8, textAlign: 'right' }]}>
-                {appName}
-              </Text>
+        {/* ── Title + meta block ─────────────────────────── */}
+        <View style={styles.topRow}>
+          <Text style={styles.titleBig}>QUOTATION</Text>
+          <View style={styles.metaBlock}>
+            <MetaLine label="Quote #:" value={quotation.number} />
+            <MetaLine label="Date:" value={fmtDate(quotation.issuedAt)} />
+            {quotation.validUntil ? (
+              <MetaLine label="Valid Until:" value={fmtDate(quotation.validUntil)} />
             ) : null}
+            <MetaLine label="Status:" value={quotation.status} />
           </View>
         </View>
 
-        <View style={[styles.section, styles.twoCol]}>
-          <View style={styles.col}>
-            <Text style={styles.sectionTitle}>Customer</Text>
-            <Text>{quotation.customer?.name ?? '—'}</Text>
-          </View>
+        {/* ── Customer details ──────────────────────────── */}
+        <View style={styles.partyBlock}>
+          <Text style={styles.sectionTitle}>Customer Details:</Text>
+          {c ? (
+            <>
+              <Text style={styles.partyLine}>{c.name}</Text>
+              {c.address ? <Text style={styles.partyLine}>{c.address}</Text> : null}
+              {c.email ? <Text style={styles.partyLine}>Email: {c.email}</Text> : null}
+              {c.phone ? <Text style={styles.partyLine}>Phone: {c.phone}</Text> : null}
+            </>
+          ) : (
+            <Text style={styles.partyLine}>—</Text>
+          )}
         </View>
 
-        <View style={styles.table}>
-          <View style={styles.tHead}>
-            <Text style={styles.tCellDesc}>Description</Text>
-            <Text style={styles.tCellQty}>Qty</Text>
-            <Text style={styles.tCellMoney}>Unit price</Text>
-            <Text style={styles.tCellTax}>Tax %</Text>
-            <Text style={styles.tCellMoney}>Total</Text>
-          </View>
-          {items.map((it) => (
-            <View style={styles.tRow} key={it.id}>
-              <Text style={styles.tCellDesc}>{it.description}</Text>
-              <Text style={styles.tCellQty}>{it.qty}</Text>
-              <Text style={styles.tCellMoney}>{fmt(it.unitPrice)}</Text>
-              <Text style={styles.tCellTax}>{fmt(it.taxRatePct)}</Text>
-              <Text style={styles.tCellMoney}>{fmt(it.lineTotal)}</Text>
+        {/* ── Line items table ──────────────────────────── */}
+        {items.length > 0 ? (
+          <View style={styles.table}>
+            <View style={styles.tr}>
+              <Text style={[styles.th, styles.colItem, styles.alignLeft]}>Item</Text>
+              <Text style={[styles.th, styles.colQty, styles.alignCenter]}>Quantity</Text>
+              <Text style={[styles.th, styles.colUnit, styles.alignRight]}>Unit Price</Text>
+              <Text style={[styles.th, styles.colDisc, styles.alignRight]}>Tax %</Text>
+              <Text style={[styles.th, styles.colAmount, styles.alignRight]}>Amount</Text>
             </View>
-          ))}
-        </View>
-
-        <View style={styles.totalsBox}>
-          <View style={styles.totalsRow}>
-            <Text style={styles.totalsLabel}>Subtotal</Text>
-            <Text>{fmt(quotation.subtotal)}</Text>
-          </View>
-          <View style={styles.totalsRow}>
-            <Text style={styles.totalsLabel}>Tax</Text>
-            <Text>{fmt(quotation.taxTotal)}</Text>
-          </View>
-          <View style={styles.totalsRow}>
-            <Text style={styles.totalsValue}>Total</Text>
-            <Text style={styles.totalsValue}>{fmt(quotation.total)}</Text>
-          </View>
-        </View>
-
-        {quotation.note ? (
-          <View style={[styles.section, { marginTop: 18 }]}>
-            <Text style={styles.sectionTitle}>Note</Text>
-            <Text>{quotation.note}</Text>
+            {items.map((it) => (
+              <View style={styles.tr} key={it.id}>
+                <Text style={[styles.td, styles.colItem, styles.alignLeft]}>{it.description}</Text>
+                <Text style={[styles.td, styles.colQty, styles.alignCenter]}>{num(it.qty)}</Text>
+                <Text style={[styles.td, styles.colUnit, styles.alignRight]}>
+                  {money(it.unitPrice)}
+                </Text>
+                <Text style={[styles.td, styles.colDisc, styles.alignRight]}>
+                  {num(it.taxRatePct)}%
+                </Text>
+                <Text style={[styles.td, styles.colAmount, styles.alignRight]}>
+                  {money(it.lineTotal)}
+                </Text>
+              </View>
+            ))}
           </View>
         ) : null}
 
-        <Text style={styles.footer} fixed>
-          Generated by {appName ?? 'Panel'} · quotation {quotation.number}
-        </Text>
+        {/* ── Financial summary ─────────────────────────── */}
+        <View style={styles.table}>
+          <View style={styles.tr}>
+            <Text style={[styles.th, styles.colSumLabel, styles.alignLeft]}>Description</Text>
+            <Text style={[styles.th, styles.colSumValue, styles.alignRight]}>Amount</Text>
+          </View>
+          <View style={styles.tr}>
+            <Text style={[styles.td, styles.colSumLabel, styles.alignLeft]}>Subtotal</Text>
+            <Text style={[styles.td, styles.colSumValue, styles.alignRight]}>
+              {money(quotation.subtotal)}
+            </Text>
+          </View>
+          <View style={styles.tr}>
+            <Text style={[styles.td, styles.colSumLabel, styles.alignLeft]}>Tax</Text>
+            <Text style={[styles.td, styles.colSumValue, styles.alignRight]}>
+              {money(quotation.taxTotal)}
+            </Text>
+          </View>
+          <View style={styles.tr}>
+            <Text style={[styles.td, styles.colSumLabel, styles.alignLeft, styles.bold]}>
+              Total
+            </Text>
+            <Text style={[styles.td, styles.colSumValue, styles.alignRight, styles.bold]}>
+              {money(quotation.total)}
+            </Text>
+          </View>
+        </View>
+
+        {/* ── Notes ─────────────────────────────────────── */}
+        {quotation.note ? (
+          <View style={styles.notes}>
+            <Text style={styles.sectionTitle}>Notes:</Text>
+            <Text style={styles.partyLine}>{quotation.note}</Text>
+          </View>
+        ) : null}
+
+        {/* ── Footer ────────────────────────────────────── */}
+        <Text style={styles.footer}>Thank you for your business!</Text>
       </Page>
     </Document>
   )

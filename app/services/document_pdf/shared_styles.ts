@@ -1,98 +1,123 @@
 import { StyleSheet } from '@react-pdf/renderer'
 
+const BORDER = '#000000'
+
 export const styles = StyleSheet.create({
   page: {
-    padding: 36,
+    paddingTop: 36,
+    paddingBottom: 36,
+    paddingHorizontal: 36,
     fontSize: 10,
     fontFamily: 'Helvetica',
-    color: '#0f172a',
+    color: '#000000',
   },
-  header: {
+
+  // ── Top block ──────────────────────────────────────────────
+  topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 18,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
   },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 4,
+  titleBig: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 24,
+    letterSpacing: 0.5,
   },
-  subtle: {
-    color: '#64748b',
-    fontSize: 9,
-  },
-  section: {
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    marginBottom: 4,
-    color: '#334155',
-  },
-  twoCol: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  col: {
-    flexBasis: '48%',
-  },
-  table: {
-    marginTop: 8,
-  },
-  tHead: {
-    flexDirection: 'row',
-    backgroundColor: '#f1f5f9',
-    paddingVertical: 4,
-    paddingHorizontal: 6,
-    fontSize: 9,
-    fontWeight: 'bold',
-    borderBottomWidth: 1,
-    borderBottomColor: '#cbd5e1',
-  },
-  tRow: {
-    flexDirection: 'row',
-    paddingVertical: 4,
-    paddingHorizontal: 6,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#e2e8f0',
-  },
-  tCellDesc: { flex: 4 },
-  tCellQty: { flex: 1, textAlign: 'right' },
-  tCellMoney: { flex: 1.4, textAlign: 'right' },
-  tCellTax: { flex: 1, textAlign: 'right' },
-  totalsBox: {
-    marginTop: 12,
-    alignSelf: 'flex-end',
+  metaBlock: {
     width: 220,
   },
-  totalsRow: {
+  metaRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 2,
+    justifyContent: 'flex-end',
+    marginBottom: 3,
   },
-  totalsLabel: { color: '#64748b' },
-  totalsValue: { fontWeight: 'bold' },
-  badge: {
-    fontSize: 9,
+  metaLabel: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 10,
+    marginRight: 4,
+  },
+  metaValue: {
+    fontSize: 10,
+  },
+
+  // ── Section heading ───────────────────────────────────────
+  sectionTitle: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 12,
+    marginBottom: 6,
+  },
+  partyBlock: {
+    marginBottom: 14,
+  },
+  partyLine: {
+    fontSize: 10,
+    marginBottom: 2,
+  },
+
+  // ── Tables (bordered, Go-style) ───────────────────────────
+  table: {
+    marginTop: 4,
+    marginBottom: 12,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderColor: BORDER,
+  },
+  tr: {
+    flexDirection: 'row',
+  },
+  th: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 10,
+    paddingVertical: 5,
     paddingHorizontal: 6,
-    paddingVertical: 2,
-    backgroundColor: '#e2e8f0',
-    borderRadius: 4,
-    color: '#334155',
+    borderRightWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: BORDER,
+  },
+  td: {
+    fontSize: 10,
+    paddingVertical: 5,
+    paddingHorizontal: 6,
+    borderRightWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: BORDER,
+  },
+  alignLeft: { textAlign: 'left' },
+  alignCenter: { textAlign: 'center' },
+  alignRight: { textAlign: 'right' },
+
+  // Items table column widths (sum = 524 ≈ A4 width minus padding)
+  colItem: { width: 215 },
+  colQty: { width: 70 },
+  colUnit: { width: 80 },
+  colDisc: { width: 70 },
+  colAmount: { width: 89 },
+
+  // Summary table column widths
+  colSumLabel: { width: 350 },
+  colSumValue: { width: 174 },
+
+  // Payment history column widths
+  colPayNo: { width: 110 },
+  colPayDate: { width: 90 },
+  colPayMethod: { width: 120 },
+  colPayAmount: { width: 100 },
+  colPayRef: { width: 104 },
+
+  // ── Emphasis rows in summary ──────────────────────────────
+  bold: {
+    fontFamily: 'Helvetica-Bold',
+  },
+
+  // ── Notes & footer ────────────────────────────────────────
+  notes: {
+    marginTop: 4,
+    marginBottom: 10,
   },
   footer: {
-    position: 'absolute',
-    bottom: 24,
-    left: 36,
-    right: 36,
-    fontSize: 8,
-    color: '#94a3b8',
-    textAlign: 'center',
+    marginTop: 14,
+    fontSize: 9,
+    fontFamily: 'Helvetica-Oblique',
   },
 })
