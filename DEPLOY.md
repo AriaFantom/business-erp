@@ -67,6 +67,18 @@ Individual steps if you want them:
 ./deploy.sh down       # stop the stack (keeps volumes)
 ```
 
+### Redeploying after a code update
+
+Pull the latest commit and rebuild in one shot:
+
+```bash
+./deploy.sh update
+```
+
+This runs `git fetch` + `git pull --ff-only`, refuses to continue if the working
+tree has local changes, then runs the full `build` → `up` → `migrate` cycle.
+Override the branch with `GIT_BRANCH=some-branch ./deploy.sh update`.
+
 ## 3. Configure NPM
 
 See `nginx-proxy-manager.md`. You'll add three Proxy Hosts:

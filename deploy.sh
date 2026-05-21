@@ -3,6 +3,7 @@
 #
 # Usage:
 #   ./deploy.sh              # build, up, migrate (full deploy)
+#   ./deploy.sh update       # git pull + rebuild + up + migrate (redeploy latest)
 #   ./deploy.sh build        # build the image
 #   ./deploy.sh up           # bring up the stack
 #   ./deploy.sh migrate      # run pending migrations
@@ -13,6 +14,7 @@
 #
 # Env:
 #   ENV_FILE=path/to/.env    # override the default ".env"
+#   GIT_BRANCH=main          # override the branch to pull (default: current branch)
 
 set -euo pipefail
 
@@ -62,6 +64,23 @@ validate_env() {
   fi
 }
 
+cmd_pull() {
+  if [[ ! -d .git ]]; then
+    echo "✗ not a git checkout — cannot pull." >&2
+    exit 1
+  fi
+  local branch="${GIT_BRANCH:-$(git rev-parse --abbrev-ref HEAD)}"
+  echo "→ Fetching origin and fast-forwarding ${branch}…"
+  git fetch --prune origin
+  if ! git diff --quiet || ! git diff --cached --quiet; then
+    echo "✗ working tree has local changes. Commit/stash before updating." >&2
+    git status --short >&2
+    exit 1
+  fi
+  git checkout "$branch"
+  git pull --ff-only origin "$branch"
+}
+
 cmd_build()   { validate_env; $COMPOSE build; }
 cmd_up()      { validate_env; $COMPOSE up -d; }
 cmd_migrate() { validate_env; $COMPOSE exec app node ace migration:run --force; }
@@ -74,24 +93,40 @@ cmd_nuke()    {
   $COMPOSE down -v
 }
 
+wait_healthy() {
+  echo "→ Waiting for app health…"
+  for i in {1..30}; do
+    if $COMPOSE ps app | grep -q "(healthy)"; then return 0; fi
+    sleep 2
+  done
+  echo "✗ app did not become healthy in time. Check './deploy.sh logs'." >&2
+  return 1
+}
+
 case "${1:-deploy}" in
   build)   cmd_build ;;
   up)      cmd_up ;;
   migrate) cmd_migrate ;;
   logs)    cmd_logs ;;
   ps)      cmd_ps ;;
+  pull)    cmd_pull ;;
   down)    cmd_down ;;
   nuke)    cmd_nuke ;;
   deploy)
     cmd_build
     cmd_up
-    echo "→ Waiting for app health…"
-    for i in {1..30}; do
-      if $COMPOSE ps app | grep -q "(healthy)"; then break; fi
-      sleep 2
-    done
+    wait_healthy || true
     cmd_migrate
     cmd_ps
+    ;;
+  update)
+    cmd_pull
+    cmd_build
+    cmd_up
+    wait_healthy || true
+    cmd_migrate
+    cmd_ps
+    echo "✓ update complete"
     ;;
   *)
     echo "unknown command: $1" >&2
