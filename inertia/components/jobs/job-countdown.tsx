@@ -4,6 +4,7 @@ interface Props {
   autoCompleteAt: string | null
   remainingSeconds: number | null
   paused: boolean
+  serverNow?: string
 }
 
 function fmt(seconds: number) {
@@ -16,12 +17,16 @@ function fmt(seconds: number) {
   return `${sec}s`
 }
 
-export function JobCountdown({ autoCompleteAt, remainingSeconds, paused }: Props) {
-  const [now, setNow] = useState(() => Date.now())
+export function JobCountdown({ autoCompleteAt, remainingSeconds, paused, serverNow }: Props) {
+  const [skewMs] = useState(() =>
+    serverNow ? new Date(serverNow).getTime() - Date.now() : 0
+  )
+  const [clientNow, setClientNow] = useState(() => Date.now())
+  const now = clientNow + skewMs
 
   useEffect(() => {
     if (paused || !autoCompleteAt) return
-    const id = setInterval(() => setNow(Date.now()), 1000)
+    const id = setInterval(() => setClientNow(Date.now()), 1000)
     return () => clearInterval(id)
   }, [paused, autoCompleteAt])
 

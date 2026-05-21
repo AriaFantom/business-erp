@@ -235,7 +235,7 @@ async function recordConsumptionInTrx(
     .where('id', input.jobId)
     .forUpdate()
     .firstOrFail()
-  if (!['draft', 'in_progress'].includes(job.status)) {
+  if (!['in_progress', 'paused'].includes(job.status)) {
     throw new InvalidStateError({
       entity: 'job',
       from: job.status,
@@ -288,13 +288,6 @@ async function recordConsumptionInTrx(
   consumption.createdAt = DateTime.now()
   consumption.useTransaction(trx)
   await consumption.save()
-
-  // Bump status to in_progress on first consumption while in draft.
-  if (job.status === 'draft') {
-    job.status = 'in_progress'
-    job.startedAt = DateTime.now()
-    await job.save()
-  }
 
   await recomputeJobTotals(input.jobId, trx)
   await audit({

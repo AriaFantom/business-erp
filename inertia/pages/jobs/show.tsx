@@ -32,6 +32,7 @@ import { Badge } from '@/components/ui/badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { JobStagesList, type StageView } from '@/components/jobs/job-stages-list'
 import { JobStagesRepeater, type StageDraft } from '@/components/jobs/job-stages-repeater'
+import { JobProgress } from '@/components/jobs/job-progress'
 
 type JobStatus =
   | 'draft'
@@ -113,6 +114,7 @@ type PageProps = {
   inventoryItems: InventoryItem[]
   stages: StageView[]
   idleMachines: IdleMachine[]
+  serverNow: string
 }
 
 function PostAction({
@@ -143,7 +145,8 @@ function PostAction({
           open={open}
           onOpenChange={setOpen}
           title={confirmText}
-          confirmLabel={label}
+          confirmLabel="Yes"
+          cancelLabel="No"
           variant={variant === 'destructive' ? 'destructive' : 'default'}
           onConfirm={submit}
         />
@@ -489,9 +492,9 @@ export default function JobShow({
   inventoryItems,
   stages,
   idleMachines,
+  serverNow,
 }: PageProps) {
   const isActive =
-    job.status === 'draft' ||
     job.status === 'in_progress' ||
     job.status === 'paused' ||
     job.status === 'awaiting_confirmation'
@@ -537,6 +540,7 @@ export default function JobShow({
               stages={stages}
               paused={!!job.pausedAt}
               remainingSeconds={job.remainingSeconds}
+              serverNow={serverNow}
             />
           </CardContent>
         </Card>
@@ -603,7 +607,20 @@ export default function JobShow({
           <CardHeader>
             <CardTitle>Timeline</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-col gap-4">
+            {(job.status === 'in_progress' ||
+              job.status === 'paused' ||
+              job.status === 'awaiting_confirmation') && (
+              <JobProgress
+                stages={stages}
+                paused={!!job.pausedAt}
+                remainingSeconds={job.remainingSeconds}
+                startedAt={job.startedAt}
+                autoCompleteAt={job.autoCompleteAt}
+                estimatedDurationMin={job.estimatedDurationMin}
+                serverNow={serverNow}
+              />
+            )}
             <dl className="grid grid-cols-2 gap-2 text-sm">
               <dt className="text-muted-foreground">Started</dt>
               <dd className="text-right font-mono text-xs">

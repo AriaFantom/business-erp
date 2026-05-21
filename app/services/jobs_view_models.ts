@@ -8,6 +8,7 @@ import Inventory from '#models/inventory'
 import Machine from '#models/machine'
 import ProductionJobStage from '#models/production_job_stage'
 import { totalChainCost } from '#services/job_costing'
+import { DateTime } from 'luxon'
 
 export async function getJobsIndexViewModel(
   filters: { q?: string; status?: string; productId?: number } = {}
@@ -146,5 +147,6 @@ export async function getJobShowViewModel(jobId: number) {
       autoCompleteAt: s.autoCompleteAt?.toISO() ?? null,
     })),
     idleMachines: idleMachines.map((m) => ({ id: m.id, name: m.name })),
+    serverNow: DateTime.now().toISO(),
   }
 }

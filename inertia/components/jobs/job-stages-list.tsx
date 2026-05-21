@@ -14,10 +14,12 @@ export function JobStagesList({
   stages,
   paused,
   remainingSeconds,
+  serverNow,
 }: {
   stages: StageView[]
   paused: boolean
   remainingSeconds: number | null
+  serverNow?: string
 }) {
   return (
     <ol className="space-y-2">
@@ -34,6 +36,7 @@ export function JobStagesList({
               autoCompleteAt={s.autoCompleteAt}
               remainingSeconds={remainingSeconds}
               paused={paused}
+              serverNow={serverNow}
             />
           ) : null}
         </li>
