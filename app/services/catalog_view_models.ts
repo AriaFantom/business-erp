@@ -3,11 +3,14 @@ import Material from '#models/material'
 import Component from '#models/component'
 import Product from '#models/product'
 import ProductCategory from '#models/product_category'
+import ProductionJob from '#models/production_job'
 import Supplier from '#models/supplier'
 import Customer from '#models/customer'
 import Inventory from '#models/inventory'
 import StockMovement from '#models/stock_movement'
 import { signCatalogImageUrl } from '#services/catalog_image_storage'
+import { latestProductCost } from '#services/job_costing'
+import { computeUnitPrice } from '#services/pricing'
 
 /**
  * Lean read-only projections for Inertia pages. These don't depend on the
@@ -18,6 +21,10 @@ import { signCatalogImageUrl } from '#services/catalog_image_storage'
 type ListFilters = {
   q?: string
   status?: string // 'all' | 'active' | 'archived'
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100
 }
 
 function applyStatus(
@@ -289,36 +296,102 @@ export type ProductShowData = {
     mimeType: string | null
     createdAt: string | null
   }>
+  profitAnalysis: {
+    sellingPrice: number | null
+    costBasis: number | null
+    profitPctUsed: number | null
+    profitFrom: 'manual' | 'product' | 'category' | 'global' | null
+    taxRatePct: number
+    taxFrom: 'product' | 'category' | 'global'
+    rounding: 'nearest_50_paise' | 'nearest_rupee' | 'none'
+    profitPerUnit: number | null
+    profitPct: number | null
+    jobs: Array<{
+      id: number
+      number: string
+      completedAt: string | null
+      producedQty: number
+      totalCost: number
+      unitCost: number
+      sellingPrice: number | null
+      profitPerUnit: number | null
+      profitPct: number | null
+    }>
+  }
 }
 
 export async function getProductShowViewModel(id: number): Promise<ProductShowData> {
   const product = await Product.query().where('id', id).preload('category').firstOrFail()
-  const [imageUrl, attachments, productionRow, soldRow] = await Promise.all([
-    signCatalogImageUrl(product.imageKey),
-    db
-      .from('product_attachments')
-      .where('product_id', id)
-      .orderBy('created_at', 'desc')
-      .select('id', 'original_name', 'size_bytes', 'mime_type', 'created_at'),
-    db
-      .from('production_jobs')
-      .where('product_id', id)
-      .where('status', 'in_progress')
-      .sum({ planned: 'planned_qty' })
-      .sum({ produced: 'produced_qty' })
-      .first(),
-    db
-      .from('sale_items')
-      .join('sales', 'sales.id', 'sale_items.sale_id')
-      .where('sale_items.product_id', id)
-      .where('sales.status', 'confirmed')
-      .sum({ qty: 'sale_items.qty' })
-      .first(),
-  ])
+  const [imageUrl, attachments, productionRow, soldRow, completedJobs, costBasis] =
+    await Promise.all([
+      signCatalogImageUrl(product.imageKey),
+      db
+        .from('product_attachments')
+        .where('product_id', id)
+        .orderBy('created_at', 'desc')
+        .select('id', 'original_name', 'size_bytes', 'mime_type', 'created_at'),
+      db
+        .from('production_jobs')
+        .where('product_id', id)
+        .where('status', 'in_progress')
+        .sum({ planned: 'planned_qty' })
+        .sum({ produced: 'produced_qty' })
+        .first(),
+      db
+        .from('sale_items')
+        .join('sales', 'sales.id', 'sale_items.sale_id')
+        .where('sale_items.product_id', id)
+        .where('sales.status', 'confirmed')
+        .sum({ qty: 'sale_items.qty' })
+        .first(),
+      ProductionJob.query()
+        .where('product_id', id)
+        .where('status', 'completed')
+        .orderBy('completed_at', 'desc'),
+      latestProductCost(id),
+    ])
   const planned = Number(productionRow?.planned ?? 0)
   const produced = Number(productionRow?.produced ?? 0)
   const inProductionQty = Math.max(0, planned - produced)
   const soldQty = Number(soldRow?.qty ?? 0)
+
+  const priceBreakdown = computeUnitPrice({
+    costPrice: costBasis,
+    product,
+    category: product.category ?? null,
+  })
+  const sellingPrice = costBasis !== null ? priceBreakdown.unitPrice : null
+  const profitPerUnit =
+    sellingPrice !== null && costBasis !== null ? round2(sellingPrice - costBasis) : null
+  const profitPct =
+    profitPerUnit !== null && costBasis !== null && costBasis > 0
+      ? round2((profitPerUnit / costBasis) * 100)
+      : null
+
+  const jobs = completedJobs.map((j) => {
+    const unitCost = Number(j.unitCost)
+    const totalCost = Number(j.totalCost)
+    const rowBreakdown = computeUnitPrice({
+      costPrice: unitCost,
+      product,
+      category: product.category ?? null,
+    })
+    const rowSellingPrice = rowBreakdown.unitPrice
+    const rowProfit = round2(rowSellingPrice - unitCost)
+    const rowProfitPct = unitCost > 0 ? round2((rowProfit / unitCost) * 100) : null
+    return {
+      id: j.id,
+      number: j.number,
+      completedAt: j.completedAt?.toISO() ?? null,
+      producedQty: j.producedQty,
+      totalCost,
+      unitCost,
+      sellingPrice: rowSellingPrice,
+      profitPerUnit: rowProfit,
+      profitPct: rowProfitPct,
+    }
+  })
+
   return {
     product: {
       id: product.id,
@@ -334,6 +407,18 @@ export async function getProductShowViewModel(id: number): Promise<ProductShowDa
       soldQty,
       createdAt: product.createdAt?.toISO() ?? null,
       updatedAt: product.updatedAt?.toISO() ?? null,
+    },
+    profitAnalysis: {
+      sellingPrice,
+      costBasis,
+      profitPctUsed: sellingPrice !== null ? priceBreakdown.profitPctUsed : null,
+      profitFrom: sellingPrice !== null ? priceBreakdown.basis.profitFrom : null,
+      taxRatePct: priceBreakdown.taxRatePct,
+      taxFrom: priceBreakdown.basis.taxFrom,
+      rounding: priceBreakdown.basis.rounding,
+      profitPerUnit,
+      profitPct,
+      jobs,
     },
     attachments: (
       attachments as Array<{

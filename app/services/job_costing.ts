@@ -392,6 +392,66 @@ export async function recordExpense(input: {
   })
 }
 
+export async function completeJobInTrx(
+  job: ProductionJob,
+  producedQty: number,
+  actor: User,
+  trx: TransactionClientContract
+): Promise<ProductionJob> {
+  if (!['in_progress', 'draft', 'paused', 'awaiting_confirmation'].includes(job.status)) {
+    throw new InvalidStateError({
+      entity: 'job',
+      from: job.status,
+      to: 'completed',
+    })
+  }
+  if (producedQty <= 0) {
+    throw new InvalidStateError({
+      entity: 'job',
+      from: job.status,
+      to: 'completed (produced_qty must be > 0)',
+    })
+  }
+
+  job.status = 'completed'
+  job.producedQty = producedQty
+  job.completedAt = DateTime.now()
+  job.autoCompleteAt = null
+  job.currentStageId = null
+  await job.save()
+
+  await recomputeJobTotals(job.id, trx)
+
+  const refreshed = await ProductionJob.query({ client: trx }).where('id', job.id).firstOrFail()
+  const perUnitCost = Number(refreshed.unitCost)
+  await applyMovement({
+    itemKind: 'product',
+    itemId: refreshed.productId,
+    qty: producedQty,
+    unitCost: perUnitCost,
+    reason: 'job_produce',
+    referenceType: 'job',
+    referenceId: refreshed.id,
+    note: null,
+    actor,
+    trx,
+  })
+  await freeMachine(refreshed, trx)
+
+  await audit({
+    actor,
+    action: 'job.complete',
+    targetType: 'job',
+    targetId: job.id,
+    payload: { producedQty, unitCost: perUnitCost, auto: actor.id == null },
+    trx,
+  })
+
+  await upsertProductRecipeFromJob(refreshed, trx)
+
+  return refreshed
+}
+
 export async function completeJob(input: {
   jobId: number
   producedQty: number
@@ -402,58 +462,7 @@ export async function completeJob(input: {
       .where('id', input.jobId)
       .forUpdate()
       .firstOrFail()
-    if (!['in_progress', 'draft', 'paused', 'awaiting_confirmation'].includes(job.status)) {
-      throw new InvalidStateError({
-        entity: 'job',
-        from: job.status,
-        to: 'completed',
-      })
-    }
-    if (input.producedQty <= 0) {
-      throw new InvalidStateError({
-        entity: 'job',
-        from: job.status,
-        to: 'completed (produced_qty must be > 0)',
-      })
-    }
-
-    job.status = 'completed'
-    job.producedQty = input.producedQty
-    job.completedAt = DateTime.now()
-    await job.save()
-
-    await recomputeJobTotals(input.jobId, trx)
-
-    const refreshed = await ProductionJob.query({ client: trx })
-      .where('id', input.jobId)
-      .firstOrFail()
-    const perUnitCost = Number(refreshed.unitCost)
-    await applyMovement({
-      itemKind: 'product',
-      itemId: refreshed.productId,
-      qty: input.producedQty,
-      unitCost: perUnitCost,
-      reason: 'job_produce',
-      referenceType: 'job',
-      referenceId: refreshed.id,
-      note: null,
-      actor: input.actor,
-      trx,
-    })
-    await freeMachine(refreshed, trx)
-
-    await audit({
-      actor: input.actor,
-      action: 'job.complete',
-      targetType: 'job',
-      targetId: input.jobId,
-      payload: { producedQty: input.producedQty, unitCost: perUnitCost },
-      trx,
-    })
-
-    await upsertProductRecipeFromJob(refreshed, trx)
-
-    return refreshed
+    return completeJobInTrx(job, input.producedQty, input.actor, trx)
   })
 
   await invalidateSnapshotCache()
@@ -718,10 +727,9 @@ async function advanceStageOrAwaitConfirmation(
       trx,
     })
   } else {
-    job.status = 'awaiting_confirmation'
-    job.currentStageId = null
-    job.autoCompleteAt = null
-    await job.save()
+    // No more stages — auto-complete the job using the planned quantity so
+    // the operator doesn't have to click "Confirm" after every print.
+    await completeJobInTrx(job, job.plannedQty, actor, trx)
     await audit({
       actor,
       action: 'job.auto_timer_expired',

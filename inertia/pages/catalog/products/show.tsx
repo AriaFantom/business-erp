@@ -43,7 +43,36 @@ type Product = {
   updatedAt: string | null
 }
 
-type PageProps = { product: Product; attachments: Attachment[] }
+type ProfitJobRow = {
+  id: number
+  number: string
+  completedAt: string | null
+  producedQty: number
+  totalCost: number
+  unitCost: number
+  sellingPrice: number | null
+  profitPerUnit: number | null
+  profitPct: number | null
+}
+
+type ProfitAnalysis = {
+  sellingPrice: number | null
+  costBasis: number | null
+  profitPctUsed: number | null
+  profitFrom: 'manual' | 'product' | 'category' | 'global' | null
+  taxRatePct: number
+  taxFrom: 'product' | 'category' | 'global'
+  rounding: 'nearest_50_paise' | 'nearest_rupee' | 'none'
+  profitPerUnit: number | null
+  profitPct: number | null
+  jobs: ProfitJobRow[]
+}
+
+type PageProps = {
+  product: Product
+  attachments: Attachment[]
+  profitAnalysis: ProfitAnalysis
+}
 
 const ACCEPTED_MODEL_TYPES =
   '.stl,.3mf,.obj,.step,.stp,.igs,.iges,.ply,.gcode,.zip'
@@ -52,6 +81,164 @@ function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
+
+function formatMoney(n: number | null) {
+  if (n === null || !Number.isFinite(n)) return '—'
+  return `₹${n.toFixed(2)}`
+}
+
+function formatPct(n: number | null) {
+  if (n === null || !Number.isFinite(n)) return '—'
+  return `${n.toFixed(2)}%`
+}
+
+const ROUNDING_LABEL: Record<ProfitAnalysis['rounding'], string> = {
+  nearest_50_paise: 'nearest ₹0.50',
+  nearest_rupee: 'nearest ₹1',
+  none: 'no rounding',
+}
+
+function ProfitAnalysisCard({ analysis }: { analysis: ProfitAnalysis }) {
+  const {
+    sellingPrice,
+    costBasis,
+    profitPerUnit,
+    profitPct,
+    profitPctUsed,
+    profitFrom,
+    taxRatePct,
+    taxFrom,
+    rounding,
+    jobs,
+  } = analysis
+
+  const profitToneClass =
+    profitPerUnit === null
+      ? 'text-muted-foreground'
+      : profitPerUnit >= 0
+        ? 'text-emerald-600 dark:text-emerald-400'
+        : 'text-red-600 dark:text-red-400'
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Profit analysis</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="rounded-lg border bg-muted/30 p-4">
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">
+              Avg unit cost
+            </div>
+            <div className="mt-1 text-2xl font-semibold tabular-nums">
+              {formatMoney(costBasis)}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              Weighted across last 5 completed jobs
+            </div>
+          </div>
+          <div className="rounded-lg border bg-muted/30 p-4">
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">
+              Suggested selling price
+            </div>
+            <div className="mt-1 text-2xl font-semibold tabular-nums">
+              {formatMoney(sellingPrice)}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {profitPctUsed !== null
+                ? `Profit ${formatPct(profitPctUsed)} (${profitFrom ?? '—'})`
+                : profitFrom === 'manual'
+                  ? 'Manual override'
+                  : 'No basis yet'}
+            </div>
+          </div>
+          <div className={`rounded-lg border bg-muted/30 p-4 ${profitToneClass}`}>
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">
+              Profit / unit
+            </div>
+            <div className="mt-1 text-2xl font-semibold tabular-nums">
+              {formatMoney(profitPerUnit)}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {profitPct !== null ? `${formatPct(profitPct)} margin on cost` : '—'}
+            </div>
+          </div>
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          Each row's selling price = that job's unit cost × (1 + profit %) using profit{' '}
+          {formatPct(profitPctUsed)} ({profitFrom ?? '—'}); tax {formatPct(taxRatePct)} ({taxFrom});
+          rounded to {ROUNDING_LABEL[rounding]}. Profit % stays constant; selling price moves with
+          batch cost.
+        </p>
+
+        {jobs.length === 0 ? (
+          <div className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
+            Complete a production job to see profit analysis.
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Job #</TableHead>
+                <TableHead>Completed</TableHead>
+                <TableHead className="text-right">Produced</TableHead>
+                <TableHead className="text-right">Total cost</TableHead>
+                <TableHead className="text-right">Unit cost</TableHead>
+                <TableHead className="text-right">Selling price</TableHead>
+                <TableHead className="text-right">Profit / unit</TableHead>
+                <TableHead className="text-right">Profit %</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {jobs.map((j, idx) => {
+                const rowTone =
+                  j.profitPerUnit === null
+                    ? ''
+                    : j.profitPerUnit >= 0
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : 'text-red-600 dark:text-red-400'
+                return (
+                  <TableRow key={j.id}>
+                    <TableCell className="font-mono text-xs">
+                      <div className="flex items-center gap-2">
+                        {j.number}
+                        {idx === 0 && (
+                          <Badge variant="outline" className="text-[10px]">
+                            latest
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {j.completedAt?.slice(0, 10) ?? '—'}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">{j.producedQty}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatMoney(j.totalCost)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatMoney(j.unitCost)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatMoney(j.sellingPrice)}
+                    </TableCell>
+                    <TableCell className={`text-right tabular-nums ${rowTone}`}>
+                      {formatMoney(j.profitPerUnit)}
+                    </TableCell>
+                    <TableCell className={`text-right tabular-nums ${rowTone}`}>
+                      {formatPct(j.profitPct)}
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  )
 }
 
 function ProductHero({ product }: { product: Product }) {
@@ -297,7 +484,11 @@ function FilesCard({
   )
 }
 
-export default function ProductShowPage({ product, attachments }: PageProps) {
+export default function ProductShowPage({
+  product,
+  attachments,
+  profitAnalysis,
+}: PageProps) {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-8">
       <div className="flex items-center justify-between gap-2">
@@ -310,6 +501,8 @@ export default function ProductShowPage({ product, attachments }: PageProps) {
       </div>
 
       <ProductHero product={product} />
+
+      <ProfitAnalysisCard analysis={profitAnalysis} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
         <FilesCard productId={product.id} initial={attachments} />

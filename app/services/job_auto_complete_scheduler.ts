@@ -7,6 +7,7 @@ import User from '#models/user'
 import { invalidateSnapshotCache } from '#services/inventory_service'
 import { audit } from '#services/audit'
 import { nextStage } from '#services/stage_advancement'
+import { completeJobInTrx } from '#services/job_costing'
 import { DateTime } from 'luxon'
 
 const TICK_INTERVAL_MS = 30_000
@@ -101,10 +102,8 @@ export async function tick(): Promise<number> {
           trx,
         })
       } else {
-        job.status = 'awaiting_confirmation'
-        job.autoCompleteAt = null
-        job.currentStageId = null
-        await job.save()
+        // Final stage finished — auto-complete the job (no manual confirm).
+        await completeJobInTrx(job, job.plannedQty, actor, trx)
         await audit({
           actor,
           action: 'job.auto_timer_expired',
