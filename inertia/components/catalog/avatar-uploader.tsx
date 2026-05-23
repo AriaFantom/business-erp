@@ -9,9 +9,17 @@ type Props = {
   alt: string
   /** Square pixel size; defaults to 40 (h-10/w-10). */
   size?: number
+  /** Max upload size in MB. Keep aligned with server validator. */
+  maxMb?: number
 }
 
-export function AvatarUploader({ uploadPath, imageUrl, alt, size = 40 }: Props) {
+export function AvatarUploader({
+  uploadPath,
+  imageUrl,
+  alt,
+  size = 40,
+  maxMb = 15,
+}: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -24,6 +32,14 @@ export function AvatarUploader({ uploadPath, imageUrl, alt, size = 40 }: Props) 
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
+
+    const maxBytes = maxMb * 1024 * 1024
+    if (file.size > maxBytes) {
+      const sizeMb = (file.size / 1024 / 1024).toFixed(1)
+      toast.error(`Image is ${sizeMb} MB — max allowed is ${maxMb} MB. Please pick a smaller file.`)
+      return
+    }
+
     setBusy(true)
     router.post(
       uploadPath,

@@ -74,8 +74,7 @@ type PageProps = {
   profitAnalysis: ProfitAnalysis
 }
 
-const ACCEPTED_MODEL_TYPES =
-  '.stl,.3mf,.obj,.step,.stp,.igs,.iges,.ply,.gcode,.zip'
+const ACCEPTED_MODEL_TYPES = '.stl,.3mf,.obj,.step,.stp,.igs,.iges,.ply,.gcode,.zip'
 
 function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`
@@ -131,9 +130,7 @@ function ProfitAnalysisCard({ analysis }: { analysis: ProfitAnalysis }) {
             <div className="text-xs uppercase tracking-wide text-muted-foreground">
               Avg unit cost
             </div>
-            <div className="mt-1 text-2xl font-semibold tabular-nums">
-              {formatMoney(costBasis)}
-            </div>
+            <div className="mt-1 text-2xl font-semibold tabular-nums">{formatMoney(costBasis)}</div>
             <div className="mt-1 text-xs text-muted-foreground">
               Weighted across last 5 completed jobs
             </div>
@@ -260,9 +257,7 @@ function ProductHero({ product }: { product: Product }) {
           <div className="flex items-start justify-between gap-3">
             <div>
               <h1 className="text-2xl font-semibold">{product.name}</h1>
-              <p className="font-mono text-sm text-muted-foreground">
-                {product.sku}
-              </p>
+              <p className="font-mono text-sm text-muted-foreground">{product.sku}</p>
             </div>
             {product.isActive ? (
               <Badge variant="outline">Active</Badge>
@@ -270,9 +265,7 @@ function ProductHero({ product }: { product: Product }) {
               <Badge variant="secondary">Archived</Badge>
             )}
           </div>
-          {product.description && (
-            <p className="text-sm">{product.description}</p>
-          )}
+          {product.description && <p className="text-sm">{product.description}</p>}
           <dl className="grid grid-cols-2 gap-y-2 text-sm sm:grid-cols-3">
             <dt className="text-muted-foreground">Category</dt>
             <dd className="sm:col-span-2">{product.category?.name ?? '—'}</dd>
@@ -281,9 +274,7 @@ function ProductHero({ product }: { product: Product }) {
             <dt className="text-muted-foreground">Tax %</dt>
             <dd className="sm:col-span-2">{product.taxRatePct ?? '—'}</dd>
             <dt className="text-muted-foreground">In production</dt>
-            <dd className="sm:col-span-2 tabular-nums">
-              {product.inProductionQty}
-            </dd>
+            <dd className="sm:col-span-2 tabular-nums">{product.inProductionQty}</dd>
             <dt className="text-muted-foreground">Sold (confirmed)</dt>
             <dd className="sm:col-span-2 tabular-nums">{product.soldQty}</dd>
             <dt className="text-muted-foreground">Created</dt>
@@ -323,13 +314,7 @@ function QrCard({ product }: { product: Product }) {
   )
 }
 
-function FilesCard({
-  productId,
-  initial,
-}: {
-  productId: number
-  initial: Attachment[]
-}) {
+function FilesCard({ productId, initial }: { productId: number; initial: Attachment[] }) {
   const [files, setFiles] = useState<Attachment[]>(initial)
   const [busy, setBusy] = useState(false)
   const [pending, setPending] = useState<Attachment | null>(null)
@@ -356,6 +341,14 @@ function FilesCard({
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
+
+    const MAX_MB = 50
+    if (file.size > MAX_MB * 1024 * 1024) {
+      const sizeMb = (file.size / 1024 / 1024).toFixed(1)
+      toast.error(`File is ${sizeMb} MB — max allowed is ${MAX_MB} MB.`)
+      return
+    }
+
     setBusy(true)
     router.post(
       `/catalog/products/${productId}/files`,
@@ -363,6 +356,12 @@ function FilesCard({
       {
         forceFormData: true,
         preserveScroll: true,
+        onError: (errors) => {
+          const msg =
+            (typeof errors === 'object' && errors && (errors.file || Object.values(errors)[0])) ||
+            'File upload failed.'
+          toast.error(String(msg))
+        },
         onFinish: () => {
           setBusy(false)
           refresh()
@@ -409,8 +408,7 @@ function FilesCard({
       </CardHeader>
       <CardContent>
         <p className="pb-2 text-xs text-muted-foreground">
-          stl, 3mf, obj, step, stp, igs, iges, ply, gcode, zip — up to 50 MB
-          each.
+          stl, 3mf, obj, step, stp, igs, iges, ply, gcode, zip — up to 50 MB each.
         </p>
         {files.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-6 text-sm text-muted-foreground">
@@ -440,9 +438,7 @@ function FilesCard({
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
                       <Button asChild variant="ghost" size="icon" aria-label="Download">
-                        <a
-                          href={`/catalog/products/${productId}/files/${f.id}/download`}
-                        >
+                        <a href={`/catalog/products/${productId}/files/${f.id}/download`}>
                           <Download className="size-4" />
                         </a>
                       </Button>
@@ -470,17 +466,15 @@ function FilesCard({
         description="The file will be deleted from object storage. This cannot be undone."
         confirmLabel="Remove"
         variant="destructive"
-        onConfirm={() => pending && deleteFile(pending)}
+        onConfirm={() => {
+          if (pending) deleteFile(pending)
+        }}
       />
     </Card>
   )
 }
 
-export default function ProductShowPage({
-  product,
-  attachments,
-  profitAnalysis,
-}: PageProps) {
+export default function ProductShowPage({ product, attachments, profitAnalysis }: PageProps) {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-8">
       <div className="flex items-center justify-between gap-2">
@@ -504,6 +498,4 @@ export default function ProductShowPage({
   )
 }
 
-ProductShowPage.layout = (page: ReactElement) => (
-  <DashboardLayout>{page}</DashboardLayout>
-)
+ProductShowPage.layout = (page: ReactElement) => <DashboardLayout>{page}</DashboardLayout>

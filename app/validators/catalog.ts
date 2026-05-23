@@ -70,7 +70,7 @@ export const createMaterialValidator = vine.compile(
     defaultSupplierId: vine.number().positive().optional(),
     defaultUnitCost: moneyRule,
     reorderThresholdG: decimalQtyRule.optional(),
-    image: vine.file({ size: '4mb', extnames: ['jpg', 'jpeg', 'png', 'webp'] }).optional(),
+    image: vine.file({ size: '15mb', extnames: ['jpg', 'jpeg', 'png', 'webp'] }).optional(),
   })
 )
 
@@ -95,7 +95,7 @@ export const createComponentValidator = vine.compile(
     defaultSupplierId: vine.number().positive().optional(),
     defaultUnitCost: moneyRule,
     reorderThresholdQty: vine.number().min(0).optional(),
-    image: vine.file({ size: '4mb', extnames: ['jpg', 'jpeg', 'png', 'webp'] }).optional(),
+    image: vine.file({ size: '15mb', extnames: ['jpg', 'jpeg', 'png', 'webp'] }).optional(),
   })
 )
 
@@ -153,7 +153,7 @@ export const updateProductValidator = vine.compile(
 // ── Catalog image upload ────────────────────────────────────────────────
 export const uploadCatalogImageValidator = vine.compile(
   vine.object({
-    image: vine.file({ size: '4mb', extnames: ['jpg', 'jpeg', 'png', 'webp'] }),
+    image: vine.file({ size: '15mb', extnames: ['jpg', 'jpeg', 'png', 'webp'] }),
   })
 )
 
