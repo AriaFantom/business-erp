@@ -245,24 +245,16 @@ function ProductHero({ product }: { product: Product }) {
   return (
     <Card>
       <CardContent className="flex flex-col gap-6 p-6 sm:flex-row">
-        <div className="flex flex-col items-center gap-3">
-          {product.imageUrl ? (
-            <img
-              src={product.imageUrl}
-              alt={product.name}
-              className="h-56 w-56 rounded-lg border bg-muted object-cover"
-            />
-          ) : (
-            <div className="flex h-56 w-56 items-center justify-center rounded-lg border bg-muted text-xs text-muted-foreground">
-              No image
-            </div>
-          )}
+        <div className="flex flex-col items-center gap-2">
           <AvatarUploader
             uploadPath={`/catalog/products/${product.id}/image`}
             imageUrl={product.imageUrl}
             alt={product.name}
-            size={36}
+            size={224}
           />
+          <p className="text-center text-xs text-muted-foreground">
+            {product.imageUrl ? 'Click image to replace' : 'Click to upload image'}
+          </p>
         </div>
         <div className="flex flex-1 flex-col gap-3">
           <div className="flex items-start justify-between gap-3">

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { router } from '@inertiajs/react'
 import { Plus, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 type Props = {
   uploadPath: string
@@ -30,6 +31,12 @@ export function AvatarUploader({ uploadPath, imageUrl, alt, size = 40 }: Props) 
       {
         forceFormData: true,
         preserveScroll: true,
+        onError: (errors) => {
+          const msg =
+            (typeof errors === 'object' && errors && (errors.image || Object.values(errors)[0])) ||
+            'Image upload failed.'
+          toast.error(String(msg))
+        },
         onFinish: () => setBusy(false),
       }
     )
@@ -68,9 +75,15 @@ export function AvatarUploader({ uploadPath, imageUrl, alt, size = 40 }: Props) 
         }
       >
         {busy ? (
-          <Loader2 className="size-4 animate-spin text-foreground" />
+          <Loader2
+            className="animate-spin text-foreground"
+            style={{ width: Math.max(16, Math.floor(size * 0.3)), height: Math.max(16, Math.floor(size * 0.3)) }}
+          />
         ) : (
-          <Plus className={imageUrl ? 'size-4 text-background' : 'size-4'} />
+          <Plus
+            className={imageUrl ? 'text-background' : ''}
+            style={{ width: Math.max(16, Math.floor(size * 0.3)), height: Math.max(16, Math.floor(size * 0.3)) }}
+          />
         )}
       </span>
     </button>
