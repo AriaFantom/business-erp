@@ -92,6 +92,15 @@ export interface ApiDefinition {
     qr: typeof routes['products.qr'] & {
       download: typeof routes['products.qr.download']
     }
+    defaultPrice: {
+      set: typeof routes['products.defaultPrice.set']
+      clear: typeof routes['products.defaultPrice.clear']
+    }
+    images: {
+      upload: typeof routes['products.images.upload']
+      setPrimary: typeof routes['products.images.setPrimary']
+      reorder: typeof routes['products.images.reorder']
+    }
   }
   productCategories: {
     index: typeof routes['product_categories.index']

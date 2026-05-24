@@ -61,6 +61,11 @@ export type ScannedRoutes = {
     'products.files.destroy': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'fileId': ParamValue} }
     'products.qr': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'products.qr.download': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'products.defaultPrice.set': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'products.defaultPrice.clear': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'products.images.upload': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'products.images.setPrimary': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'imageId': ParamValue} }
+    'products.images.reorder': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'product_categories.index': { paramsTuple?: []; params?: {} }
     'product_categories.store': { paramsTuple?: []; params?: {} }
     'product_categories.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
@@ -241,6 +246,11 @@ export type ScannedRoutes = {
     'products.image.destroy': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'products.files.upload': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'products.files.destroy': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'fileId': ParamValue} }
+    'products.defaultPrice.set': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'products.defaultPrice.clear': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'products.images.upload': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'products.images.setPrimary': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'imageId': ParamValue} }
+    'products.images.reorder': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'product_categories.store': { paramsTuple?: []; params?: {} }
     'product_categories.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'product_categories.archive': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }

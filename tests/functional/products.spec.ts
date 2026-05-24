@@ -45,7 +45,10 @@ test.group('Product default-price endpoints', (group) => {
   group.each.setup(() => testUtils.db().withGlobalTransaction())
 
   // 1. Unauthenticated set is rejected
-  test('unauthenticated POST to set-default-price redirects to login', async ({ client, assert }) => {
+  test('unauthenticated POST to set-default-price redirects to login', async ({
+    client,
+    assert,
+  }) => {
     const product = await makeProduct()
 
     // Include a CSRF token so the shield middleware passes, leaving the auth

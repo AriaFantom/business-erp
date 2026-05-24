@@ -691,6 +691,66 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/products_controller').default['qrDownload']>>>
     }
   }
+  'products.defaultPrice.set': {
+    methods: ["POST"]
+    pattern: '/catalog/products/:id/default-price'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/catalog').setProductDefaultPriceValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#validators/catalog').setProductDefaultPriceValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/products_controller').default['setDefaultPrice']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/products_controller').default['setDefaultPrice']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'products.defaultPrice.clear': {
+    methods: ["POST"]
+    pattern: '/catalog/products/:id/default-price/delete'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/products_controller').default['clearDefaultPrice']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/products_controller').default['clearDefaultPrice']>>>
+    }
+  }
+  'products.images.upload': {
+    methods: ["POST"]
+    pattern: '/catalog/products/:id/images'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/catalog').uploadProductImagesValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#validators/catalog').uploadProductImagesValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/products_controller').default['uploadImages']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/products_controller').default['uploadImages']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'products.images.setPrimary': {
+    methods: ["POST"]
+    pattern: '/catalog/products/:id/images/:imageId/primary'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; imageId: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/products_controller').default['setPrimaryImage']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/products_controller').default['setPrimaryImage']>>>
+    }
+  }
+  'products.images.reorder': {
+    methods: ["POST"]
+    pattern: '/catalog/products/:id/images/reorder'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/catalog').reorderProductImagesValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#validators/catalog').reorderProductImagesValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/products_controller').default['reorderImages']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/products_controller').default['reorderImages']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
   'product_categories.index': {
     methods: ["GET","HEAD"]
     pattern: '/catalog/categories'

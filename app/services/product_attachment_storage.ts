@@ -82,8 +82,7 @@ export async function storeProductImage(
     .first()
   const nextSort = Number(maxSort?.m ?? 0) + 1
 
-  const mime =
-    file.type && file.subtype ? `${file.type}/${file.subtype}` : (file.type ?? null)
+  const mime = file.type && file.subtype ? `${file.type}/${file.subtype}` : (file.type ?? null)
 
   return ProductAttachment.create({
     productId: product.id,
@@ -123,10 +122,7 @@ export async function reorderProductImages(
   }
   await db.transaction(async (trx) => {
     for (const o of ordering) {
-      await trx
-        .from('product_attachments')
-        .where('id', o.id)
-        .update({ sort_order: o.sortOrder })
+      await trx.from('product_attachments').where('id', o.id).update({ sort_order: o.sortOrder })
     }
   })
 }

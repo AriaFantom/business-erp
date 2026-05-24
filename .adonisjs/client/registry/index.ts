@@ -348,6 +348,36 @@ const routes = {
     tokens: [{"old":"/catalog/products/:id/qr/download","type":0,"val":"catalog","end":""},{"old":"/catalog/products/:id/qr/download","type":0,"val":"products","end":""},{"old":"/catalog/products/:id/qr/download","type":1,"val":"id","end":""},{"old":"/catalog/products/:id/qr/download","type":0,"val":"qr","end":""},{"old":"/catalog/products/:id/qr/download","type":0,"val":"download","end":""}],
     types: placeholder as Registry['products.qr.download']['types'],
   },
+  'products.defaultPrice.set': {
+    methods: ["POST"],
+    pattern: '/catalog/products/:id/default-price',
+    tokens: [{"old":"/catalog/products/:id/default-price","type":0,"val":"catalog","end":""},{"old":"/catalog/products/:id/default-price","type":0,"val":"products","end":""},{"old":"/catalog/products/:id/default-price","type":1,"val":"id","end":""},{"old":"/catalog/products/:id/default-price","type":0,"val":"default-price","end":""}],
+    types: placeholder as Registry['products.defaultPrice.set']['types'],
+  },
+  'products.defaultPrice.clear': {
+    methods: ["POST"],
+    pattern: '/catalog/products/:id/default-price/delete',
+    tokens: [{"old":"/catalog/products/:id/default-price/delete","type":0,"val":"catalog","end":""},{"old":"/catalog/products/:id/default-price/delete","type":0,"val":"products","end":""},{"old":"/catalog/products/:id/default-price/delete","type":1,"val":"id","end":""},{"old":"/catalog/products/:id/default-price/delete","type":0,"val":"default-price","end":""},{"old":"/catalog/products/:id/default-price/delete","type":0,"val":"delete","end":""}],
+    types: placeholder as Registry['products.defaultPrice.clear']['types'],
+  },
+  'products.images.upload': {
+    methods: ["POST"],
+    pattern: '/catalog/products/:id/images',
+    tokens: [{"old":"/catalog/products/:id/images","type":0,"val":"catalog","end":""},{"old":"/catalog/products/:id/images","type":0,"val":"products","end":""},{"old":"/catalog/products/:id/images","type":1,"val":"id","end":""},{"old":"/catalog/products/:id/images","type":0,"val":"images","end":""}],
+    types: placeholder as Registry['products.images.upload']['types'],
+  },
+  'products.images.setPrimary': {
+    methods: ["POST"],
+    pattern: '/catalog/products/:id/images/:imageId/primary',
+    tokens: [{"old":"/catalog/products/:id/images/:imageId/primary","type":0,"val":"catalog","end":""},{"old":"/catalog/products/:id/images/:imageId/primary","type":0,"val":"products","end":""},{"old":"/catalog/products/:id/images/:imageId/primary","type":1,"val":"id","end":""},{"old":"/catalog/products/:id/images/:imageId/primary","type":0,"val":"images","end":""},{"old":"/catalog/products/:id/images/:imageId/primary","type":1,"val":"imageId","end":""},{"old":"/catalog/products/:id/images/:imageId/primary","type":0,"val":"primary","end":""}],
+    types: placeholder as Registry['products.images.setPrimary']['types'],
+  },
+  'products.images.reorder': {
+    methods: ["POST"],
+    pattern: '/catalog/products/:id/images/reorder',
+    tokens: [{"old":"/catalog/products/:id/images/reorder","type":0,"val":"catalog","end":""},{"old":"/catalog/products/:id/images/reorder","type":0,"val":"products","end":""},{"old":"/catalog/products/:id/images/reorder","type":1,"val":"id","end":""},{"old":"/catalog/products/:id/images/reorder","type":0,"val":"images","end":""},{"old":"/catalog/products/:id/images/reorder","type":0,"val":"reorder","end":""}],
+    types: placeholder as Registry['products.images.reorder']['types'],
+  },
   'product_categories.index': {
     methods: ["GET","HEAD"],
     pattern: '/catalog/categories',

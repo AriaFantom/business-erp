@@ -412,7 +412,7 @@ export async function getProductShowViewModel(id: number): Promise<ProductShowDa
     createdAt:
       row.created_at instanceof Date
         ? row.created_at.toISOString()
-        : (row.created_at as string | null) ?? null,
+        : ((row.created_at as string | null) ?? null),
   }))
 
   const files = fileRows.map((row) => ({
@@ -423,7 +423,7 @@ export async function getProductShowViewModel(id: number): Promise<ProductShowDa
     createdAt:
       row.created_at instanceof Date
         ? row.created_at.toISOString()
-        : (row.created_at as string | null) ?? null,
+        : ((row.created_at as string | null) ?? null),
   }))
 
   let defaultSalePriceSource: ProductShowData['profitAnalysis']['defaultSalePriceSource'] = null
