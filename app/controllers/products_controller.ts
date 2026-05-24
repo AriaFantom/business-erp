@@ -8,6 +8,8 @@ import {
   uploadCatalogImageValidator,
   uploadProductFileValidator,
   setProductDefaultPriceValidator,
+  uploadProductImagesValidator,
+  reorderProductImagesValidator,
 } from '#validators/catalog'
 import { getProductsViewModel, getProductShowViewModel } from '#services/catalog_view_models'
 import { audit } from '#services/audit'
@@ -17,6 +19,8 @@ import {
   removeProductFile,
   signProductFileUrl,
   listProductAttachments,
+  storeProductImage,
+  reorderProductImages,
 } from '#services/product_attachment_storage'
 import { qrPayload, renderQrSvg, renderQrPngBuffer } from '#services/product_qr'
 
@@ -294,6 +298,78 @@ export default class ProductsController {
       payload: { previousPrice, previousSourceJobId },
     })
     session.flash('success', 'Default price cleared.')
+    return response.redirect().back()
+  }
+
+  async uploadImages({ params, request, auth, bouncer, response, session }: HttpContext) {
+    await bouncer.authorize('products.update' as never)
+    const product = await Product.findOrFail(params.id)
+    const payload = await request.validateUsing(uploadProductImagesValidator)
+
+    for (const file of payload.images) {
+      const attachment = await storeProductImage(product, file, auth.user?.id ?? null)
+      await audit({
+        actor: auth.user!,
+        action: 'product.image.add',
+        targetType: 'product',
+        targetId: product.id,
+        payload: {
+          attachmentId: attachment.id,
+          name: attachment.originalName,
+          sortOrder: attachment.sortOrder,
+        },
+      })
+    }
+
+    session.flash('success', `Uploaded ${payload.images.length} image(s).`)
+    return response.redirect().back()
+  }
+
+  async setPrimaryImage({ params, auth, bouncer, response, session }: HttpContext) {
+    await bouncer.authorize('products.update' as never)
+    const product = await Product.findOrFail(params.id)
+    const attachment = await ProductAttachment.findOrFail(params.imageId)
+    if (attachment.productId !== product.id) {
+      session.flash('error', 'Image does not belong to this product.')
+      return response.redirect().back()
+    }
+    if (attachment.kind !== 'image') {
+      session.flash('error', 'Attachment is not an image.')
+      return response.redirect().back()
+    }
+
+    const previousImageKey = product.imageKey
+    product.imageKey = attachment.fileKey
+    await product.save()
+
+    await audit({
+      actor: auth.user!,
+      action: 'product.image.set_primary',
+      targetType: 'product',
+      targetId: product.id,
+      payload: { attachmentId: attachment.id, previousImageKey },
+    })
+
+    session.flash('success', 'Primary image updated.')
+    return response.redirect().back()
+  }
+
+  async reorderImages({ params, request, auth, bouncer, response, session }: HttpContext) {
+    await bouncer.authorize('products.update' as never)
+    const product = await Product.findOrFail(params.id)
+    const payload = await request.validateUsing(reorderProductImagesValidator)
+
+    await reorderProductImages(product.id, payload.items)
+
+    await audit({
+      actor: auth.user!,
+      action: 'product.image.reorder',
+      targetType: 'product',
+      targetId: product.id,
+      payload: { count: payload.items.length },
+    })
+
+    session.flash('success', 'Image order updated.')
     return response.redirect().back()
   }
 }
