@@ -399,7 +399,7 @@ export async function getProductShowViewModel(id: number): Promise<ProductShowDa
 
   const signedImageUrls = await Promise.all(
     imageRows.map((row) =>
-      signProductFileUrl({ fileKey: row.file_key, originalName: row.original_name } as any)
+      signProductFileUrl({ fileKey: row.file_key, originalName: row.original_name })
     )
   )
 

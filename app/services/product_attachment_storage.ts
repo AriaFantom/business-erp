@@ -37,7 +37,9 @@ export async function removeProductFile(attachment: ProductAttachment): Promise<
   await attachment.delete()
 }
 
-export async function signProductFileUrl(attachment: ProductAttachment): Promise<string | null> {
+export async function signProductFileUrl(
+  attachment: Pick<ProductAttachment, 'fileKey' | 'originalName'>
+): Promise<string | null> {
   try {
     return await drive.use().getSignedUrl(attachment.fileKey, {
       expiresIn: '5 minutes',
