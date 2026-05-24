@@ -360,7 +360,7 @@ export class MaterialSchema extends BaseModel {
 }
 
 export class ProductAttachmentSchema extends BaseModel {
-  static $columns = ['createdAt', 'fileKey', 'id', 'mimeType', 'originalName', 'productId', 'sizeBytes', 'updatedAt', 'uploadedByUserId'] as const
+  static $columns = ['createdAt', 'fileKey', 'id', 'kind', 'mimeType', 'originalName', 'productId', 'sizeBytes', 'sortOrder', 'updatedAt', 'uploadedByUserId'] as const
   $columns = ProductAttachmentSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
@@ -369,6 +369,8 @@ export class ProductAttachmentSchema extends BaseModel {
   @column({ isPrimary: true })
   declare id: number
   @column()
+  declare kind: string
+  @column()
   declare mimeType: string | null
   @column()
   declare originalName: string
@@ -376,6 +378,8 @@ export class ProductAttachmentSchema extends BaseModel {
   declare productId: number
   @column()
   declare sizeBytes: bigint | number
+  @column()
+  declare sortOrder: number
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
   @column()
