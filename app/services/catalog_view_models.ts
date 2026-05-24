@@ -9,6 +9,7 @@ import Customer from '#models/customer'
 import Inventory from '#models/inventory'
 import StockMovement from '#models/stock_movement'
 import { signCatalogImageUrl } from '#services/catalog_image_storage'
+import { signProductFileUrl } from '#services/product_attachment_storage'
 import { latestProductCost } from '#services/job_costing'
 import { computeUnitPrice } from '#services/pricing'
 
@@ -289,7 +290,15 @@ export type ProductShowData = {
     createdAt: string | null
     updatedAt: string | null
   }
-  attachments: Array<{
+  images: Array<{
+    id: number
+    url: string | null
+    originalName: string
+    sortOrder: number
+    isPrimary: boolean
+    createdAt: string | null
+  }>
+  files: Array<{
     id: number
     originalName: string
     sizeBytes: number
@@ -306,6 +315,14 @@ export type ProductShowData = {
     rounding: 'nearest_50_paise' | 'nearest_rupee' | 'none'
     profitPerUnit: number | null
     profitPct: number | null
+    defaultSalePrice: number | null
+    defaultSalePriceSource: {
+      jobId: number | null
+      jobNumber: string | null
+      setAt: string | null
+      setByUserName: string | null
+    } | null
+    autoComputedPrice: number | null
     jobs: Array<{
       id: number
       number: string
@@ -316,6 +333,7 @@ export type ProductShowData = {
       sellingPrice: number | null
       profitPerUnit: number | null
       profitPct: number | null
+      suggestedPinPrice: number
     }>
   }
 }
@@ -328,8 +346,18 @@ export async function getProductShowViewModel(id: number): Promise<ProductShowDa
       db
         .from('product_attachments')
         .where('product_id', id)
-        .orderBy('created_at', 'desc')
-        .select('id', 'original_name', 'size_bytes', 'mime_type', 'created_at'),
+        .orderBy('sort_order', 'asc')
+        .orderBy('id', 'asc')
+        .select(
+          'id',
+          'original_name',
+          'size_bytes',
+          'mime_type',
+          'kind',
+          'sort_order',
+          'file_key',
+          'created_at'
+        ),
       db
         .from('production_jobs')
         .where('product_id', id)
@@ -355,6 +383,88 @@ export async function getProductShowViewModel(id: number): Promise<ProductShowDa
   const inProductionQty = Math.max(0, planned - produced)
   const soldQty = Number(soldRow?.qty ?? 0)
 
+  const rawAttachments = attachments as Array<{
+    id: number
+    original_name: string
+    size_bytes: number | string
+    mime_type: string | null
+    kind: string
+    sort_order: number | string
+    file_key: string
+    created_at: Date | string | null
+  }>
+
+  const imageRows = rawAttachments.filter((a) => a.kind === 'image')
+  const fileRows = rawAttachments.filter((a) => a.kind !== 'image')
+
+  const signedImageUrls = await Promise.all(
+    imageRows.map((row) =>
+      signProductFileUrl({ fileKey: row.file_key, originalName: row.original_name } as any)
+    )
+  )
+
+  const images = imageRows.map((row, i) => ({
+    id: Number(row.id),
+    url: signedImageUrls[i] ?? null,
+    originalName: String(row.original_name),
+    sortOrder: Number(row.sort_order),
+    isPrimary: row.file_key === product.imageKey,
+    createdAt:
+      row.created_at instanceof Date
+        ? row.created_at.toISOString()
+        : (row.created_at as string | null) ?? null,
+  }))
+
+  const files = fileRows.map((row) => ({
+    id: Number(row.id),
+    originalName: String(row.original_name),
+    sizeBytes: Number(row.size_bytes),
+    mimeType: row.mime_type,
+    createdAt:
+      row.created_at instanceof Date
+        ? row.created_at.toISOString()
+        : (row.created_at as string | null) ?? null,
+  }))
+
+  let defaultSalePriceSource: ProductShowData['profitAnalysis']['defaultSalePriceSource'] = null
+  if (product.defaultSalePrice !== null) {
+    let jobInfo: { id: number; number: string } | null = null
+    let userName: string | null = null
+    if (product.defaultSalePriceSourceJobId) {
+      const row = await db
+        .from('production_jobs')
+        .where('id', product.defaultSalePriceSourceJobId)
+        .select('id', 'number')
+        .first()
+      if (row) jobInfo = { id: Number(row.id), number: String(row.number) }
+    }
+    if (product.defaultSalePriceSetByUserId) {
+      const row = await db
+        .from('users')
+        .where('id', product.defaultSalePriceSetByUserId)
+        .select('first_name', 'last_name')
+        .first()
+      if (row) {
+        const parts = [row.first_name, row.last_name].filter(Boolean)
+        userName = parts.length > 0 ? parts.join(' ') : null
+      }
+    }
+    defaultSalePriceSource = {
+      jobId: jobInfo?.id ?? null,
+      jobNumber: jobInfo?.number ?? null,
+      setAt: product.defaultSalePriceSetAt?.toISO() ?? null,
+      setByUserName: userName,
+    }
+  }
+
+  const productWithoutPin: any = { ...product.$attributes, defaultSalePrice: null }
+  const autoPriceBreakdown = computeUnitPrice({
+    costPrice: costBasis,
+    product: productWithoutPin,
+    category: product.category ?? null,
+  })
+  const autoComputedPrice = costBasis !== null ? autoPriceBreakdown.unitPrice : null
+
   const priceBreakdown = computeUnitPrice({
     costPrice: costBasis,
     product,
@@ -379,6 +489,7 @@ export async function getProductShowViewModel(id: number): Promise<ProductShowDa
     const rowSellingPrice = rowBreakdown.unitPrice
     const rowProfit = round2(rowSellingPrice - unitCost)
     const rowProfitPct = unitCost > 0 ? round2((rowProfit / unitCost) * 100) : null
+    const suggestedPinPrice = Math.ceil((unitCost + 40) / 50) * 50
     return {
       id: j.id,
       number: j.number,
@@ -389,6 +500,7 @@ export async function getProductShowViewModel(id: number): Promise<ProductShowDa
       sellingPrice: rowSellingPrice,
       profitPerUnit: rowProfit,
       profitPct: rowProfitPct,
+      suggestedPinPrice,
     }
   })
 
@@ -408,6 +520,8 @@ export async function getProductShowViewModel(id: number): Promise<ProductShowDa
       createdAt: product.createdAt?.toISO() ?? null,
       updatedAt: product.updatedAt?.toISO() ?? null,
     },
+    images,
+    files,
     profitAnalysis: {
       sellingPrice,
       costBasis,
@@ -418,28 +532,11 @@ export async function getProductShowViewModel(id: number): Promise<ProductShowDa
       rounding: priceBreakdown.basis.rounding,
       profitPerUnit,
       profitPct,
+      defaultSalePrice: product.defaultSalePrice !== null ? Number(product.defaultSalePrice) : null,
+      defaultSalePriceSource,
+      autoComputedPrice,
       jobs,
     },
-    attachments: (
-      attachments as Array<{
-        id: number
-        original_name: string
-        size_bytes: number | string
-        mime_type: string | null
-        created_at: Date | string | null
-      }>
-    ).map((a) => ({
-      id: Number(a.id),
-      originalName: String(a.original_name),
-      sizeBytes: Number(a.size_bytes),
-      mimeType: a.mime_type,
-      createdAt:
-        a.created_at instanceof Date
-          ? a.created_at.toISOString()
-          : a.created_at
-            ? String(a.created_at)
-            : null,
-    })),
   }
 }
 
