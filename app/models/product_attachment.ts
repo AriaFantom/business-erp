@@ -25,6 +25,12 @@ export default class ProductAttachment extends BaseModel {
   @column()
   declare uploadedByUserId: number | null
 
+  @column()
+  declare kind: string
+
+  @column()
+  declare sortOrder: number
+
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
 
