@@ -1,4 +1,5 @@
 import type { HttpContext } from '@adonisjs/core/http'
+import { DateTime } from 'luxon'
 import Product from '#models/product'
 import ProductAttachment from '#models/product_attachment'
 import {
@@ -6,6 +7,7 @@ import {
   updateProductValidator,
   uploadCatalogImageValidator,
   uploadProductFileValidator,
+  setProductDefaultPriceValidator,
 } from '#validators/catalog'
 import { getProductsViewModel, getProductShowViewModel } from '#services/catalog_view_models'
 import { audit } from '#services/audit'
@@ -243,5 +245,55 @@ export default class ProductsController {
     response.header('Content-Disposition', `attachment; filename="${product.sku}-qr.png"`)
     response.type('image/png')
     return response.send(png)
+  }
+
+  async setDefaultPrice({ params, request, auth, bouncer, response, session }: HttpContext) {
+    await bouncer.authorize('products.update' as never)
+    const product = await Product.findOrFail(params.id)
+    const payload = await request.validateUsing(setProductDefaultPriceValidator)
+
+    const previousPrice = product.defaultSalePrice
+    product.merge({
+      defaultSalePrice: String(payload.price),
+      defaultSalePriceSourceJobId: payload.sourceJobId ?? null,
+      defaultSalePriceSetAt: DateTime.now(),
+      defaultSalePriceSetByUserId: auth.user?.id ?? null,
+    })
+    await product.save()
+
+    await audit({
+      actor: auth.user!,
+      action: 'product.default_price.set',
+      targetType: 'product',
+      targetId: product.id,
+      payload: { price: payload.price, sourceJobId: payload.sourceJobId ?? null, previousPrice },
+    })
+    session.flash('success', `Default price set to ₹${payload.price}.`)
+    return response.redirect().back()
+  }
+
+  async clearDefaultPrice({ params, auth, bouncer, response, session }: HttpContext) {
+    await bouncer.authorize('products.update' as never)
+    const product = await Product.findOrFail(params.id)
+    const previousPrice = product.defaultSalePrice
+    const previousSourceJobId = product.defaultSalePriceSourceJobId
+
+    product.merge({
+      defaultSalePrice: null,
+      defaultSalePriceSourceJobId: null,
+      defaultSalePriceSetAt: null,
+      defaultSalePriceSetByUserId: null,
+    })
+    await product.save()
+
+    await audit({
+      actor: auth.user!,
+      action: 'product.default_price.clear',
+      targetType: 'product',
+      targetId: product.id,
+      payload: { previousPrice, previousSourceJobId },
+    })
+    session.flash('success', 'Default price cleared.')
+    return response.redirect().back()
   }
 }
