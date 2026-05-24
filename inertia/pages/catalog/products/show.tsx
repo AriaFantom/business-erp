@@ -1,4 +1,4 @@
-import { type ReactElement, useEffect, useState } from 'react'
+import { type ReactElement, useEffect, useRef, useState } from 'react'
 import { router } from '@inertiajs/react'
 import { Link } from '@adonisjs/inertia/react'
 import { ArrowLeft, Download, Paperclip, Trash2, Upload } from 'lucide-react'
@@ -18,8 +18,19 @@ import {
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { AvatarUploader } from '@/components/catalog/avatar-uploader'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { ProductImageGallery } from '@/components/catalog/product-image-gallery'
+import { DefaultPriceDialog } from '@/components/catalog/default-price-dialog'
 
-type Attachment = {
+type GalleryImage = {
+  id: number
+  url: string | null
+  originalName: string
+  sortOrder: number
+  isPrimary: boolean
+  createdAt: string | null
+}
+
+type FileRow = {
   id: number
   originalName: string
   sizeBytes: number
@@ -53,24 +64,34 @@ type ProfitJobRow = {
   sellingPrice: number | null
   profitPerUnit: number | null
   profitPct: number | null
+  suggestedPinPrice: number
 }
 
 type ProfitAnalysis = {
   sellingPrice: number | null
   costBasis: number | null
   profitPctUsed: number | null
-  profitFrom: 'manual' | 'product' | 'category' | 'global' | null
+  profitFrom: 'manual' | 'product_default' | 'product' | 'category' | 'global' | null
   taxRatePct: number
   taxFrom: 'product' | 'category' | 'global'
   rounding: 'nearest_50_paise' | 'nearest_rupee' | 'none'
   profitPerUnit: number | null
   profitPct: number | null
+  defaultSalePrice: number | null
+  defaultSalePriceSource: {
+    jobId: number | null
+    jobNumber: string | null
+    setAt: string | null
+    setByUserName: string | null
+  } | null
+  autoComputedPrice: number | null
   jobs: ProfitJobRow[]
 }
 
 type PageProps = {
   product: Product
-  attachments: Attachment[]
+  images: GalleryImage[]
+  files: FileRow[]
   profitAnalysis: ProfitAnalysis
 }
 
@@ -98,7 +119,15 @@ const ROUNDING_LABEL: Record<ProfitAnalysis['rounding'], string> = {
   none: 'no rounding',
 }
 
-function ProfitAnalysisCard({ analysis }: { analysis: ProfitAnalysis }) {
+function ProfitAnalysisCard({
+  analysis,
+  canEdit,
+  onSetDefault,
+}: {
+  analysis: ProfitAnalysis
+  canEdit: boolean
+  onSetDefault: (job: ProfitJobRow | null) => void
+}) {
   const {
     sellingPrice,
     costBasis,
@@ -186,6 +215,7 @@ function ProfitAnalysisCard({ analysis }: { analysis: ProfitAnalysis }) {
                 <TableHead className="text-right">Selling price</TableHead>
                 <TableHead className="text-right">Profit / unit</TableHead>
                 <TableHead className="text-right">Profit %</TableHead>
+                <TableHead className="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -226,6 +256,13 @@ function ProfitAnalysisCard({ analysis }: { analysis: ProfitAnalysis }) {
                     </TableCell>
                     <TableCell className={`text-right tabular-nums ${rowTone}`}>
                       {formatPct(j.profitPct)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {canEdit && (
+                        <Button variant="ghost" size="sm" onClick={() => onSetDefault(j)}>
+                          Set as default
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 )
@@ -314,13 +351,14 @@ function QrCard({ product }: { product: Product }) {
   )
 }
 
-function FilesCard({ productId, initial }: { productId: number; initial: Attachment[] }) {
-  const [files, setFiles] = useState<Attachment[]>(initial)
+function FilesCard({ productId, initial }: { productId: number; initial: FileRow[] }) {
+  const [fileList, setFileList] = useState<FileRow[]>(initial)
   const [busy, setBusy] = useState(false)
-  const [pending, setPending] = useState<Attachment | null>(null)
+  const [pending, setPending] = useState<FileRow | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    setFiles(initial)
+    setFileList(initial)
   }, [initial])
 
   async function refresh() {
@@ -330,7 +368,7 @@ function FilesCard({ productId, initial }: { productId: number; initial: Attachm
       })
       if (res.ok) {
         const json = await res.json()
-        setFiles(json.data ?? [])
+        setFileList(json.data ?? [])
       }
     } catch {
       toast.error('Could not refresh files.')
@@ -370,7 +408,7 @@ function FilesCard({ productId, initial }: { productId: number; initial: Attachm
     )
   }
 
-  function deleteFile(file: Attachment) {
+  function deleteFile(file: FileRow) {
     setBusy(true)
     router.post(
       `/catalog/products/${productId}/files/${file.id}/delete`,
@@ -392,6 +430,7 @@ function FilesCard({ productId, initial }: { productId: number; initial: Attachm
         <CardTitle>3D model files</CardTitle>
         <label className="cursor-pointer">
           <input
+            ref={fileInputRef}
             type="file"
             accept={ACCEPTED_MODEL_TYPES}
             className="hidden"
@@ -410,7 +449,7 @@ function FilesCard({ productId, initial }: { productId: number; initial: Attachm
         <p className="pb-2 text-xs text-muted-foreground">
           stl, 3mf, obj, step, stp, igs, iges, ply, gcode, zip — up to 50 MB each.
         </p>
-        {files.length === 0 ? (
+        {fileList.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-6 text-sm text-muted-foreground">
             <Paperclip className="size-6" />
             No files attached yet.
@@ -426,7 +465,7 @@ function FilesCard({ productId, initial }: { productId: number; initial: Attachm
               </TableRow>
             </TableHeader>
             <TableBody>
-              {files.map((f) => (
+              {fileList.map((f) => (
                 <TableRow key={f.id}>
                   <TableCell className="break-all">{f.originalName}</TableCell>
                   <TableCell className="text-right tabular-nums">
@@ -474,7 +513,11 @@ function FilesCard({ productId, initial }: { productId: number; initial: Attachm
   )
 }
 
-export default function ProductShowPage({ product, attachments, profitAnalysis }: PageProps) {
+export default function ProductShowPage({ product, images, files, profitAnalysis }: PageProps) {
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [dialogJob, setDialogJob] = useState<ProfitJobRow | null>(null)
+  const canEdit = true // TODO: derive from permissions prop when available
+
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-8">
       <div className="flex items-center justify-between gap-2">
@@ -488,10 +531,117 @@ export default function ProductShowPage({ product, attachments, profitAnalysis }
 
       <ProductHero product={product} />
 
-      <ProfitAnalysisCard analysis={profitAnalysis} />
+      <ProfitAnalysisCard
+        analysis={profitAnalysis}
+        canEdit={canEdit}
+        onSetDefault={(job) => {
+          setDialogJob(job)
+          setDialogOpen(true)
+        }}
+      />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
-        <FilesCard productId={product.id} initial={attachments} />
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>Default sale price</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {profitAnalysis.defaultSalePrice !== null ? (
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <div className="text-2xl font-semibold">
+                  ₹{profitAnalysis.defaultSalePrice.toLocaleString()}
+                </div>
+                {profitAnalysis.defaultSalePriceSource && (
+                  <div className="text-xs text-muted-foreground">
+                    {profitAnalysis.defaultSalePriceSource.jobNumber
+                      ? `From #${profitAnalysis.defaultSalePriceSource.jobNumber}`
+                      : 'Set manually'}
+                    {profitAnalysis.defaultSalePriceSource.setByUserName
+                      ? ` · by ${profitAnalysis.defaultSalePriceSource.setByUserName}`
+                      : ''}
+                  </div>
+                )}
+                {profitAnalysis.autoComputedPrice !== null && (
+                  <div className="text-xs text-muted-foreground">
+                    Auto-calculated: ₹{profitAnalysis.autoComputedPrice.toLocaleString()}
+                  </div>
+                )}
+              </div>
+              {canEdit && (
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setDialogJob(null)
+                      setDialogOpen(true)
+                    }}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      if (!window.confirm('Clear the default sale price?')) return
+                      router.post(
+                        `/catalog/products/${product.id}/default-price/delete`,
+                        {},
+                        { preserveScroll: true }
+                      )
+                    }}
+                  >
+                    Clear
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-4">
+              <div className="text-sm text-muted-foreground">
+                No default set — sales surfaces use the auto-calculated price
+                {profitAnalysis.autoComputedPrice !== null
+                  ? ` (₹${profitAnalysis.autoComputedPrice.toLocaleString()})`
+                  : ''}
+                .
+              </div>
+              {canEdit && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setDialogJob(null)
+                    setDialogOpen(true)
+                  }}
+                >
+                  Set default
+                </Button>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <DefaultPriceDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        productId={product.id}
+        initialPrice={dialogJob ? null : profitAnalysis.defaultSalePrice}
+        suggestedPrice={dialogJob?.suggestedPinPrice ?? null}
+        autoComputedPrice={profitAnalysis.autoComputedPrice}
+        sourceJob={dialogJob ? { id: dialogJob.id, number: dialogJob.number } : null}
+      />
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardTitle>Images</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ProductImageGallery productId={product.id} images={images} canEdit={canEdit} />
+          </CardContent>
+        </Card>
+        <FilesCard productId={product.id} initial={files} />
         <QrCard product={product} />
       </div>
     </div>
