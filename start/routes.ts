@@ -153,6 +153,21 @@ router
     router
       .get('catalog/products/:id/qr/download', [ProductsController, 'qrDownload'])
       .as('products.qr.download')
+    router
+      .post('catalog/products/:id/default-price', [ProductsController, 'setDefaultPrice'])
+      .as('products.defaultPrice.set')
+    router
+      .post('catalog/products/:id/default-price/delete', [ProductsController, 'clearDefaultPrice'])
+      .as('products.defaultPrice.clear')
+    router
+      .post('catalog/products/:id/images', [ProductsController, 'uploadImages'])
+      .as('products.images.upload')
+    router
+      .post('catalog/products/:id/images/:imageId/primary', [ProductsController, 'setPrimaryImage'])
+      .as('products.images.setPrimary')
+    router
+      .post('catalog/products/:id/images/reorder', [ProductsController, 'reorderImages'])
+      .as('products.images.reorder')
 
     router
       .get('catalog/categories', [ProductCategoriesController, 'index'])
