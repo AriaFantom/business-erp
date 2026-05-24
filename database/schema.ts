@@ -503,7 +503,7 @@ export class ProductionJobSchema extends BaseModel {
 }
 
 export class ProductSchema extends BaseModel {
-  static $columns = ['categoryId', 'createdAt', 'defaultProfitPct', 'description', 'id', 'imageKey', 'isActive', 'name', 'sku', 'taxRatePct', 'updatedAt'] as const
+  static $columns = ['categoryId', 'createdAt', 'defaultProfitPct', 'defaultSalePrice', 'defaultSalePriceSetAt', 'defaultSalePriceSetByUserId', 'defaultSalePriceSourceJobId', 'description', 'id', 'imageKey', 'isActive', 'name', 'sku', 'taxRatePct', 'updatedAt'] as const
   $columns = ProductSchema.$columns
   @column()
   declare categoryId: number | null
@@ -511,6 +511,14 @@ export class ProductSchema extends BaseModel {
   declare createdAt: DateTime
   @column()
   declare defaultProfitPct: string | null
+  @column()
+  declare defaultSalePrice: string | null
+  @column.dateTime()
+  declare defaultSalePriceSetAt: DateTime | null
+  @column()
+  declare defaultSalePriceSetByUserId: number | null
+  @column()
+  declare defaultSalePriceSourceJobId: number | null
   @column()
   declare description: string | null
   @column({ isPrimary: true })
