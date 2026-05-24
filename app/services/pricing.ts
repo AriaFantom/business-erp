@@ -36,7 +36,7 @@ export type PriceBreakdown = {
   taxRatePct: number
   /** Provenance for the fields above. */
   basis: {
-    profitFrom: 'manual' | 'product' | 'category' | 'global'
+    profitFrom: 'manual' | 'product_default' | 'product' | 'category' | 'global'
     taxFrom: 'product' | 'category' | 'global'
     rounding: RoundingRule
   }
@@ -69,6 +69,22 @@ export function computeUnitPrice(input: {
       taxRatePct: numberOrZero(input.product.taxRatePct ?? input.category?.taxRatePct ?? null),
       basis: {
         profitFrom: 'manual',
+        taxFrom: pickTaxBasis(input.product, input.category),
+        rounding,
+      },
+    }
+  }
+
+  // Stored default sale price wins over the formula ladder.
+  if (input.product.defaultSalePrice !== null && input.product.defaultSalePrice !== undefined) {
+    const stored = Number(input.product.defaultSalePrice)
+    return {
+      unitPrice: applyRounding(stored, rounding),
+      costPrice: input.costPrice,
+      profitPctUsed: null,
+      taxRatePct: numberOrZero(input.product.taxRatePct ?? input.category?.taxRatePct ?? null),
+      basis: {
+        profitFrom: 'product_default',
         taxFrom: pickTaxBasis(input.product, input.category),
         rounding,
       },

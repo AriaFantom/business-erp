@@ -300,7 +300,7 @@ export type ProductShowData = {
     sellingPrice: number | null
     costBasis: number | null
     profitPctUsed: number | null
-    profitFrom: 'manual' | 'product' | 'category' | 'global' | null
+    profitFrom: 'manual' | 'product_default' | 'product' | 'category' | 'global' | null
     taxRatePct: number
     taxFrom: 'product' | 'category' | 'global'
     rounding: 'nearest_50_paise' | 'nearest_rupee' | 'none'
