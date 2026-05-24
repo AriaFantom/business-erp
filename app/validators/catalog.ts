@@ -177,3 +177,40 @@ export const adjustInventoryValidator = vine.compile(
     note: vine.string().trim().minLength(3).maxLength(500),
   })
 )
+
+// ── Product default price ───────────────────────────────────────────────
+export const setProductDefaultPriceValidator = vine.compile(
+  vine.object({
+    price: vine.number().positive(),
+    sourceJobId: vine.number().positive().optional().nullable(),
+  })
+)
+
+// ── Product images upload ───────────────────────────────────────────────
+export const uploadProductImagesValidator = vine.compile(
+  vine.object({
+    images: vine
+      .array(
+        vine.file({
+          size: '15mb',
+          extnames: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
+        })
+      )
+      .minLength(1)
+      .maxLength(10),
+  })
+)
+
+// ── Product images reorder ──────────────────────────────────────────────
+export const reorderProductImagesValidator = vine.compile(
+  vine.object({
+    items: vine
+      .array(
+        vine.object({
+          id: vine.number().positive(),
+          sortOrder: vine.number(),
+        })
+      )
+      .minLength(1),
+  })
+)
