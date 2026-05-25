@@ -11,12 +11,13 @@ test.group('scheduler auto-complete (single stage)', (group) => {
   group.each.setup(() => testUtils.db().withGlobalTransaction())
 
   test('moves in_progress past deadline to awaiting_confirmation', async ({ assert }) => {
-    const { job, actor } = await setupJobFixture({ withRecipe: false })
+    const { job, actor, consumption } = await setupJobFixture({ withRecipe: false })
     const machine = await Machine.create({ name: 'X1', status: 'idle' })
     await startJob({
       jobId: job.id,
       machineId: machine.id,
       stages: [{ name: 's', durationMinutes: 1 }],
+      consumptions: [consumption],
       actor,
     })
     // Force the deadline into the past.
@@ -33,12 +34,13 @@ test.group('scheduler auto-complete (single stage)', (group) => {
   })
 
   test('ignores paused jobs', async ({ assert }) => {
-    const { job, actor } = await setupJobFixture({ withRecipe: false })
+    const { job, actor, consumption } = await setupJobFixture({ withRecipe: false })
     const machine = await Machine.create({ name: 'X2', status: 'idle' })
     await startJob({
       jobId: job.id,
       machineId: machine.id,
       stages: [{ name: 's', durationMinutes: 1 }],
+      consumptions: [consumption],
       actor,
     })
     await ProductionJob.query().where('id', job.id).update({

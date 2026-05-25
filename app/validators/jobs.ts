@@ -55,6 +55,16 @@ export const startJobValidator = vine.compile(
       )
       .minLength(1)
       .maxLength(20),
+    consumptions: vine
+      .array(
+        vine.object({
+          itemKind: vine.enum(['material', 'component']),
+          itemId: vine.number().positive(),
+          qtyConsumed: vine.number().min(0.001).max(999_999_999),
+        })
+      )
+      .minLength(1)
+      .maxLength(50),
   })
 )
 

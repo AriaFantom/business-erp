@@ -9,12 +9,13 @@ test.group('pauseJob / resumeJob', (group) => {
   group.each.setup(() => testUtils.db().withGlobalTransaction())
 
   test('pause clears auto_complete_at, sets remaining_seconds', async ({ assert }) => {
-    const { job, actor } = await setupJobFixture({ withRecipe: false })
+    const { job, actor, consumption } = await setupJobFixture({ withRecipe: false })
     const machine = await Machine.create({ name: 'P1', status: 'idle' })
     await startJob({
       jobId: job.id,
       machineId: machine.id,
       stages: [{ name: 's', durationMinutes: 60 }],
+      consumptions: [consumption],
       actor,
     })
     await pauseJob(job.id, actor)
@@ -27,12 +28,13 @@ test.group('pauseJob / resumeJob', (group) => {
   })
 
   test('resume restores auto_complete_at = now + remaining_seconds', async ({ assert }) => {
-    const { job, actor } = await setupJobFixture({ withRecipe: false })
+    const { job, actor, consumption } = await setupJobFixture({ withRecipe: false })
     const machine = await Machine.create({ name: 'P2', status: 'idle' })
     await startJob({
       jobId: job.id,
       machineId: machine.id,
       stages: [{ name: 's', durationMinutes: 60 }],
+      consumptions: [consumption],
       actor,
     })
     await pauseJob(job.id, actor)

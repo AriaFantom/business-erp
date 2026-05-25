@@ -1,5 +1,5 @@
-import { type ReactElement, useState } from 'react'
-import { useForm, router } from '@inertiajs/react'
+import { type ReactElement, useMemo, useState } from 'react'
+import { useForm, router, usePage } from '@inertiajs/react'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -107,6 +107,12 @@ type IdleMachine = {
   name: string
 }
 
+type RecipeItem = {
+  itemKind: 'material' | 'component'
+  itemId: number
+  qtyPerUnit: string
+}
+
 type PageProps = {
   job: Job
   consumptions: Consumption[]
@@ -114,6 +120,7 @@ type PageProps = {
   inventoryItems: InventoryItem[]
   stages: StageView[]
   idleMachines: IdleMachine[]
+  productRecipe: RecipeItem[]
   serverNow: string
 }
 
@@ -419,20 +426,78 @@ function ConfirmJobCard({ jobId, plannedQty }: { jobId: number; plannedQty: numb
   )
 }
 
-function StartForm({ jobId, idleMachines }: { jobId: number; idleMachines: IdleMachine[] }) {
+type ConsumptionDraft = {
+  key: string
+  target: string
+  qtyConsumed: number
+}
+
+function StartForm({
+  jobId,
+  plannedQty,
+  idleMachines,
+  inventoryItems,
+  productRecipe,
+}: {
+  jobId: number
+  plannedQty: number
+  idleMachines: IdleMachine[]
+  inventoryItems: InventoryItem[]
+  productRecipe: RecipeItem[]
+}) {
+  const { props } = usePage<{ errors: Record<string, string> }>()
+  const serverErrors = props.errors ?? {}
+
   const [machineId, setMachineId] = useState<string>('')
   const [stages, setStages] = useState<StageDraft[]>([{ name: 'Stage 1', durationMinutes: 30 }])
+
+  const initialDrafts = useMemo<ConsumptionDraft[]>(() => {
+    if (productRecipe.length === 0) {
+      return [{ key: cryptoKey(), target: '', qtyConsumed: 0 }]
+    }
+    return productRecipe.map((r) => ({
+      key: cryptoKey(),
+      target: `${r.itemKind}:${r.itemId}`,
+      qtyConsumed: round4(Number(r.qtyPerUnit) * plannedQty),
+    }))
+  }, [productRecipe, plannedQty])
+
+  const [drafts, setDrafts] = useState<ConsumptionDraft[]>(initialDrafts)
   const [submitting, setSubmitting] = useState(false)
+
+  const updateDraft = (key: string, patch: Partial<ConsumptionDraft>) =>
+    setDrafts((rows) => rows.map((r) => (r.key === key ? { ...r, ...patch } : r)))
+  const addRow = () =>
+    setDrafts((rows) => [...rows, { key: cryptoKey(), target: '', qtyConsumed: 0 }])
+  const removeRow = (key: string) =>
+    setDrafts((rows) => (rows.length === 1 ? rows : rows.filter((r) => r.key !== key)))
+
+  const consumptions = drafts
+    .filter((d) => d.target && d.qtyConsumed > 0)
+    .map((d) => {
+      const [kind, id] = d.target.split(':')
+      return {
+        itemKind: kind as 'material' | 'component',
+        itemId: Number(id),
+        qtyConsumed: d.qtyConsumed,
+      }
+    })
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
     router.post(
       `/jobs/${jobId}/start`,
-      { machineId: machineId ? Number(machineId) : null, stages },
-      { preserveScroll: true }
+      { machineId: machineId ? Number(machineId) : null, stages, consumptions },
+      {
+        preserveScroll: true,
+        onFinish: () => setSubmitting(false),
+      }
     )
   }
+
+  const unitFor = (target: string) =>
+    inventoryItems.find((it) => `${it.itemKind}:${it.itemId}` === target)?.unit ?? ''
 
   return (
     <Card>
@@ -441,10 +506,10 @@ function StartForm({ jobId, idleMachines }: { jobId: number; idleMachines: IdleM
       </CardHeader>
       <CardContent>
         <form className="flex flex-col gap-4" onSubmit={submit}>
-          <Field label="Machine">
+          <Field label="Machine" error={serverErrors.machineId}>
             <Select value={machineId} onValueChange={setMachineId}>
               <SelectTrigger>
-                <SelectValue placeholder="Select a machine (optional)" />
+                <SelectValue placeholder="Select a machine" />
               </SelectTrigger>
               <SelectContent>
                 {idleMachines.map((m) => (
@@ -456,6 +521,81 @@ function StartForm({ jobId, idleMachines }: { jobId: number; idleMachines: IdleM
             </Select>
           </Field>
           <JobStagesRepeater value={stages} onChange={setStages} />
+
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <Label>Materials &amp; components to consume</Label>
+              <Button type="button" variant="outline" size="sm" onClick={addRow}>
+                Add row
+              </Button>
+            </div>
+            {serverErrors.consumptions && (
+              <span className="text-xs text-destructive">{serverErrors.consumptions}</span>
+            )}
+            {drafts.map((row, idx) => (
+              <div
+                key={row.key}
+                className="grid grid-cols-[1fr_140px_auto] items-end gap-2 rounded-md border p-3"
+              >
+                <Field
+                  label={idx === 0 ? 'Item' : ''}
+                  error={serverErrors[`consumptions.${idx}.itemId`]}
+                >
+                  <Select
+                    value={row.target}
+                    onValueChange={(v) => updateDraft(row.key, { target: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pick item" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {inventoryItems.map((it) => (
+                        <SelectItem
+                          key={`${it.itemKind}:${it.itemId}`}
+                          value={`${it.itemKind}:${it.itemId}`}
+                        >
+                          [{it.itemKind}] {it.name} — on hand {it.onHand} {it.unit}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field
+                  label={
+                    idx === 0
+                      ? `Qty${row.target ? ` (${unitFor(row.target)})` : ''}`
+                      : row.target
+                        ? `(${unitFor(row.target)})`
+                        : ''
+                  }
+                  error={serverErrors[`consumptions.${idx}.qtyConsumed`]}
+                >
+                  <Input
+                    type="number"
+                    step="0.001"
+                    min={0}
+                    value={row.qtyConsumed}
+                    onChange={(e) =>
+                      updateDraft(row.key, { qtyConsumed: Number(e.target.value) })
+                    }
+                  />
+                </Field>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => removeRow(row.key)}
+                  disabled={drafts.length === 1}
+                >
+                  Remove
+                </Button>
+              </div>
+            ))}
+            <p className="text-xs text-muted-foreground">
+              You must pick at least one material or component before the job can start.
+            </p>
+          </div>
+
           <div>
             <Button type="submit" disabled={submitting}>
               {submitting ? 'Starting…' : 'Start'}
@@ -465,6 +605,14 @@ function StartForm({ jobId, idleMachines }: { jobId: number; idleMachines: IdleM
       </CardContent>
     </Card>
   )
+}
+
+function cryptoKey(): string {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36)
+}
+
+function round4(n: number): number {
+  return Math.round(n * 10000) / 10000
 }
 
 function Field({
@@ -492,6 +640,7 @@ export default function JobShow({
   inventoryItems,
   stages,
   idleMachines,
+  productRecipe,
   serverNow,
 }: PageProps) {
   const isActive =
@@ -578,7 +727,15 @@ export default function JobShow({
       )}
 
       {/* Start form — only on draft */}
-      {job.status === 'draft' && <StartForm jobId={job.id} idleMachines={idleMachines} />}
+      {job.status === 'draft' && (
+        <StartForm
+          jobId={job.id}
+          plannedQty={job.plannedQty}
+          idleMachines={idleMachines}
+          inventoryItems={inventoryItems}
+          productRecipe={productRecipe}
+        />
+      )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card>

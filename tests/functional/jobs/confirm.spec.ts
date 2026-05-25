@@ -9,12 +9,13 @@ test.group('confirmJob', (group) => {
   group.each.setup(() => testUtils.db().withGlobalTransaction())
 
   test('confirm from awaiting_confirmation completes job and frees machine', async ({ assert }) => {
-    const { job, actor } = await setupJobFixture({ plannedQty: 1, withRecipe: false })
+    const { job, actor, consumption } = await setupJobFixture({ plannedQty: 1, withRecipe: false })
     const machine = await Machine.create({ name: 'C1', status: 'idle' })
     await startJob({
       jobId: job.id,
       machineId: machine.id,
       stages: [{ name: 's', durationMinutes: 1 }],
+      consumptions: [consumption],
       actor,
     })
     await ProductionJob.query()
@@ -32,12 +33,13 @@ test.group('confirmJob', (group) => {
   })
 
   test('producedQty=0 routes to failJob', async ({ assert }) => {
-    const { job, actor } = await setupJobFixture({ withRecipe: false })
+    const { job, actor, consumption } = await setupJobFixture({ withRecipe: false })
     const machine = await Machine.create({ name: 'C2', status: 'idle' })
     await startJob({
       jobId: job.id,
       machineId: machine.id,
       stages: [{ name: 's', durationMinutes: 1 }],
+      consumptions: [consumption],
       actor,
     })
     await ProductionJob.query()

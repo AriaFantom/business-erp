@@ -119,14 +119,27 @@ export interface StartJobStageInput {
   durationMinutes: number
 }
 
+export interface StartJobConsumptionInput {
+  itemKind: 'material' | 'component'
+  itemId: number
+  qtyConsumed: number
+}
+
 export async function startJob(input: {
   jobId: number
   machineId: number
   stages: StartJobStageInput[]
+  consumptions: StartJobConsumptionInput[]
   actor: User
 }): Promise<ProductionJob> {
   if (input.stages.length === 0) {
     throw new DomainError({ code: 'INVALID_INPUT', message: 'A job must have at least one stage.' })
+  }
+  if (!input.consumptions || input.consumptions.length === 0) {
+    throw new DomainError({
+      code: 'INVALID_INPUT',
+      message: 'Select at least one material or component to consume before starting the job.',
+    })
   }
 
   const result = await db.transaction(async (trx) => {
@@ -194,17 +207,22 @@ export async function startJob(input: {
       trx,
     })
 
-    // Recipe auto-consume (unchanged from prior behaviour).
-    const recipe = await ProductRecipe.query({ client: trx }).where('product_id', job.productId)
-    for (const r of recipe) {
-      const qty = round4(Number(r.qtyPerUnit) * job.plannedQty)
-      if (qty <= 0) continue
+    // Merge duplicate (itemKind, itemId) rows so callers can submit a flat list.
+    const merged = new Map<string, StartJobConsumptionInput>()
+    for (const c of input.consumptions) {
+      const key = `${c.itemKind}:${c.itemId}`
+      const prior = merged.get(key)
+      if (prior) prior.qtyConsumed = round4(prior.qtyConsumed + c.qtyConsumed)
+      else merged.set(key, { ...c, qtyConsumed: round4(c.qtyConsumed) })
+    }
+    for (const c of merged.values()) {
+      if (c.qtyConsumed <= 0) continue
       await recordConsumptionInTrx(
         {
           jobId: job.id,
-          itemKind: r.itemKind as 'material' | 'component',
-          itemId: r.itemId,
-          qtyConsumed: qty,
+          itemKind: c.itemKind,
+          itemId: c.itemId,
+          qtyConsumed: c.qtyConsumed,
           reason: 'consume',
           actor: input.actor,
         },

@@ -7,6 +7,7 @@ import Component from '#models/component'
 import Inventory from '#models/inventory'
 import Machine from '#models/machine'
 import ProductionJobStage from '#models/production_job_stage'
+import ProductRecipe from '#models/product_recipe'
 import { totalChainCost } from '#services/job_costing'
 import { DateTime } from 'luxon'
 
@@ -67,6 +68,7 @@ export async function getJobShowViewModel(jobId: number) {
 
   const chainCost = await totalChainCost(jobId)
   const idleMachines = await Machine.query().where('status', 'idle').orderBy('name', 'asc')
+  const recipe = await ProductRecipe.query().where('product_id', job.productId)
 
   return {
     job: {
@@ -147,6 +149,11 @@ export async function getJobShowViewModel(jobId: number) {
       autoCompleteAt: s.autoCompleteAt?.toISO() ?? null,
     })),
     idleMachines: idleMachines.map((m) => ({ id: m.id, name: m.name })),
+    productRecipe: recipe.map((r) => ({
+      itemKind: r.itemKind as 'material' | 'component',
+      itemId: r.itemId,
+      qtyPerUnit: r.qtyPerUnit,
+    })),
     serverNow: DateTime.now().toISO(),
   }
 }

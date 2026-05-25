@@ -10,7 +10,7 @@ test.group('startJob with machine', (group) => {
   group.each.setup(() => testUtils.db().withGlobalTransaction())
 
   test('assigns machine, stages, and timer; flips machine to running', async ({ assert }) => {
-    const { job, actor } = await setupJobFixture({ plannedQty: 1, withRecipe: false })
+    const { job, actor, consumption } = await setupJobFixture({ plannedQty: 1, withRecipe: false })
     const machine = await Machine.create({ name: 'A1', status: 'idle' })
 
     await startJob({
@@ -20,6 +20,7 @@ test.group('startJob with machine', (group) => {
         { name: 'Layer 1', durationMinutes: 30 },
         { name: 'Layer 2', durationMinutes: 60 },
       ],
+      consumptions: [consumption],
       actor,
     })
 
@@ -41,30 +42,49 @@ test.group('startJob with machine', (group) => {
   })
 
   test('rejects starting when machine is not idle', async ({ assert }) => {
-    const { job, actor } = await setupJobFixture({ withRecipe: false })
+    const { job, actor, consumption } = await setupJobFixture({ withRecipe: false })
     const machine = await Machine.create({ name: 'A2', status: 'running' })
     await assert.rejects(() =>
       startJob({
         jobId: job.id,
         machineId: machine.id,
         stages: [{ name: 's', durationMinutes: 10 }],
+        consumptions: [consumption],
+        actor,
+      })
+    )
+  })
+
+  test('rejects starting when consumptions list is empty', async ({ assert }) => {
+    const { job, actor } = await setupJobFixture({ withRecipe: false })
+    const machine = await Machine.create({ name: 'A2b', status: 'idle' })
+    await assert.rejects(() =>
+      startJob({
+        jobId: job.id,
+        machineId: machine.id,
+        stages: [{ name: 's', durationMinutes: 10 }],
+        consumptions: [],
         actor,
       })
     )
   })
 
   test('two concurrent starts on the same machine cannot both succeed', async ({ assert }) => {
-    const { job: jobA, actor } = await setupJobFixture({ withRecipe: false })
-    const { job: jobB } = await setupJobFixture({ withRecipe: false, actor })
+    const { job: jobA, actor, consumption: cA } = await setupJobFixture({ withRecipe: false })
+    const { job: jobB, consumption: cB } = await setupJobFixture({ withRecipe: false, actor })
     const machine = await Machine.create({ name: 'A3', status: 'idle' })
 
-    const args = (id: number) => ({
+    const args = (id: number, consumption: typeof cA) => ({
       jobId: id,
       machineId: machine.id,
       stages: [{ name: 's', durationMinutes: 10 }],
+      consumptions: [consumption],
       actor,
     })
-    const results = await Promise.allSettled([startJob(args(jobA.id)), startJob(args(jobB.id))])
+    const results = await Promise.allSettled([
+      startJob(args(jobA.id, cA)),
+      startJob(args(jobB.id, cB)),
+    ])
     const fulfilled = results.filter((r) => r.status === 'fulfilled')
     const rejected = results.filter((r) => r.status === 'rejected')
     assert.lengthOf(fulfilled, 1)

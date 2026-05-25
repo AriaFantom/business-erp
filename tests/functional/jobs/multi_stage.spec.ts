@@ -12,7 +12,7 @@ test.group('multi-stage job advancement', (group) => {
   group.each.setup(() => testUtils.db().withGlobalTransaction())
 
   test('scheduler walks through three stages then awaits confirmation', async ({ assert }) => {
-    const { job, actor } = await setupJobFixture({ withRecipe: false })
+    const { job, actor, consumption } = await setupJobFixture({ withRecipe: false })
     const machine = await Machine.create({ name: 'M1', status: 'idle' })
     await startJob({
       jobId: job.id,
@@ -22,6 +22,7 @@ test.group('multi-stage job advancement', (group) => {
         { name: '2', durationMinutes: 1 },
         { name: '3', durationMinutes: 1 },
       ],
+      consumptions: [consumption],
       actor,
     })
 
@@ -44,7 +45,7 @@ test.group('multi-stage job advancement', (group) => {
   })
 
   test('skipStage advances mid-job', async ({ assert }) => {
-    const { job, actor } = await setupJobFixture({ withRecipe: false })
+    const { job, actor, consumption } = await setupJobFixture({ withRecipe: false })
     const machine = await Machine.create({ name: 'M2', status: 'idle' })
     await startJob({
       jobId: job.id,
@@ -53,6 +54,7 @@ test.group('multi-stage job advancement', (group) => {
         { name: '1', durationMinutes: 60 },
         { name: '2', durationMinutes: 60 },
       ],
+      consumptions: [consumption],
       actor,
     })
     await skipStage(job.id, actor)

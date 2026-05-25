@@ -73,6 +73,7 @@ export default class JobsController {
         jobId: Number(params.id),
         machineId: payload.machineId,
         stages: payload.stages,
+        consumptions: payload.consumptions,
         actor: auth.user!,
       })
       session.flash('success', 'Job started.')
