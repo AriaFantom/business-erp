@@ -31,6 +31,9 @@ Database (Lucid):
 - `node ace migration:run` — applies migrations **and regenerates `database/schema.ts`**
 - `node ace migration:rollback`
 - `node ace make:migration <name>`
+- `node ace db:seed` — runs all seeders (idempotent: `updateOrCreate`)
+
+**Always run `node ace migration:run` followed by `node ace db:seed` at the end of any task that modifies code** (regardless of whether you touched migrations/seeders). This keeps the local schema regenerated and the dev DB in a consistent, seeded state before handing control back to the user. Both commands are idempotent — safe to run every time.
 
 Local infra: `docker-compose -f docker-compose.dev.yml up -d` brings up Postgres (`dev/dev/dev` on 5432), Redis (password `dev` on 6379), and MinIO (9000 API / 9001 console, `devminio/devminio`). Match these creds in `.env` (see `.env.example`).
 
