@@ -29,7 +29,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/status-badge'
+import { EmptyState } from '@/components/empty-state'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
@@ -68,12 +69,6 @@ type LineDraft = {
   qty: number
   unitPrice: number
   taxRatePct: number
-}
-
-function statusVariant(s: string) {
-  if (s === 'confirmed') return 'default' as const
-  if (s === 'cancelled') return 'destructive' as const
-  return 'outline' as const
 }
 
 function NewSaleDialog({
@@ -365,7 +360,12 @@ export default function SalesIndex({ sales, customers, products, filters }: Page
         </CardHeader>
         <CardContent>
           {sales.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No sales yet.</p>
+            <EmptyState
+              icon={ScrollText}
+              title="No sales yet"
+              description="Create a sale or convert an accepted quotation to get started."
+              action={<NewSaleDialog customers={customers} products={products} />}
+            />
           ) : (
             <Table>
               <TableHeader>
@@ -397,7 +397,7 @@ export default function SalesIndex({ sales, customers, products, filters }: Page
                     {isVisible('customer') && <TableCell>{s.customerName}</TableCell>}
                     {isVisible('status') && (
                       <TableCell>
-                        <Badge variant={statusVariant(s.status)}>{s.status}</Badge>
+                        <StatusBadge kind="sale" status={s.status} />
                       </TableCell>
                     )}
                     {isVisible('total') && (

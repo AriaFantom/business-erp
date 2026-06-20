@@ -19,28 +19,9 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar'
 
-import { navItems, type NavItem } from './sidebar_nav'
+import { navItems } from './sidebar_nav'
+import { isActive, isVisible, type SidebarUser } from '@/lib/nav'
 import type { Data } from '@generated/data'
-
-type SidebarUser = NonNullable<Data.SharedProps['user']>
-
-function hasPermission(user: SidebarUser | undefined, key?: string): boolean {
-  if (!key) return true
-  if (!user) return false
-  return user.isOwner || user.permissions.includes(key)
-}
-
-function isVisible(item: NavItem, user: SidebarUser | undefined): boolean {
-  if (item.children && item.children.length > 0) {
-    return item.children.some((c) => isVisible(c, user))
-  }
-  return hasPermission(user, item.permission)
-}
-
-function isActive(itemUrl: string, currentUrl: string): boolean {
-  if (itemUrl === '#') return false
-  return currentUrl === itemUrl || currentUrl.startsWith(itemUrl + '/')
-}
 
 export function NavMain() {
   const { user } = usePage<Data.SharedProps>().props as unknown as {

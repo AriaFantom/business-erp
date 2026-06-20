@@ -35,6 +35,9 @@ import {
   type ColumnDef,
 } from '@/components/data-table/column-visibility'
 import { useColumnVisibility } from '@/hooks/use-column-visibility'
+import { EmptyState } from '@/components/empty-state'
+import { Link } from '@adonisjs/inertia/react'
+import { Warehouse } from 'lucide-react'
 
 type InventoryRow = {
   itemKind: string
@@ -259,7 +262,16 @@ export default function InventoryPage({
         </CardHeader>
         <CardContent>
           {inventory.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No inventory recorded yet.</p>
+            <EmptyState
+              icon={Warehouse}
+              title="No inventory recorded yet"
+              description="Stock arrives by confirming purchases. Record one to populate inventory."
+              action={
+                <Button asChild variant="outline">
+                  <Link href="/purchases">Go to purchases</Link>
+                </Button>
+              }
+            />
           ) : (
             <Table>
               <TableHeader>

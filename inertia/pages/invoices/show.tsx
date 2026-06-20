@@ -1,5 +1,6 @@
 import { type ReactElement, useState } from 'react'
 import { useForm } from '@inertiajs/react'
+import { Link } from '@adonisjs/inertia/react'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -28,7 +29,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/status-badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { Download } from 'lucide-react'
 
@@ -200,13 +201,6 @@ function Field({
   )
 }
 
-function statusVariant(s: string) {
-  if (s === 'paid') return 'default' as const
-  if (s === 'void') return 'secondary' as const
-  if (s === 'partial') return 'outline' as const
-  return 'destructive' as const
-}
-
 export default function InvoiceShow({ invoice, items, payments }: PageProps) {
   const due = Math.max(0, Number(invoice.total) - Number(invoice.paidTotal))
   const canPay = invoice.status === 'unpaid' || invoice.status === 'partial'
@@ -218,15 +212,29 @@ export default function InvoiceShow({ invoice, items, payments }: PageProps) {
         <div>
           <h1 className="text-2xl font-semibold">Invoice {invoice.number}</h1>
           <p className="text-sm text-muted-foreground">
-            {invoice.customer?.name ?? '—'} · sale #{invoice.saleId} · due{' '}
-            {invoice.dueAt?.slice(0, 10) ?? '—'}
-            {invoice.replacesInvoiceId
-              ? ` · replaces #${invoice.replacesInvoiceId}`
-              : ''}
+            {invoice.customer?.name ?? '—'} ·{' '}
+            <Link
+              href={`/sales/${invoice.saleId}`}
+              className="underline-offset-2 hover:underline"
+            >
+              sale #{invoice.saleId}
+            </Link>{' '}
+            · due {invoice.dueAt?.slice(0, 10) ?? '—'}
+            {invoice.replacesInvoiceId ? (
+              <>
+                {' · '}
+                <Link
+                  href={`/invoices/${invoice.replacesInvoiceId}`}
+                  className="underline-offset-2 hover:underline"
+                >
+                  replaces #{invoice.replacesInvoiceId}
+                </Link>
+              </>
+            ) : null}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant={statusVariant(invoice.status)}>{invoice.status}</Badge>
+          <StatusBadge kind="invoice" status={invoice.status} />
           <Button asChild variant="outline">
             <a href={`/invoices/${invoice.id}/download`}>
               <Download className="size-4" />

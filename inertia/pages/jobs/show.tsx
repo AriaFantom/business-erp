@@ -28,7 +28,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
+import { Link } from '@adonisjs/inertia/react'
+import { StatusBadge } from '@/components/status-badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { JobStagesList, type StageView } from '@/components/jobs/job-stages-list'
 import { JobStagesRepeater, type StageDraft } from '@/components/jobs/job-stages-repeater'
@@ -654,13 +655,29 @@ export default function JobShow({
         <div>
           <h1 className="text-2xl font-semibold">Job {job.number}</h1>
           <p className="text-sm text-muted-foreground">
-            {job.productName} · planned {job.plannedQty} · produced {job.producedQty}
-            {job.parentJobId ? ` · reprint of #${job.parentJobId}` : ''}
+            <Link
+              href={`/catalog/products/${job.productId}`}
+              className="underline-offset-2 hover:underline"
+            >
+              {job.productName}
+            </Link>{' '}
+            · planned {job.plannedQty} · produced {job.producedQty}
+            {job.parentJobId ? (
+              <>
+                {' · reprint of '}
+                <Link
+                  href={`/jobs/${job.parentJobId}`}
+                  className="underline-offset-2 hover:underline"
+                >
+                  #{job.parentJobId}
+                </Link>
+              </>
+            ) : null}
             {job.machineName ? ` · machine: ${job.machineName}` : ''}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline">{job.status}</Badge>
+          <StatusBadge kind="job" status={job.status} />
           {isActive && (
             <>
               <ConsumeDialog jobId={job.id} items={inventoryItems} />

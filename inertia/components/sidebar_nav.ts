@@ -33,12 +33,12 @@ export type NavItem = {
 
 export const navItems: NavItem[] = [
   {
-    title: 'Dashboard',
+    title: 'Overview',
     url: '#',
     icon: LayoutDashboard,
     children: [
       {
-        title: 'Overview',
+        title: 'Dashboard',
         url: '/dashboard',
         icon: LayoutDashboard,
       },
@@ -94,40 +94,60 @@ export const navItems: NavItem[] = [
     ],
   },
   {
-    title: 'Inventory',
-    url: '/inventory',
-    icon: Warehouse,
-    permission: 'inventory.view',
-  },
-  {
-    title: 'Purchases',
-    url: '/purchases',
+    title: 'Procurement',
+    url: '#',
     icon: Truck,
-    permission: 'purchases.view',
+    children: [
+      {
+        title: 'Suppliers',
+        url: '/suppliers',
+        icon: Truck,
+        permission: 'suppliers.view',
+      },
+      {
+        title: 'Purchases',
+        url: '/purchases',
+        icon: ShoppingCart,
+        permission: 'purchases.view',
+      },
+      {
+        title: 'Inventory',
+        url: '/inventory',
+        icon: Warehouse,
+        permission: 'inventory.view',
+      },
+    ],
   },
   {
     title: 'Production',
-    url: '/jobs',
+    url: '#',
     icon: Factory,
-    permission: 'jobs.view',
-  },
-  {
-    title: 'Machines',
-    url: '/machines',
-    icon: MachineIcon,
-    permission: 'machines.view',
-  },
-  {
-    title: 'POS',
-    url: '/pos',
-    icon: Store,
-    permission: 'pos.view',
+    children: [
+      {
+        title: 'Jobs',
+        url: '/jobs',
+        icon: Factory,
+        permission: 'jobs.view',
+      },
+      {
+        title: 'Machines',
+        url: '/machines',
+        icon: MachineIcon,
+        permission: 'machines.view',
+      },
+    ],
   },
   {
     title: 'Sales',
     url: '#',
     icon: ShoppingCart,
     children: [
+      {
+        title: 'POS',
+        url: '/pos',
+        icon: Store,
+        permission: 'pos.view',
+      },
       {
         title: 'Quotations',
         url: '/quotations',
@@ -145,19 +165,6 @@ export const navItems: NavItem[] = [
         url: '/invoices',
         icon: Receipt,
         permission: 'invoices.view',
-      },
-    ],
-  },
-  {
-    title: 'Contacts',
-    url: '#',
-    icon: UserSquare,
-    children: [
-      {
-        title: 'Suppliers',
-        url: '/suppliers',
-        icon: Truck,
-        permission: 'suppliers.view',
       },
       {
         title: 'Customers',

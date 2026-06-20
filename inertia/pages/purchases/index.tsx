@@ -28,7 +28,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/status-badge'
+import { EmptyState } from '@/components/empty-state'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
@@ -77,11 +78,6 @@ type LineDraft = {
   taxRatePct: number
 }
 
-function statusVariant(s: string) {
-  if (s === 'confirmed') return 'default' as const
-  if (s === 'cancelled') return 'secondary' as const
-  return 'outline' as const
-}
 
 function NewPurchaseDialog({
   suppliers,
@@ -410,7 +406,18 @@ export default function PurchasesIndex({
         </CardHeader>
         <CardContent>
           {purchases.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No purchases yet.</p>
+            <EmptyState
+              icon={Truck}
+              title="No purchases yet"
+              description="Record a purchase order to bring stock into inventory."
+              action={
+                <NewPurchaseDialog
+                  suppliers={suppliers}
+                  materials={materials}
+                  components={components}
+                />
+              }
+            />
           ) : (
             <Table>
               <TableHeader>
@@ -444,7 +451,7 @@ export default function PurchasesIndex({
                     {isVisible('supplier') && <TableCell>{p.supplierName}</TableCell>}
                     {isVisible('status') && (
                       <TableCell>
-                        <Badge variant={statusVariant(p.status)}>{p.status}</Badge>
+                        <StatusBadge kind="purchase" status={p.status} />
                       </TableCell>
                     )}
                     {isVisible('purchasedOn') && (

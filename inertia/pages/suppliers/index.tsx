@@ -32,6 +32,7 @@ import { Archive, CheckCircle2, Truck, XCircle } from 'lucide-react'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { EmptyState } from '@/components/empty-state'
 
 type Row = {
   id: number
@@ -202,7 +203,12 @@ export default function SuppliersIndex({ suppliers, filters, counts }: PageProps
         </CardHeader>
         <CardContent>
           {suppliers.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No suppliers yet.</p>
+            <EmptyState
+              icon={Truck}
+              title="No suppliers yet"
+              description="Add a supplier to record purchases and restock inventory."
+              action={<NewSupplierDialog />}
+            />
           ) : (
             <Table>
               <TableHeader>

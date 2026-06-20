@@ -29,7 +29,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/status-badge'
+import { EmptyState } from '@/components/empty-state'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
@@ -163,12 +164,6 @@ function Field({
   )
 }
 
-function statusVariant(s: string) {
-  if (s === 'completed') return 'default' as const
-  if (s === 'failed' || s === 'cancelled') return 'destructive' as const
-  if (s === 'in_progress') return 'secondary' as const
-  return 'outline' as const
-}
 
 const JOB_COLUMNS: ColumnDef[] = [
   { key: 'number', label: 'Number', required: true },
@@ -236,7 +231,12 @@ export default function JobsIndex({ jobs, products, filters }: PageProps) {
         </CardHeader>
         <CardContent>
           {jobs.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No jobs yet.</p>
+            <EmptyState
+              icon={Factory}
+              title="No jobs yet"
+              description="Start a production job to manufacture a product and consume inventory."
+              action={<NewJobDialog products={products} />}
+            />
           ) : (
             <Table>
               <TableHeader>
@@ -278,7 +278,7 @@ export default function JobsIndex({ jobs, products, filters }: PageProps) {
                     {isVisible('product') && <TableCell>{j.productName}</TableCell>}
                     {isVisible('status') && (
                       <TableCell>
-                        <Badge variant={statusVariant(j.status)}>{j.status}</Badge>
+                        <StatusBadge kind="job" status={j.status} />
                       </TableCell>
                     )}
                     {isVisible('planned') && (

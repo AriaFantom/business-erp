@@ -11,7 +11,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/status-badge'
+import { EmptyState } from '@/components/empty-state'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
@@ -39,12 +40,6 @@ type PageProps = {
   filters: Filters
 }
 
-function statusVariant(s: string) {
-  if (s === 'paid') return 'default' as const
-  if (s === 'void') return 'secondary' as const
-  if (s === 'partial') return 'outline' as const
-  return 'destructive' as const
-}
 
 export default function InvoicesIndex({ invoices, customers, filters }: PageProps) {
   const outstanding = invoices
@@ -106,7 +101,16 @@ export default function InvoicesIndex({ invoices, customers, filters }: PageProp
         </CardHeader>
         <CardContent>
           {invoices.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No invoices match the filters.</p>
+            <EmptyState
+              icon={Receipt}
+              title="No invoices found"
+              description="Invoices are created when a sale is confirmed. Confirm a sale to issue one."
+              action={
+                <Button asChild variant="outline">
+                  <Link href="/sales">Go to sales</Link>
+                </Button>
+              }
+            />
           ) : (
             <Table>
               <TableHeader>
@@ -127,7 +131,7 @@ export default function InvoicesIndex({ invoices, customers, filters }: PageProp
                     <TableCell className="font-mono text-xs">{i.number}</TableCell>
                     <TableCell>{i.customerName}</TableCell>
                     <TableCell>
-                      <Badge variant={statusVariant(i.status)}>{i.status}</Badge>
+                      <StatusBadge kind="invoice" status={i.status} />
                     </TableCell>
                     <TableCell>{i.issuedAt?.slice(0, 10) ?? '—'}</TableCell>
                     <TableCell>{i.dueAt?.slice(0, 10) ?? '—'}</TableCell>

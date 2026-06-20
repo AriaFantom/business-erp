@@ -32,6 +32,7 @@ import { Archive, CheckCircle2, Users, XCircle } from 'lucide-react'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { EmptyState } from '@/components/empty-state'
 
 type Row = {
   id: number
@@ -215,7 +216,12 @@ export default function CustomersIndex({ customers, filters, counts }: PageProps
         </CardHeader>
         <CardContent>
           {customers.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No customers yet.</p>
+            <EmptyState
+              icon={Users}
+              title="No customers yet"
+              description="Add a customer to start quoting and selling."
+              action={<NewCustomerDialog />}
+            />
           ) : (
             <Table>
               <TableHeader>

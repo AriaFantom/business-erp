@@ -41,6 +41,7 @@ import {
   type ColumnDef,
 } from '@/components/data-table/column-visibility'
 import { useColumnVisibility } from '@/hooks/use-column-visibility'
+import { EmptyState } from '@/components/empty-state'
 
 type Row = {
   id: number
@@ -354,7 +355,12 @@ export default function MaterialsPage({ materials, suppliers, filters, counts }:
         </CardHeader>
         <CardContent>
           {materials.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No materials match the filters.</p>
+            <EmptyState
+              icon={Boxes}
+              title="No materials found"
+              description="Add a material or adjust your search and filters."
+              action={<NewMaterialDialog suppliers={suppliers} />}
+            />
           ) : (
             <Table>
               <TableHeader>

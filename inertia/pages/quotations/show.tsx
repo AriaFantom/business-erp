@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/status-badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { Download } from 'lucide-react'
 
@@ -107,7 +107,7 @@ export default function QuotationShow({ quotation, items }: PageProps) {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline">{quotation.status}</Badge>
+          <StatusBadge kind="quotation" status={quotation.status} />
           <Button asChild variant="outline">
             <a href={`/quotations/${quotation.id}/download`}>
               <Download className="size-4" />

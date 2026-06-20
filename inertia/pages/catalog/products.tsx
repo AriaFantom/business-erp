@@ -42,6 +42,7 @@ import {
   type ColumnDef,
 } from '@/components/data-table/column-visibility'
 import { useColumnVisibility } from '@/hooks/use-column-visibility'
+import { EmptyState } from '@/components/empty-state'
 
 type Row = {
   id: number
@@ -341,7 +342,12 @@ export default function ProductsPage({ products, categories, filters, counts }: 
         </CardHeader>
         <CardContent>
           {products.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No products match the filters.</p>
+            <EmptyState
+              icon={Package}
+              title="No products found"
+              description="Add a product or adjust your search and filters."
+              action={<NewProductDialog categories={categories} />}
+            />
           ) : (
             <Table>
               <TableHeader>

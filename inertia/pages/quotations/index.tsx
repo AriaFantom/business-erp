@@ -29,7 +29,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/status-badge'
+import { EmptyState } from '@/components/empty-state'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
@@ -112,12 +113,6 @@ function computeCustomUnitPrice(cost?: number, profitPct?: number): number {
   return round2((cost ?? 0) * (1 + (profitPct ?? 0) / 100))
 }
 
-function statusVariant(s: string) {
-  if (s === 'accepted' || s === 'converted') return 'default' as const
-  if (s === 'rejected' || s === 'expired') return 'destructive' as const
-  if (s === 'sent') return 'secondary' as const
-  return 'outline' as const
-}
 
 function NewQuotationDialog({
   customers,
@@ -668,7 +663,19 @@ export default function QuotationsIndex({
         </CardHeader>
         <CardContent>
           {quotations.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No quotations yet.</p>
+            <EmptyState
+              icon={FileText}
+              title="No quotations yet"
+              description="Draft a quotation for a customer to begin the sales flow."
+              action={
+                <NewQuotationDialog
+                  customers={customers}
+                  products={products}
+                  materials={materials}
+                  components={components}
+                />
+              }
+            />
           ) : (
             <Table>
               <TableHeader>
@@ -701,7 +708,7 @@ export default function QuotationsIndex({
                     {isVisible('customer') && <TableCell>{q.customerName}</TableCell>}
                     {isVisible('status') && (
                       <TableCell>
-                        <Badge variant={statusVariant(q.status)}>{q.status}</Badge>
+                        <StatusBadge kind="quotation" status={q.status} />
                       </TableCell>
                     )}
                     {isVisible('issued') && (

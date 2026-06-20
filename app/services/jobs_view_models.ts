@@ -120,6 +120,8 @@ export async function getJobShowViewModel(jobId: number) {
       amount: e.amount,
       incurredAt: e.incurredAt.toISO(),
     })),
+    // Only items with stock on hand are consumable in production, so 0-qty
+    // materials/components are excluded from the consume picker.
     inventoryItems: [
       ...materials.map((m) => ({
         itemKind: 'material' as const,
@@ -137,7 +139,7 @@ export async function getJobShowViewModel(jobId: number) {
         unit: c.unit,
         onHand: invByKey.get(`component:${c.id}`)?.qty ?? '0',
       })),
-    ],
+    ].filter((it) => Number(it.onHand) > 0),
     stages: stages.map((s) => ({
       id: s.id,
       sequence: s.sequence,

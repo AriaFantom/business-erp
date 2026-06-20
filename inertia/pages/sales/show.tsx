@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/status-badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
 
 type Sale = {
@@ -95,11 +95,21 @@ export default function SaleShow({ sale, items, invoice }: PageProps) {
           <h1 className="text-2xl font-semibold">Sale {sale.number}</h1>
           <p className="text-sm text-muted-foreground">
             {sale.customer?.name ?? '—'}
-            {sale.quotationId ? ` · from quotation #${sale.quotationId}` : ''}
+            {sale.quotationId ? (
+              <>
+                {' · from '}
+                <Link
+                  href={`/quotations/${sale.quotationId}`}
+                  className="underline-offset-2 hover:underline"
+                >
+                  quotation #{sale.quotationId}
+                </Link>
+              </>
+            ) : null}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline">{sale.status}</Badge>
+          <StatusBadge kind="sale" status={sale.status} />
           {sale.status === 'draft' && (
             <>
               <PostAction

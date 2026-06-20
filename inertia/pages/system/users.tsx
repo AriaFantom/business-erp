@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState, type ReactElement } from 'react'
 import { useForm, usePage } from '@inertiajs/react'
-import { MoreHorizontal, ShieldCheck } from 'lucide-react'
+import { Link } from '@adonisjs/inertia/react'
+import { MoreHorizontal, ShieldCheck, Users } from 'lucide-react'
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { EmptyState } from '@/components/empty-state'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -220,7 +222,16 @@ export default function SystemUsers({
         </CardHeader>
         <CardContent>
           {users.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No users in your scope.</p>
+            <EmptyState
+              icon={Users}
+              title="No users in your scope"
+              description="Invite a teammate to give them access to the panel."
+              action={
+                <Button asChild variant="outline">
+                  <Link href="/system/invitations">Invite users</Link>
+                </Button>
+              }
+            />
           ) : (
             <Table>
               <TableHeader>

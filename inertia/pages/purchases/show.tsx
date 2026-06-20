@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/status-badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
 
 type Purchase = {
@@ -94,7 +94,7 @@ export default function PurchaseShow({ purchase, items }: PageProps) {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline">{purchase.status}</Badge>
+          <StatusBadge kind="purchase" status={purchase.status} />
           {purchase.status === 'draft' && (
             <>
               <PostAction
