@@ -301,6 +301,7 @@ function ProductHero({ product }: { product: Product }) {
             ) : (
               <Badge variant="secondary">Archived</Badge>
             )}
+            {product.category?.name === 'Custom Orders' && <Badge variant="secondary">Custom</Badge>}
           </div>
           {product.description && <p className="text-sm">{product.description}</p>}
           <dl className="grid grid-cols-2 gap-y-2 text-sm sm:grid-cols-3">

@@ -95,7 +95,7 @@ function NewComponentDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
           <DialogTitle>Create component</DialogTitle>
         </DialogHeader>
         <form
-          className="flex flex-col gap-3"
+          className="flex flex-col gap-4"
           onSubmit={(e) => {
             e.preventDefault()
             transform((d) => {
@@ -126,53 +126,59 @@ function NewComponentDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
           }}
         >
           <InlineImagePicker file={imageFile} onChange={setImageFile} />
-          <Field label="SKU" error={errors.sku}>
-            <Input value={data.sku} onChange={(e) => setData('sku', e.target.value)} />
-          </Field>
-          <Field label="Name" error={errors.name}>
-            <Input value={data.name} onChange={(e) => setData('name', e.target.value)} />
-          </Field>
-          <Field label="Unit of measure" error={errors.unit}>
-            <UnitPicker value={data.unit} onChange={(v) => setData('unit', v)} />
-          </Field>
-          <Field label="Default supplier" error={errors.defaultSupplierId}>
-            <Select
-              value={data.defaultSupplierId}
-              onValueChange={(v) => setData('defaultSupplierId', v)}
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="SKU" error={errors.sku}>
+              <Input value={data.sku} onChange={(e) => setData('sku', e.target.value)} />
+            </Field>
+            <Field label="Name" error={errors.name}>
+              <Input value={data.name} onChange={(e) => setData('name', e.target.value)} />
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Unit of measure" error={errors.unit}>
+              <UnitPicker value={data.unit} onChange={(v) => setData('unit', v)} />
+            </Field>
+            <Field label="Default supplier" error={errors.defaultSupplierId}>
+              <Select
+                value={data.defaultSupplierId}
+                onValueChange={(v) => setData('defaultSupplierId', v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="None" />
+                </SelectTrigger>
+                <SelectContent>
+                  {suppliers.map((s) => (
+                    <SelectItem key={s.id} value={String(s.id)}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field
+              label={`Default unit cost (per ${data.unit || 'unit'})`}
+              error={errors.defaultUnitCost}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="None" />
-              </SelectTrigger>
-              <SelectContent>
-                {suppliers.map((s) => (
-                  <SelectItem key={s.id} value={String(s.id)}>
-                    {s.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-          <Field
-            label={`Default unit cost (per ${data.unit || 'unit'})`}
-            error={errors.defaultUnitCost}
-          >
-            <Input
-              type="number"
-              step="0.0001"
-              value={data.defaultUnitCost}
-              onChange={(e) => setData('defaultUnitCost', Number(e.target.value))}
-            />
-          </Field>
-          <Field
-            label={`Reorder threshold (${data.unit || 'unit'})`}
-            error={errors.reorderThresholdQty}
-          >
-            <Input
-              type="number"
-              value={data.reorderThresholdQty}
-              onChange={(e) => setData('reorderThresholdQty', e.target.value)}
-            />
-          </Field>
+              <Input
+                type="number"
+                step="0.0001"
+                value={data.defaultUnitCost}
+                onChange={(e) => setData('defaultUnitCost', Number(e.target.value))}
+              />
+            </Field>
+            <Field
+              label={`Reorder threshold (${data.unit || 'unit'})`}
+              error={errors.reorderThresholdQty}
+            >
+              <Input
+                type="number"
+                value={data.reorderThresholdQty}
+                onChange={(e) => setData('reorderThresholdQty', e.target.value)}
+              />
+            </Field>
+          </div>
           <DialogFooter>
             <Button type="submit" disabled={processing}>
               {processing ? 'Saving…' : 'Create'}

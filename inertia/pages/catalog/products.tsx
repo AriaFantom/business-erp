@@ -97,7 +97,7 @@ function NewProductDialog({ categories }: { categories: CategoryOpt[] }) {
           <DialogTitle>Create product</DialogTitle>
         </DialogHeader>
         <form
-          className="flex flex-col gap-3"
+          className="flex flex-col gap-4"
           onSubmit={(e) => {
             e.preventDefault()
             transform((d) => ({
@@ -119,49 +119,51 @@ function NewProductDialog({ categories }: { categories: CategoryOpt[] }) {
             })
           }}
         >
-          <Field label="SKU" error={errors.sku}>
-            <Input value={data.sku} onChange={(e) => setData('sku', e.target.value)} />
-          </Field>
-          <Field label="Name" error={errors.name}>
-            <Input value={data.name} onChange={(e) => setData('name', e.target.value)} />
-          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="SKU" error={errors.sku}>
+              <Input value={data.sku} onChange={(e) => setData('sku', e.target.value)} />
+            </Field>
+            <Field label="Name" error={errors.name}>
+              <Input value={data.name} onChange={(e) => setData('name', e.target.value)} />
+            </Field>
+          </div>
           <Field label="Description" error={errors.description}>
             <Input
               value={data.description}
               onChange={(e) => setData('description', e.target.value)}
             />
           </Field>
-          <Field label="Category" error={errors.categoryId}>
-            <Select
-              value={data.categoryId}
-              onValueChange={(v) => {
-                setData('categoryId', v)
-                const cat = categories.find((c) => String(c.id) === v)
-                if (cat) {
-                  setData(
-                    'defaultProfitPct',
-                    cat.defaultProfitPct !== null ? String(cat.defaultProfitPct) : ''
-                  )
-                  setData(
-                    'taxRatePct',
-                    cat.taxRatePct !== null ? String(cat.taxRatePct) : ''
-                  )
-                }
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="None" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((c) => (
-                  <SelectItem key={c.id} value={String(c.id)}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
           <div className="grid grid-cols-2 gap-3">
+            <Field label="Category" error={errors.categoryId}>
+              <Select
+                value={data.categoryId}
+                onValueChange={(v) => {
+                  setData('categoryId', v)
+                  const cat = categories.find((c) => String(c.id) === v)
+                  if (cat) {
+                    setData(
+                      'defaultProfitPct',
+                      cat.defaultProfitPct !== null ? String(cat.defaultProfitPct) : ''
+                    )
+                    setData(
+                      'taxRatePct',
+                      cat.taxRatePct !== null ? String(cat.taxRatePct) : ''
+                    )
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="None" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((c) => (
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
             <Field label="Default profit %" error={errors.defaultProfitPct}>
               <Input
                 type="number"
@@ -170,15 +172,15 @@ function NewProductDialog({ categories }: { categories: CategoryOpt[] }) {
                 onChange={(e) => setData('defaultProfitPct', e.target.value)}
               />
             </Field>
-            <Field label="Tax rate %" error={errors.taxRatePct}>
-              <Input
-                type="number"
-                step="0.01"
-                value={data.taxRatePct}
-                onChange={(e) => setData('taxRatePct', e.target.value)}
-              />
-            </Field>
           </div>
+          <Field label="Tax rate %" error={errors.taxRatePct}>
+            <Input
+              type="number"
+              step="0.01"
+              value={data.taxRatePct}
+              onChange={(e) => setData('taxRatePct', e.target.value)}
+            />
+          </Field>
           <DialogFooter>
             <Button type="submit" variant="success" disabled={processing}>
               {processing ? 'Saving…' : 'Create'}
@@ -392,7 +394,12 @@ export default function ProductsPage({ products, categories, filters, counts }: 
                       <TableCell className="font-mono text-xs">{p.sku}</TableCell>
                     )}
                     {isVisible('name') && (
-                      <TableCell className="font-medium">{p.name}</TableCell>
+                      <TableCell className="font-medium">
+                        {p.name}
+                        {p.category?.name === 'Custom Orders' && (
+                          <Badge variant="secondary" className="ml-2 text-[10px]">Custom</Badge>
+                        )}
+                      </TableCell>
                     )}
                     {isVisible('category') && (
                       <TableCell>{p.category?.name ?? '—'}</TableCell>

@@ -609,6 +609,27 @@ export class PurchaseSchema extends BaseModel {
   declare updatedAt: DateTime
 }
 
+export class QuotationItemBomSchema extends BaseModel {
+  static $columns = ['createdAt', 'id', 'itemId', 'itemKind', 'qty', 'quotationItemId', 'unitCostAtTime', 'updatedAt'] as const
+  $columns = QuotationItemBomSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare itemId: number
+  @column()
+  declare itemKind: string
+  @column()
+  declare qty: string
+  @column()
+  declare quotationItemId: number
+  @column()
+  declare unitCostAtTime: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
 export class QuotationItemSchema extends BaseModel {
   static $columns = ['createdAt', 'description', 'id', 'lineSubtotal', 'lineTax', 'lineTotal', 'productId', 'profitPctUsed', 'qty', 'quotationId', 'taxRatePct', 'unitPrice', 'updatedAt'] as const
   $columns = QuotationItemSchema.$columns

@@ -54,11 +54,12 @@ export default class QuotationsController {
         note: payload.note ?? null,
         items: payload.items.map((i) => ({
           productId: i.productId ?? null,
-          description: i.description,
+          name: i.name,
           qty: i.qty,
           unitPrice: i.unitPrice ?? null,
           profitPctOverride: i.profitPctOverride ?? null,
           taxRatePct: i.taxRatePct ?? null,
+          boms: i.boms ?? [],
         })),
         actor: auth.user!,
       })

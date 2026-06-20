@@ -4,6 +4,8 @@ import QuotationItem from '#models/quotation_item'
 import Customer from '#models/customer'
 import Product from '#models/product'
 import ProductCategory from '#models/product_category'
+import Material from '#models/material'
+import Component from '#models/component'
 import { computeUnitPrice } from '#services/pricing'
 
 export async function getQuotationsIndexViewModel(
@@ -13,10 +15,12 @@ export async function getQuotationsIndexViewModel(
   if (filters.status && filters.status !== 'all') query.where('status', filters.status)
   if (filters.customerId) query.where('customer_id', filters.customerId)
   if (filters.q) query.whereILike('number', `%${filters.q.trim()}%`)
-  const [quotations, customers, products] = await Promise.all([
+  const [quotations, customers, products, materials, components] = await Promise.all([
     query,
     Customer.query().where('is_active', true).orderBy('name', 'asc'),
     Product.query().where('is_active', true).orderBy('name', 'asc'),
+    Material.query().where('is_active', true).orderBy('name', 'asc'),
+    Component.query().where('is_active', true).orderBy('name', 'asc'),
   ])
   const customerById = new Map(customers.map((c) => [c.id, c]))
 
@@ -60,6 +64,16 @@ export async function getQuotationsIndexViewModel(
       total: q.total,
     })),
     customers: customers.map((c) => ({ id: c.id, name: c.name })),
+    materials: materials.map((m) => ({
+      id: m.id,
+      name: m.name,
+      unitCost: Number(m.defaultUnitCost),
+    })),
+    components: components.map((c) => ({
+      id: c.id,
+      name: c.name,
+      unitCost: Number(c.defaultUnitCost),
+    })),
     products: products.map((p) => {
       const cost = costByProduct.get(p.id) ?? 0
       const breakdown = computeUnitPrice({
@@ -83,12 +97,27 @@ export async function getQuotationsIndexViewModel(
 export async function getQuotationShowViewModel(id: number) {
   const q = await Quotation.findOrFail(id)
   const [items, customer] = await Promise.all([
-    QuotationItem.query().where('quotation_id', id).orderBy('id', 'asc'),
+    QuotationItem.query().where('quotation_id', id).orderBy('id', 'asc').preload('boms'),
     Customer.find(q.customerId),
   ])
   const productIds = items.map((i) => i.productId).filter((x): x is number => typeof x === 'number')
   const products = productIds.length ? await Product.query().whereIn('id', productIds) : []
   const productById = new Map(products.map((p) => [p.id, p]))
+
+  const materialIds = items
+    .flatMap((it) => it.boms)
+    .filter((b) => b.itemKind === 'material')
+    .map((b) => b.itemId)
+  const componentIds = items
+    .flatMap((it) => it.boms)
+    .filter((b) => b.itemKind === 'component')
+    .map((b) => b.itemId)
+  const [materials, components] = await Promise.all([
+    materialIds.length ? Material.query().whereIn('id', [...new Set(materialIds)]) : [],
+    componentIds.length ? Component.query().whereIn('id', [...new Set(componentIds)]) : [],
+  ])
+  const matById = new Map(materials.map((m) => [m.id, m.name]))
+  const compById = new Map(components.map((c) => [c.id, c.name]))
 
   return {
     quotation: {
@@ -127,6 +156,17 @@ export async function getQuotationShowViewModel(id: number) {
       lineSubtotal: it.lineSubtotal,
       lineTax: it.lineTax,
       lineTotal: it.lineTotal,
+      boms: it.boms.map((b) => ({
+        id: b.id,
+        itemKind: b.itemKind,
+        itemId: b.itemId,
+        itemName:
+          b.itemKind === 'material'
+            ? (matById.get(b.itemId) ?? '—')
+            : (compById.get(b.itemId) ?? '—'),
+        qty: b.qty,
+        unitCostAtTime: b.unitCostAtTime,
+      })),
     })),
   }
 }

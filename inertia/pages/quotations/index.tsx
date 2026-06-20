@@ -1,7 +1,7 @@
 import { type ReactElement, useState } from 'react'
 import { useForm, router } from '@inertiajs/react'
 import { Link } from '@adonisjs/inertia/react'
-import { CheckCircle2, ExternalLink, FileText, Send, Trash2 } from 'lucide-react'
+import { CheckCircle2, ExternalLink, FileText, Send, Trash2, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -33,10 +33,7 @@ import { Badge } from '@/components/ui/badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
-import {
-  ColumnVisibilityMenu,
-  type ColumnDef,
-} from '@/components/data-table/column-visibility'
+import { ColumnVisibilityMenu, type ColumnDef } from '@/components/data-table/column-visibility'
 import { useColumnVisibility } from '@/hooks/use-column-visibility'
 
 type QuotationRow = {
@@ -60,6 +57,8 @@ type ProductOpt = {
   taxRatePct: number
   suggestedUnitPrice: number
 }
+type MaterialOpt = { id: number; name: string; unitCost: number }
+type ComponentOpt = { id: number; name: string; unitCost: number }
 
 type Filters = { q: string; status: string; customerId: string }
 
@@ -67,21 +66,46 @@ type PageProps = {
   quotations: QuotationRow[]
   customers: CustomerOpt[]
   products: ProductOpt[]
+  materials: MaterialOpt[]
+  components: ComponentOpt[]
   filters: Filters
+}
+
+type BomDraft = {
+  itemKind: 'material' | 'component'
+  itemId: number
+  qty: number
 }
 
 type LineDraft = {
   productId?: number
-  description: string
+  name: string
   qty: number
   unitPrice?: number
   unitCost?: number
   profitPctOverride?: number
   taxRatePct: number
+  boms: BomDraft[]
 }
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100
+}
+
+function computeBomCost(
+  boms: BomDraft[],
+  materials: MaterialOpt[],
+  components: ComponentOpt[]
+): number {
+  const matById = new Map(materials.map((m) => [m.id, m.unitCost]))
+  const compById = new Map(components.map((c) => [c.id, c.unitCost]))
+  let cost = 0
+  for (const b of boms) {
+    const unitCost =
+      b.itemKind === 'material' ? (matById.get(b.itemId) ?? 0) : (compById.get(b.itemId) ?? 0)
+    cost += b.qty * unitCost
+  }
+  return round2(cost)
 }
 
 function computeCustomUnitPrice(cost?: number, profitPct?: number): number {
@@ -98,9 +122,13 @@ function statusVariant(s: string) {
 function NewQuotationDialog({
   customers,
   products,
+  materials,
+  components,
 }: {
   customers: CustomerOpt[]
   products: ProductOpt[]
+  materials: MaterialOpt[]
+  components: ComponentOpt[]
 }) {
   const [open, setOpen] = useState(false)
   const { data, setData, post, processing, errors, reset } = useForm({
@@ -117,11 +145,12 @@ function NewQuotationDialog({
       ...data.items,
       {
         productId,
-        description: `${p.name} (${p.sku})`,
+        name: `${p.name} (${p.sku})`,
         qty: 1,
         unitPrice: p.suggestedUnitPrice,
         profitPctOverride: p.profitPct,
         taxRatePct: p.taxRatePct,
+        boms: [],
       },
     ])
   }
@@ -130,12 +159,13 @@ function NewQuotationDialog({
     setData('items', [
       ...data.items,
       {
-        description: '',
+        name: '',
         qty: 1,
         unitCost: 0,
-        profitPctOverride: 0,
+        profitPctOverride: 30,
         unitPrice: 0,
         taxRatePct: 18,
+        boms: [],
       },
     ])
 
@@ -145,10 +175,70 @@ function NewQuotationDialog({
       data.items.map((l, i) => (i === idx ? { ...l, ...patch } : l))
     )
 
+  const addBom = (lineIdx: number, itemKind: 'material' | 'component') => {
+    const items = itemKind === 'material' ? materials : components
+    const firstId = items[0]?.id
+    if (!firstId) return
+    const line = data.items[lineIdx]
+    const newBoms = [...line.boms, { itemKind, itemId: firstId, qty: 1 }]
+    const newCost = computeBomCost(newBoms, materials, components)
+    setData(
+      'items',
+      data.items.map((l, i) =>
+        i === lineIdx
+          ? {
+              ...l,
+              boms: newBoms,
+              unitCost: newCost,
+              unitPrice: computeCustomUnitPrice(newCost, l.profitPctOverride),
+            }
+          : l
+      )
+    )
+  }
+
+  const updateBom = (lineIdx: number, bomIdx: number, patch: Partial<BomDraft>) => {
+    const line = data.items[lineIdx]
+    const newBoms = line.boms.map((b, i) => (i === bomIdx ? { ...b, ...patch } : b))
+    const newCost = computeBomCost(newBoms, materials, components)
+    setData(
+      'items',
+      data.items.map((l, i) =>
+        i === lineIdx
+          ? {
+              ...l,
+              boms: newBoms,
+              unitCost: newCost,
+              unitPrice: computeCustomUnitPrice(newCost, l.profitPctOverride),
+            }
+          : l
+      )
+    )
+  }
+
+  const removeBom = (lineIdx: number, bomIdx: number) => {
+    const line = data.items[lineIdx]
+    const newBoms = line.boms.filter((_, i) => i !== bomIdx)
+    const newCost = computeBomCost(newBoms, materials, components)
+    setData(
+      'items',
+      data.items.map((l, i) =>
+        i === lineIdx
+          ? {
+              ...l,
+              boms: newBoms,
+              unitCost: newCost,
+              unitPrice: computeCustomUnitPrice(newCost, l.profitPctOverride),
+            }
+          : l
+      )
+    )
+  }
+
   const subtotals = data.items.reduce(
     (acc, ln) => {
       const ls = Math.round((ln.qty || 0) * (ln.unitPrice || 0) * 100) / 100
-      const lt = Math.round((ls * (ln.taxRatePct || 0)) / 100 * 100) / 100
+      const lt = Math.round(((ls * (ln.taxRatePct || 0)) / 100) * 100) / 100
       acc.subtotal += ls
       acc.tax += lt
       acc.total += ls + lt
@@ -158,7 +248,10 @@ function NewQuotationDialog({
   )
 
   const removeLine = (idx: number) =>
-    setData('items', data.items.filter((_, i) => i !== idx))
+    setData(
+      'items',
+      data.items.filter((_, i) => i !== idx)
+    )
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -176,17 +269,14 @@ function NewQuotationDialog({
       <DialogTrigger asChild>
         <Button>New quotation</Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-3xl">
+      <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create quotation</DialogTitle>
         </DialogHeader>
-        <form className="flex flex-col gap-3" onSubmit={submit}>
+        <form className="flex flex-col gap-4" onSubmit={submit}>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Customer" error={errors.customerId}>
-              <Select
-                value={data.customerId}
-                onValueChange={(v) => setData('customerId', v)}
-              >
+              <Select value={data.customerId} onValueChange={(v) => setData('customerId', v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Pick customer" />
                 </SelectTrigger>
@@ -208,10 +298,7 @@ function NewQuotationDialog({
             </Field>
           </div>
           <Field label="Note" error={errors.note}>
-            <Input
-              value={data.note}
-              onChange={(e) => setData('note', e.target.value)}
-            />
+            <Input value={data.note} onChange={(e) => setData('note', e.target.value)} />
           </Field>
 
           <div className="rounded border p-3">
@@ -243,7 +330,7 @@ function NewQuotationDialog({
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Description</TableHead>
+                      <TableHead className="min-w-[280px]">Name</TableHead>
                       <TableHead>Qty</TableHead>
                       <TableHead>Unit cost</TableHead>
                       <TableHead>Profit %</TableHead>
@@ -257,69 +344,138 @@ function NewQuotationDialog({
                     {data.items.map((ln, i) => {
                       const isCustom = !ln.productId
                       const ls = Math.round((ln.qty || 0) * (ln.unitPrice || 0) * 100) / 100
-                      const lt =
-                        Math.round((ls * (ln.taxRatePct || 0)) / 100 * 100) / 100
+                      const lt = Math.round(((ls * (ln.taxRatePct || 0)) / 100) * 100) / 100
                       const lto = Math.round((ls + lt) * 100) / 100
                       return (
                         <TableRow key={i}>
-                          <TableCell>
-                            <Input
-                              value={ln.description}
-                              onChange={(e) =>
-                                updateLine(i, { description: e.target.value })
-                              }
-                            />
+                          <TableCell className="align-top">
+                            <div className="flex flex-col gap-3">
+                              <Input
+                                value={ln.name}
+                                placeholder={isCustom ? 'Product name' : ''}
+                                onChange={(e) => updateLine(i, { name: e.target.value })}
+                              />
+                              {isCustom && (
+                                <div className="rounded border bg-muted/30 p-3">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                      BOM Entries
+                                    </span>
+                                    <div className="flex gap-1">
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 text-xs"
+                                        onClick={() => addBom(i, 'material')}
+                                      >
+                                        <Plus className="mr-1 size-3" />
+                                        Material
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 text-xs"
+                                        onClick={() => addBom(i, 'component')}
+                                      >
+                                        <Plus className="mr-1 size-3" />
+                                        Component
+                                      </Button>
+                                    </div>
+                                  </div>
+                                  {ln.boms.length === 0 ? (
+                                    <p className="text-xs text-muted-foreground py-2">
+                                      No materials or components added.
+                                    </p>
+                                  ) : (
+                                    <div className="flex flex-col gap-2">
+                                      {ln.boms.map((bom, bi) => {
+                                        const itemList = bom.itemKind === 'material' ? materials : components
+                                        const item = itemList.find((it) => it.id === bom.itemId)
+                                        const lineCost = bom.qty * (item?.unitCost ?? 0)
+                                        return (
+                                          <div key={bi} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-2">
+                                            <Select
+                                              value={String(bom.itemId)}
+                                              onValueChange={(v) =>
+                                                updateBom(i, bi, { itemId: Number(v) })
+                                              }
+                                            >
+                                              <SelectTrigger className="h-8 text-xs">
+                                                <SelectValue />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                {itemList.map((it) => (
+                                                  <SelectItem key={it.id} value={String(it.id)}>
+                                                    {it.name}
+                                                  </SelectItem>
+                                                ))}
+                                              </SelectContent>
+                                            </Select>
+                                            <Input
+                                              type="number"
+                                              step="0.0001"
+                                              value={bom.qty}
+                                              onChange={(e) =>
+                                                updateBom(i, bi, {
+                                                  qty: Number(e.target.value),
+                                                })
+                                              }
+                                              className="h-8 w-20 text-xs"
+                                            />
+                                            <span className="text-xs text-muted-foreground w-16 text-right">
+                                              ₹{lineCost.toFixed(2)}
+                                            </span>
+                                            <Button
+                                              type="button"
+                                              variant="ghost"
+                                              size="icon"
+                                              className="h-7 w-7"
+                                              onClick={() => removeBom(i, bi)}
+                                            >
+                                              <X className="size-3" />
+                                            </Button>
+                                          </div>
+                                        )
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="align-top">
                             <Input
                               type="number"
                               value={ln.qty}
-                              onChange={(e) =>
-                                updateLine(i, { qty: Number(e.target.value) })
-                              }
+                              onChange={(e) => updateLine(i, { qty: Number(e.target.value) })}
                               className="w-20"
                             />
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="align-top">
                             {isCustom ? (
-                              <Input
-                                type="number"
-                                step="0.0001"
-                                value={ln.unitCost ?? ''}
-                                onChange={(e) => {
-                                  const cost = e.target.value
-                                    ? Number(e.target.value)
-                                    : undefined
-                                  updateLine(i, {
-                                    unitCost: cost,
-                                    unitPrice: computeCustomUnitPrice(
-                                      cost,
-                                      ln.profitPctOverride
-                                    ),
-                                  })
-                                }}
-                                className="w-24"
-                              />
+                              <div className="flex flex-col gap-0.5">
+                                <span className="text-sm tabular-nums">
+                                  ₹{ln.unitCost?.toFixed(2) ?? '0.00'}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground">from BOM</span>
+                              </div>
                             ) : (
                               <span className="text-muted-foreground">—</span>
                             )}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="align-top">
                             {isCustom ? (
                               <Input
                                 type="number"
                                 step="0.01"
                                 value={ln.profitPctOverride ?? ''}
                                 onChange={(e) => {
-                                  const profit = e.target.value
-                                    ? Number(e.target.value)
-                                    : undefined
+                                  const profit = e.target.value ? Number(e.target.value) : undefined
                                   updateLine(i, {
                                     profitPctOverride: profit,
-                                    unitPrice: computeCustomUnitPrice(
-                                      ln.unitCost,
-                                      profit
-                                    ),
+                                    unitPrice: computeCustomUnitPrice(ln.unitCost, profit),
                                   })
                                 }}
                                 className="w-20"
@@ -328,7 +484,7 @@ function NewQuotationDialog({
                               <span className="text-muted-foreground">—</span>
                             )}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="align-top">
                             <Input
                               type="number"
                               step="0.0001"
@@ -337,15 +493,13 @@ function NewQuotationDialog({
                               readOnly={isCustom}
                               onChange={(e) =>
                                 updateLine(i, {
-                                  unitPrice: e.target.value
-                                    ? Number(e.target.value)
-                                    : undefined,
+                                  unitPrice: e.target.value ? Number(e.target.value) : undefined,
                                 })
                               }
                               className="w-28"
                             />
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="align-top">
                             <Input
                               type="number"
                               step="0.01"
@@ -356,10 +510,10 @@ function NewQuotationDialog({
                               className="w-20"
                             />
                           </TableCell>
-                          <TableCell className="text-right tabular-nums">
+                          <TableCell className="align-top text-right tabular-nums">
                             ₹{lto.toFixed(2)}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="align-top">
                             <Button
                               type="button"
                               variant="destructive-soft"
@@ -397,9 +551,7 @@ function NewQuotationDialog({
             <Button
               type="submit"
               variant="success"
-              disabled={
-                processing || !data.customerId || data.items.length === 0
-              }
+              disabled={processing || !data.customerId || data.items.length === 0}
             >
               {processing ? 'Saving…' : 'Create draft'}
             </Button>
@@ -442,13 +594,17 @@ export default function QuotationsIndex({
   quotations,
   customers,
   products,
+  materials,
+  components,
   filters,
 }: PageProps) {
   // Use router for type checking suppression
   void router
   const { isVisible, toggle, reset } = useColumnVisibility('quotations')
   const totalValue = quotations.reduce((s, q) => s + Number(q.total || 0), 0)
-  const accepted = quotations.filter((q) => q.status === 'accepted' || q.status === 'converted').length
+  const accepted = quotations.filter(
+    (q) => q.status === 'accepted' || q.status === 'converted'
+  ).length
   const draftSent = quotations.filter((q) => q.status === 'draft' || q.status === 'sent').length
   return (
     <div className="flex w-full flex-col gap-6 px-6 py-8">
@@ -457,7 +613,12 @@ export default function QuotationsIndex({
           <h1 className="text-2xl font-semibold">Quotations</h1>
         </div>
         <div className="flex items-center gap-2">
-          <NewQuotationDialog customers={customers} products={products} />
+          <NewQuotationDialog
+            customers={customers}
+            products={products}
+            materials={materials}
+            components={components}
+          />
         </div>
       </div>
 
@@ -517,9 +678,7 @@ export default function QuotationsIndex({
                   {isVisible('status') && <TableHead>Status</TableHead>}
                   {isVisible('issued') && <TableHead>Issued</TableHead>}
                   {isVisible('validUntil') && <TableHead>Valid until</TableHead>}
-                  {isVisible('total') && (
-                    <TableHead className="text-right">Total</TableHead>
-                  )}
+                  {isVisible('total') && <TableHead className="text-right">Total</TableHead>}
                   {isVisible('actions') && (
                     <TableHead className="w-20 text-right">
                       <ColumnVisibilityMenu
@@ -551,17 +710,10 @@ export default function QuotationsIndex({
                     {isVisible('validUntil') && (
                       <TableCell>{q.validUntil?.slice(0, 10) ?? '—'}</TableCell>
                     )}
-                    {isVisible('total') && (
-                      <TableCell className="text-right">{q.total}</TableCell>
-                    )}
+                    {isVisible('total') && <TableCell className="text-right">{q.total}</TableCell>}
                     {isVisible('actions') && (
                       <TableCell className="text-right">
-                        <Button
-                          asChild
-                          variant="ghost"
-                          size="icon"
-                          aria-label="Open quotation"
-                        >
+                        <Button asChild variant="ghost" size="icon" aria-label="Open quotation">
                           <Link href={`/quotations/${q.id}`}>
                             <ExternalLink className="size-4" />
                           </Link>

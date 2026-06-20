@@ -99,7 +99,7 @@ function NewMaterialDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
           <DialogTitle>Create material</DialogTitle>
         </DialogHeader>
         <form
-          className="flex flex-col gap-3"
+          className="flex flex-col gap-4"
           onSubmit={(e) => {
             e.preventDefault()
             transform((d) => {
@@ -131,27 +131,31 @@ function NewMaterialDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
           }}
         >
           <InlineImagePicker file={imageFile} onChange={setImageFile} />
-          <Field label="SKU" error={errors.sku}>
-            <Input value={data.sku} onChange={(e) => setData('sku', e.target.value)} />
-          </Field>
-          <Field label="Name" error={errors.name}>
-            <Input value={data.name} onChange={(e) => setData('name', e.target.value)} />
-          </Field>
-          <Field label="Type" error={errors.type}>
-            <Select value={data.type} onValueChange={(v) => setData('type', v)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="filament">Filament</SelectItem>
-                <SelectItem value="resin">Resin</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
-              </SelectContent>
-            </Select>
-          </Field>
-          <Field label="Unit of measure" error={errors.unit}>
-            <UnitPicker value={data.unit} onChange={(v) => setData('unit', v)} />
-          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="SKU" error={errors.sku}>
+              <Input value={data.sku} onChange={(e) => setData('sku', e.target.value)} />
+            </Field>
+            <Field label="Name" error={errors.name}>
+              <Input value={data.name} onChange={(e) => setData('name', e.target.value)} />
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Type" error={errors.type}>
+              <Select value={data.type} onValueChange={(v) => setData('type', v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="filament">Filament</SelectItem>
+                  <SelectItem value="resin">Resin</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Unit of measure" error={errors.unit}>
+              <UnitPicker value={data.unit} onChange={(v) => setData('unit', v)} />
+            </Field>
+          </div>
           <Field label="Default supplier" error={errors.defaultSupplierId}>
             <Select
               value={data.defaultSupplierId}
@@ -169,28 +173,30 @@ function NewMaterialDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
               </SelectContent>
             </Select>
           </Field>
-          <Field
-            label={`Default unit cost (per ${data.unit || 'unit'})`}
-            error={errors.defaultUnitCost}
-          >
-            <Input
-              type="number"
-              step="0.0001"
-              value={data.defaultUnitCost}
-              onChange={(e) => setData('defaultUnitCost', Number(e.target.value))}
-            />
-          </Field>
-          <Field
-            label={`Reorder threshold (${data.unit || 'unit'})`}
-            error={errors.reorderThresholdG}
-          >
-            <Input
-              type="number"
-              step="0.001"
-              value={data.reorderThresholdG}
-              onChange={(e) => setData('reorderThresholdG', e.target.value)}
-            />
-          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field
+              label={`Default unit cost (per ${data.unit || 'unit'})`}
+              error={errors.defaultUnitCost}
+            >
+              <Input
+                type="number"
+                step="0.0001"
+                value={data.defaultUnitCost}
+                onChange={(e) => setData('defaultUnitCost', Number(e.target.value))}
+              />
+            </Field>
+            <Field
+              label={`Reorder threshold (${data.unit || 'unit'})`}
+              error={errors.reorderThresholdG}
+            >
+              <Input
+                type="number"
+                step="0.001"
+                value={data.reorderThresholdG}
+                onChange={(e) => setData('reorderThresholdG', e.target.value)}
+              />
+            </Field>
+          </div>
           <DialogFooter>
             <Button type="submit" disabled={processing}>
               {processing ? 'Saving…' : 'Create'}
