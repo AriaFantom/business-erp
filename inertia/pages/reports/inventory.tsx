@@ -1,4 +1,5 @@
 import { type ReactElement } from 'react'
+import { CartesianGrid, Scatter, ScatterChart, XAxis, YAxis, ZAxis } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
@@ -8,7 +9,26 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  type ChartConfig,
+} from '@/components/ui/chart'
 import DashboardLayout from '@/layouts/dashboard-layout'
+
+type StockMovementPoint = {
+  ts: number
+  date: string
+  qty: number
+  absQty: number
+  direction: 'in' | 'out'
+  itemKind: string
+  itemId: number
+  name: string
+  reason: string
+}
 
 type Report = {
   totalValuation: number
@@ -21,9 +41,32 @@ type Report = {
     qty: string
     threshold: string | null
   }>
+  movements: StockMovementPoint[]
 }
 
 type PageProps = { report: Report }
+
+const movementConfig = {
+  in: { label: 'Inbound', color: '#059669' },
+  out: { label: 'Outbound', color: '#e11d48' },
+} satisfies ChartConfig
+
+function MovementTooltip({ active, payload }: any) {
+  if (!active || !payload?.length) return null
+  const p = payload[0].payload as StockMovementPoint
+  return (
+    <div className="rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
+      <div className="font-medium">{p.name}</div>
+      <div className="text-muted-foreground">
+        {new Date(p.ts).toLocaleString()} · {p.reason}
+      </div>
+      <div className="font-mono">
+        {p.qty > 0 ? '+' : ''}
+        {p.qty} ({p.direction})
+      </div>
+    </div>
+  )
+}
 
 export default function InventoryReport({ report }: PageProps) {
   return (
@@ -46,10 +89,62 @@ export default function InventoryReport({ report }: PageProps) {
             <dt className="text-muted-foreground">Components</dt>
             <dd className="text-right">₹{report.byKind.component.toFixed(2)}</dd>
             <dt className="font-medium">Total</dt>
-            <dd className="text-right font-medium">
-              ₹{report.totalValuation.toFixed(2)}
-            </dd>
+            <dd className="text-right font-medium">₹{report.totalValuation.toFixed(2)}</dd>
           </dl>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Stock movements ({report.movements.length})</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Largest inbound and outbound movements over time — highest data points stand out by
+            magnitude.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {report.movements.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No stock movements recorded yet.</p>
+          ) : (
+            <ChartContainer config={movementConfig} className="!aspect-auto h-[320px] w-full">
+              <ScatterChart margin={{ left: 8, right: 12, top: 8, bottom: 8 }}>
+                <CartesianGrid />
+                <XAxis
+                  type="number"
+                  dataKey="ts"
+                  name="Time"
+                  domain={['dataMin', 'dataMax']}
+                  tickFormatter={(v) => new Date(v).toLocaleDateString()}
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fontSize: 11 }}
+                />
+                <YAxis
+                  type="number"
+                  dataKey="qty"
+                  name="Qty"
+                  tickLine={false}
+                  axisLine={false}
+                  width={56}
+                />
+                <ZAxis type="number" dataKey="absQty" range={[40, 400]} name="Magnitude" />
+                <ChartTooltip cursor={{ strokeDasharray: '3 3' }} content={<MovementTooltip />} />
+                <ChartLegend content={<ChartLegendContent nameKey="direction" />} />
+                <Scatter
+                  name="in"
+                  data={report.movements.filter((m) => m.direction === 'in')}
+                  fill="var(--color-in)"
+                  fillOpacity={0.7}
+                />
+                <Scatter
+                  name="out"
+                  data={report.movements.filter((m) => m.direction === 'out')}
+                  fill="var(--color-out)"
+                  fillOpacity={0.7}
+                />
+              </ScatterChart>
+            </ChartContainer>
+          )}
         </CardContent>
       </Card>
 

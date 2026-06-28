@@ -72,4 +72,17 @@ export default await Env.create(new URL('../', import.meta.url), {
   REDIS_HOST: Env.schema.string({ format: 'host' }),
   REDIS_PORT: Env.schema.number(),
   REDIS_PASSWORD: Env.schema.secret.optional(),
+
+  /*
+  |----------------------------------------------------------
+  | InfluxDB — time-series store for dashboard/analytics metrics.
+  | When INFLUX_ENABLED is false the app runs without it (charts
+  | render empty states). See app/services/influx_service.ts.
+  |----------------------------------------------------------
+  */
+  INFLUX_ENABLED: Env.schema.boolean.optional(),
+  INFLUX_URL: Env.schema.string.optional(),
+  INFLUX_TOKEN: Env.schema.secret.optional(),
+  INFLUX_ORG: Env.schema.string.optional(),
+  INFLUX_BUCKET: Env.schema.string.optional(),
 })

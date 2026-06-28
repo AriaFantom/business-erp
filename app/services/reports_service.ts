@@ -6,6 +6,16 @@ import Material from '#models/material'
 import Component from '#models/component'
 import ProductionJob from '#models/production_job'
 import Product from '#models/product'
+import { queryDashboardSeries } from '#services/metrics_service'
+
+export type TopProfitProduct = {
+  productId: number
+  name: string
+  revenue: number
+  cost: number
+  profit: number
+  marginPct: number
+}
 
 export type ProfitReport = {
   from: string
@@ -15,27 +25,106 @@ export type ProfitReport = {
   profit: number
   invoiceCount: number
   productionCost: number
+  expenses: number
+  grossMarginPct: number
+  topProfitProducts: TopProfitProduct[]
+  profitTrend: { month: string; revenue: number; cost: number; profit: number }[]
 }
 
 /**
  * Profit report: revenue from non-void invoices issued in [from, to] minus
- * production cost incurred for completed jobs in the same window. Coarse
- * but useful — refined cost-attribution would tie sales to specific jobs,
- * which v1 deliberately skips.
+ * production cost incurred for completed jobs in the same window.
+ *
+ * On top of the headline numbers it now surfaces:
+ *  - total expenses booked in the window and the gross margin %,
+ *  - per-product profit attribution ("highest making profit"): per-product
+ *    sale_items revenue minus per-product completed-job production cost. This
+ *    is an approximation (sale revenue vs production cost are tracked on
+ *    different documents), so it won't reconcile to the invoice-based headline
+ *    revenue exactly — it ranks which products contribute most profit.
+ *  - a monthly profit trend read from the InfluxDB metrics store.
  */
 export async function buildProfitReport(from: DateTime, to: DateTime): Promise<ProfitReport> {
+  const fromSql = from.toSQL()!
+  const toSql = to.toSQL()!
+
   const invoices = await Invoice.query()
-    .where('issued_at', '>=', from.toSQL()!)
-    .where('issued_at', '<=', to.toSQL()!)
+    .where('issued_at', '>=', fromSql)
+    .where('issued_at', '<=', toSql)
     .whereNot('status', 'void')
 
   const revenue = invoices.reduce((s, i) => s + Number(i.total), 0)
 
   const completedJobs = await ProductionJob.query()
     .where('status', 'completed')
-    .where('completed_at', '>=', from.toSQL()!)
-    .where('completed_at', '<=', to.toSQL()!)
+    .where('completed_at', '>=', fromSql)
+    .where('completed_at', '<=', toSql)
   const productionCost = completedJobs.reduce((s, j) => s + Number(j.totalCost), 0)
+
+  // Total expenses booked in the window.
+  const expenseRows = await db
+    .from('expenses')
+    .whereBetween('incurred_at', [fromSql, toSql])
+    .sum('amount as v')
+  const expenses = Number(expenseRows?.[0]?.v ?? 0)
+
+  // Per-product revenue (confirmed sale_items) and cost (completed jobs).
+  const [revByProduct, costByProduct, products] = await Promise.all([
+    db
+      .from('sale_items as si')
+      .join('sales as s', 's.id', 'si.sale_id')
+      .where('s.status', 'confirmed')
+      .whereBetween('s.confirmed_at', [fromSql, toSql])
+      .groupBy('si.product_id')
+      .select('si.product_id as productId')
+      .sum('si.line_total as revenue'),
+    db
+      .from('production_jobs')
+      .where('status', 'completed')
+      .whereBetween('completed_at', [fromSql, toSql])
+      .groupBy('product_id')
+      .select('product_id as productId')
+      .sum('total_cost as cost'),
+    Product.query(),
+  ])
+
+  const pById = new Map(products.map((p) => [p.id, p]))
+  const profitMap = new Map<number, TopProfitProduct>()
+  const ensure = (id: number): TopProfitProduct => {
+    let row = profitMap.get(id)
+    if (!row) {
+      row = {
+        productId: id,
+        name: pById.get(id)?.name ?? '—',
+        revenue: 0,
+        cost: 0,
+        profit: 0,
+        marginPct: 0,
+      }
+      profitMap.set(id, row)
+    }
+    return row
+  }
+  for (const r of revByProduct as any[]) {
+    if (r.productId === null) continue
+    ensure(Number(r.productId)).revenue = Number(r.revenue)
+  }
+  for (const r of costByProduct as any[]) {
+    if (r.productId === null) continue
+    ensure(Number(r.productId)).cost = Number(r.cost)
+  }
+  const topProfitProducts = [...profitMap.values()]
+    .map((r) => ({
+      ...r,
+      revenue: round2(r.revenue),
+      cost: round2(r.cost),
+      profit: round2(r.revenue - r.cost),
+      marginPct: r.revenue > 0 ? round2(((r.revenue - r.cost) / r.revenue) * 100) : 0,
+    }))
+    .sort((a, b) => b.profit - a.profit)
+    .slice(0, 10)
+
+  const series = await queryDashboardSeries(from, to)
 
   return {
     from: from.toISO()!,
@@ -45,7 +134,23 @@ export async function buildProfitReport(from: DateTime, to: DateTime): Promise<P
     profit: round2(revenue - productionCost),
     invoiceCount: invoices.length,
     productionCost: round2(productionCost),
+    expenses: round2(expenses),
+    grossMarginPct: revenue > 0 ? round2(((revenue - productionCost) / revenue) * 100) : 0,
+    topProfitProducts,
+    profitTrend: series.profitTrend,
   }
+}
+
+export type StockMovementPoint = {
+  ts: number
+  date: string
+  qty: number
+  absQty: number
+  direction: 'in' | 'out'
+  itemKind: string
+  itemId: number
+  name: string
+  reason: string
 }
 
 export type InventoryReport = {
@@ -59,6 +164,7 @@ export type InventoryReport = {
     threshold: string | null
   }>
   byKind: { material: number; component: number }
+  movements: StockMovementPoint[]
 }
 
 export async function buildInventoryReport(): Promise<InventoryReport> {
@@ -107,10 +213,42 @@ export async function buildInventoryReport(): Promise<InventoryReport> {
     }
   }
 
+  // Largest-magnitude stock movements (in and out), for the scatter plot.
+  const movementRows = await db
+    .from('stock_movements')
+    .select(
+      'item_kind as itemKind',
+      'item_id as itemId',
+      'qty',
+      'reason',
+      'created_at as createdAt'
+    )
+    .orderByRaw('ABS(qty) DESC')
+    .limit(200)
+
+  const movements: StockMovementPoint[] = movementRows.map((r: any) => {
+    const qty = Number(r.qty)
+    const item =
+      r.itemKind === 'material' ? matById.get(Number(r.itemId)) : compById.get(Number(r.itemId))
+    const created = r.createdAt instanceof Date ? r.createdAt : new Date(r.createdAt)
+    return {
+      ts: created.getTime(),
+      date: created.toISOString(),
+      qty: round4(qty),
+      absQty: round4(Math.abs(qty)),
+      direction: qty >= 0 ? 'in' : 'out',
+      itemKind: r.itemKind,
+      itemId: Number(r.itemId),
+      name: item?.name ?? `${r.itemKind} #${r.itemId}`,
+      reason: r.reason,
+    }
+  })
+
   return {
     totalValuation: round2(total),
     lowStock,
     byKind: { material: round2(matVal), component: round2(compVal) },
+    movements,
   }
 }
 

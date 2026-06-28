@@ -13,8 +13,8 @@ import { Label } from '@/components/ui/label'
 
 export default function Login() {
   return (
-    <div className="mx-auto flex w-full max-w-md flex-col px-4 py-12">
-      <Card>
+    <div className="flex min-h-screen w-full items-center justify-center px-4 py-12">
+      <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Login</CardTitle>
           <CardDescription>Enter your details below to login to your account</CardDescription>
@@ -49,8 +49,8 @@ export default function Login() {
                   {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
                 </div>
               </CardContent>
-              <CardFooter className="flex justify-end">
-                <Button type="submit" disabled={processing}>
+              <CardFooter className="pt-2">
+                <Button type="submit" className="w-full" disabled={processing}>
                   {processing ? 'Signing in…' : 'Login'}
                 </Button>
               </CardFooter>

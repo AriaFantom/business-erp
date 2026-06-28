@@ -33,8 +33,8 @@ export default function Invitation({
       : `You've been invited to join as ${role}.`
 
   return (
-    <div className="mx-auto flex w-full max-w-lg flex-col px-4 py-12">
-      <Card>
+    <div className="flex min-h-screen w-full items-center justify-center px-4 py-12">
+      <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>{heading}</CardTitle>
           <CardDescription>{description}</CardDescription>
@@ -101,8 +101,8 @@ export default function Invitation({
                   />
                 </div>
               </CardContent>
-              <CardFooter className="flex justify-end">
-                <Button type="submit" disabled={processing}>
+              <CardFooter className="pt-2">
+                <Button type="submit" className="w-full" disabled={processing}>
                   {processing ? 'Creating account…' : 'Create account'}
                 </Button>
               </CardFooter>
