@@ -108,6 +108,18 @@ const routes = {
     tokens: [{"old":"/roles/:id/delete","type":0,"val":"roles","end":""},{"old":"/roles/:id/delete","type":1,"val":"id","end":""},{"old":"/roles/:id/delete","type":0,"val":"delete","end":""}],
     types: placeholder as Registry['roles.destroy']['types'],
   },
+  'settings.modules': {
+    methods: ["GET","HEAD"],
+    pattern: '/system/modules',
+    tokens: [{"old":"/system/modules","type":0,"val":"system","end":""},{"old":"/system/modules","type":0,"val":"modules","end":""}],
+    types: placeholder as Registry['settings.modules']['types'],
+  },
+  'settings.modules.update': {
+    methods: ["POST"],
+    pattern: '/system/modules',
+    tokens: [{"old":"/system/modules","type":0,"val":"system","end":""},{"old":"/system/modules","type":0,"val":"modules","end":""}],
+    types: placeholder as Registry['settings.modules.update']['types'],
+  },
   'profile.show': {
     methods: ["GET","HEAD"],
     pattern: '/profile',

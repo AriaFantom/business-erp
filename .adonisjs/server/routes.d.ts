@@ -21,6 +21,8 @@ export type ScannedRoutes = {
     'invitations.revoke': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'roles.store': { paramsTuple?: []; params?: {} }
     'roles.destroy': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'settings.modules': { paramsTuple?: []; params?: {} }
+    'settings.modules.update': { paramsTuple?: []; params?: {} }
     'profile.show': { paramsTuple?: []; params?: {} }
     'profile.update': { paramsTuple?: []; params?: {} }
     'profile.avatar.update': { paramsTuple?: []; params?: {} }
@@ -132,6 +134,7 @@ export type ScannedRoutes = {
     'system.roles': { paramsTuple?: []; params?: {} }
     'system.invitations': { paramsTuple?: []; params?: {} }
     'system.users': { paramsTuple?: []; params?: {} }
+    'settings.modules': { paramsTuple?: []; params?: {} }
     'profile.show': { paramsTuple?: []; params?: {} }
     'suppliers.index': { paramsTuple?: []; params?: {} }
     'customers.index': { paramsTuple?: []; params?: {} }
@@ -174,6 +177,7 @@ export type ScannedRoutes = {
     'system.roles': { paramsTuple?: []; params?: {} }
     'system.invitations': { paramsTuple?: []; params?: {} }
     'system.users': { paramsTuple?: []; params?: {} }
+    'settings.modules': { paramsTuple?: []; params?: {} }
     'profile.show': { paramsTuple?: []; params?: {} }
     'suppliers.index': { paramsTuple?: []; params?: {} }
     'customers.index': { paramsTuple?: []; params?: {} }
@@ -217,6 +221,7 @@ export type ScannedRoutes = {
     'invitations.revoke': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'roles.store': { paramsTuple?: []; params?: {} }
     'roles.destroy': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'settings.modules.update': { paramsTuple?: []; params?: {} }
     'profile.update': { paramsTuple?: []; params?: {} }
     'profile.avatar.update': { paramsTuple?: []; params?: {} }
     'profile.avatar.destroy': { paramsTuple?: []; params?: {} }

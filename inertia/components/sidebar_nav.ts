@@ -13,6 +13,7 @@ import {
   Settings2,
   ShieldCheck,
   ShoppingCart,
+  SlidersHorizontal,
   Store,
   Tags,
   Truck,
@@ -28,6 +29,8 @@ export type NavItem = {
   icon: LucideIcon
   /** When set, item is hidden unless `user.permissions` includes this key. */
   permission?: string
+  /** When set, item is hidden unless this module is enabled for the install. */
+  module?: string
   children?: NavItem[]
 }
 
@@ -47,18 +50,21 @@ export const navItems: NavItem[] = [
         url: '/reports/profit',
         icon: ClipboardList,
         permission: 'reports.view',
+        module: 'reports',
       },
       {
         title: 'Inventory Report',
         url: '/reports/inventory',
         icon: Warehouse,
         permission: 'reports.view',
+        module: 'reports',
       },
       {
         title: 'Jobs Report',
         url: '/reports/jobs',
         icon: Factory,
         permission: 'reports.view',
+        module: 'reports',
       },
     ],
   },
@@ -103,18 +109,21 @@ export const navItems: NavItem[] = [
         url: '/suppliers',
         icon: Truck,
         permission: 'suppliers.view',
+        module: 'purchase',
       },
       {
         title: 'Purchases',
         url: '/purchases',
         icon: ShoppingCart,
         permission: 'purchases.view',
+        module: 'purchase',
       },
       {
         title: 'Inventory',
         url: '/inventory',
         icon: Warehouse,
         permission: 'inventory.view',
+        module: 'inventory',
       },
     ],
   },
@@ -128,12 +137,14 @@ export const navItems: NavItem[] = [
         url: '/jobs',
         icon: Factory,
         permission: 'jobs.view',
+        module: 'manufacturing',
       },
       {
         title: 'Machines',
         url: '/machines',
         icon: MachineIcon,
         permission: 'machines.view',
+        module: 'machines',
       },
     ],
   },
@@ -147,30 +158,35 @@ export const navItems: NavItem[] = [
         url: '/pos',
         icon: Store,
         permission: 'pos.view',
+        module: 'pos',
       },
       {
         title: 'Quotations',
         url: '/quotations',
         icon: FileText,
         permission: 'quotations.view',
+        module: 'quotations',
       },
       {
         title: 'Sales',
         url: '/sales',
         icon: ScrollText,
         permission: 'sales.view',
+        module: 'sales',
       },
       {
         title: 'Invoices',
         url: '/invoices',
         icon: Receipt,
         permission: 'invoices.view',
+        module: 'invoices',
       },
       {
         title: 'Customers',
         url: '/customers',
         icon: UserSquare,
         permission: 'customers.view',
+        module: 'sales',
       },
     ],
   },
@@ -196,6 +212,12 @@ export const navItems: NavItem[] = [
         url: '/system/users',
         icon: Users,
         permission: 'users.view',
+      },
+      {
+        title: 'Modules',
+        url: '/system/modules',
+        icon: SlidersHorizontal,
+        permission: 'settings.view',
       },
     ],
   },

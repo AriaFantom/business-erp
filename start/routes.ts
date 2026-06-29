@@ -32,6 +32,7 @@ const SalesController = () => import('#controllers/sales_controller')
 const InvoicesController = () => import('#controllers/invoices_controller')
 const ReportsController = () => import('#controllers/reports_controller')
 const PosController = () => import('#controllers/pos_controller')
+const SettingsController = () => import('#controllers/settings_controller')
 const RootController = () => import('#controllers/root_controller')
 
 router.get('/health', ({ response }) => response.ok({ status: 'ok' })).as('health')
@@ -70,6 +71,12 @@ router
       .as('invitations.revoke')
     router.post('roles', [RolesController, 'store']).as('roles.store')
     router.post('roles/:id/delete', [RolesController, 'destroy']).as('roles.destroy')
+
+    // Module enable/disable settings (always-on core — never module-gated).
+    router.get('system/modules', [SettingsController, 'showModules']).as('settings.modules')
+    router
+      .post('system/modules', [SettingsController, 'updateModules'])
+      .as('settings.modules.update')
     router.get('profile', [ProfileController, 'show']).as('profile.show')
     router.post('profile', [ProfileController, 'update']).as('profile.update')
     router.post('profile/avatar', [ProfileController, 'updateAvatar']).as('profile.avatar.update')
@@ -77,16 +84,29 @@ router
       .post('profile/avatar/delete', [ProfileController, 'destroyAvatar'])
       .as('profile.avatar.destroy')
 
-    // ── Suppliers / Customers ─────────────────────────────────────────
-    router.get('suppliers', [SuppliersController, 'index']).as('suppliers.index')
-    router.post('suppliers', [SuppliersController, 'store']).as('suppliers.store')
-    router.post('suppliers/:id', [SuppliersController, 'update']).as('suppliers.update')
-    router.post('suppliers/:id/archive', [SuppliersController, 'archive']).as('suppliers.archive')
+    // ── Suppliers (Purchase module) ───────────────────────────────────
+    router
+      .group(() => {
+        router.get('suppliers', [SuppliersController, 'index']).as('suppliers.index')
+        router.post('suppliers', [SuppliersController, 'store']).as('suppliers.store')
+        router.post('suppliers/:id', [SuppliersController, 'update']).as('suppliers.update')
+        router
+          .post('suppliers/:id/archive', [SuppliersController, 'archive'])
+          .as('suppliers.archive')
+      })
+      .use(middleware.module({ module: 'purchase' }))
 
-    router.get('customers', [CustomersController, 'index']).as('customers.index')
-    router.post('customers', [CustomersController, 'store']).as('customers.store')
-    router.post('customers/:id', [CustomersController, 'update']).as('customers.update')
-    router.post('customers/:id/archive', [CustomersController, 'archive']).as('customers.archive')
+    // ── Customers (Sales module) ──────────────────────────────────────
+    router
+      .group(() => {
+        router.get('customers', [CustomersController, 'index']).as('customers.index')
+        router.post('customers', [CustomersController, 'store']).as('customers.store')
+        router.post('customers/:id', [CustomersController, 'update']).as('customers.update')
+        router
+          .post('customers/:id/archive', [CustomersController, 'archive'])
+          .as('customers.archive')
+      })
+      .use(middleware.module({ module: 'sales' }))
 
     // ── Catalog ───────────────────────────────────────────────────────
     router.get('catalog/materials', [MaterialsController, 'index']).as('materials.index')
@@ -186,80 +206,126 @@ router
       .as('product_categories.restore')
 
     // ── Inventory ─────────────────────────────────────────────────────
-    router.get('inventory', [InventoryController, 'index']).as('inventory.index')
-    router.post('inventory/adjustments', [InventoryController, 'adjust']).as('inventory.adjust')
+    router
+      .group(() => {
+        router.get('inventory', [InventoryController, 'index']).as('inventory.index')
+        router.post('inventory/adjustments', [InventoryController, 'adjust']).as('inventory.adjust')
+      })
+      .use(middleware.module({ module: 'inventory' }))
 
     // ── Purchases ─────────────────────────────────────────────────────
-    router.get('purchases', [PurchasesController, 'index']).as('purchases.index')
-    router.get('purchases/:id', [PurchasesController, 'show']).as('purchases.show')
-    router.post('purchases', [PurchasesController, 'store']).as('purchases.store')
-    router.post('purchases/:id/confirm', [PurchasesController, 'confirm']).as('purchases.confirm')
-    router.post('purchases/:id/cancel', [PurchasesController, 'cancel']).as('purchases.cancel')
+    router
+      .group(() => {
+        router.get('purchases', [PurchasesController, 'index']).as('purchases.index')
+        router.get('purchases/:id', [PurchasesController, 'show']).as('purchases.show')
+        router.post('purchases', [PurchasesController, 'store']).as('purchases.store')
+        router
+          .post('purchases/:id/confirm', [PurchasesController, 'confirm'])
+          .as('purchases.confirm')
+        router.post('purchases/:id/cancel', [PurchasesController, 'cancel']).as('purchases.cancel')
+      })
+      .use(middleware.module({ module: 'purchase' }))
 
-    // ── Production jobs ───────────────────────────────────────────────
-    router.get('jobs', [JobsController, 'index']).as('jobs.index')
-    router.get('jobs/:id', [JobsController, 'show']).as('jobs.show')
-    router.post('jobs', [JobsController, 'store']).as('jobs.store')
-    router.post('jobs/:id/start', [JobsController, 'start']).as('jobs.start')
-    router.post('jobs/:id/pause', [JobsController, 'pause']).as('jobs.pause')
-    router.post('jobs/:id/resume', [JobsController, 'resume']).as('jobs.resume')
-    router.post('jobs/:id/skip-stage', [JobsController, 'skipStage']).as('jobs.skipStage')
-    router.post('jobs/:id/consumptions', [JobsController, 'consume']).as('jobs.consume')
-    router.post('jobs/:id/expenses', [JobsController, 'addExpense']).as('jobs.expense')
-    router.post('jobs/:id/confirm', [JobsController, 'confirm']).as('jobs.confirm')
-    router.post('jobs/:id/fail', [JobsController, 'fail']).as('jobs.fail')
-    router.post('jobs/:id/cancel', [JobsController, 'cancel']).as('jobs.cancel')
+    // ── Production jobs (Manufacturing module) ────────────────────────
+    router
+      .group(() => {
+        router.get('jobs', [JobsController, 'index']).as('jobs.index')
+        router.get('jobs/:id', [JobsController, 'show']).as('jobs.show')
+        router.post('jobs', [JobsController, 'store']).as('jobs.store')
+        router.post('jobs/:id/start', [JobsController, 'start']).as('jobs.start')
+        router.post('jobs/:id/pause', [JobsController, 'pause']).as('jobs.pause')
+        router.post('jobs/:id/resume', [JobsController, 'resume']).as('jobs.resume')
+        router.post('jobs/:id/skip-stage', [JobsController, 'skipStage']).as('jobs.skipStage')
+        router.post('jobs/:id/consumptions', [JobsController, 'consume']).as('jobs.consume')
+        router.post('jobs/:id/expenses', [JobsController, 'addExpense']).as('jobs.expense')
+        router.post('jobs/:id/confirm', [JobsController, 'confirm']).as('jobs.confirm')
+        router.post('jobs/:id/fail', [JobsController, 'fail']).as('jobs.fail')
+        router.post('jobs/:id/cancel', [JobsController, 'cancel']).as('jobs.cancel')
+      })
+      .use(middleware.module({ module: 'manufacturing' }))
 
     // ── Machines ──────────────────────────────────────────────────────
-    router.get('machines', [MachinesController, 'index']).as('machines.index')
-    router.get('machines/new', [MachinesController, 'create']).as('machines.new')
-    router.post('machines', [MachinesController, 'store']).as('machines.store')
-    router.get('machines/:id', [MachinesController, 'show']).as('machines.show')
-    router.post('machines/:id', [MachinesController, 'update']).as('machines.update')
-    router.post('machines/:id/retire', [MachinesController, 'retire']).as('machines.retire')
     router
-      .post('machines/:id/maintenance', [MachinesController, 'toggleMaintenance'])
-      .as('machines.maintenance')
-    router.post('machines/:id/expense', [MachinesController, 'addExpense']).as('machines.expense')
+      .group(() => {
+        router.get('machines', [MachinesController, 'index']).as('machines.index')
+        router.get('machines/new', [MachinesController, 'create']).as('machines.new')
+        router.post('machines', [MachinesController, 'store']).as('machines.store')
+        router.get('machines/:id', [MachinesController, 'show']).as('machines.show')
+        router.post('machines/:id', [MachinesController, 'update']).as('machines.update')
+        router.post('machines/:id/retire', [MachinesController, 'retire']).as('machines.retire')
+        router
+          .post('machines/:id/maintenance', [MachinesController, 'toggleMaintenance'])
+          .as('machines.maintenance')
+        router
+          .post('machines/:id/expense', [MachinesController, 'addExpense'])
+          .as('machines.expense')
+      })
+      .use(middleware.module({ module: 'machines' }))
 
     // ── Quotations ────────────────────────────────────────────────────
-    router.get('quotations', [QuotationsController, 'index']).as('quotations.index')
-    router.get('quotations/:id', [QuotationsController, 'show']).as('quotations.show')
-    router.post('quotations', [QuotationsController, 'store']).as('quotations.store')
-    router.post('quotations/:id/send', [QuotationsController, 'send']).as('quotations.send')
-    router.post('quotations/:id/accept', [QuotationsController, 'accept']).as('quotations.accept')
-    router.post('quotations/:id/reject', [QuotationsController, 'reject']).as('quotations.reject')
     router
-      .post('quotations/:id/convert', [QuotationsController, 'convert'])
-      .as('quotations.convert')
-    router
-      .post('quotations/suggest-price', [QuotationsController, 'suggestPrice'])
-      .as('quotations.suggest_price')
-    router
-      .get('quotations/:id/download', [QuotationsController, 'download'])
-      .as('quotations.download')
+      .group(() => {
+        router.get('quotations', [QuotationsController, 'index']).as('quotations.index')
+        router.get('quotations/:id', [QuotationsController, 'show']).as('quotations.show')
+        router.post('quotations', [QuotationsController, 'store']).as('quotations.store')
+        router.post('quotations/:id/send', [QuotationsController, 'send']).as('quotations.send')
+        router
+          .post('quotations/:id/accept', [QuotationsController, 'accept'])
+          .as('quotations.accept')
+        router
+          .post('quotations/:id/reject', [QuotationsController, 'reject'])
+          .as('quotations.reject')
+        router
+          .post('quotations/:id/convert', [QuotationsController, 'convert'])
+          .as('quotations.convert')
+        router
+          .post('quotations/suggest-price', [QuotationsController, 'suggestPrice'])
+          .as('quotations.suggest_price')
+        router
+          .get('quotations/:id/download', [QuotationsController, 'download'])
+          .as('quotations.download')
+      })
+      .use(middleware.module({ module: 'quotations' }))
 
     // ── Sales ─────────────────────────────────────────────────────────
-    router.get('sales', [SalesController, 'index']).as('sales.index')
-    router.get('sales/:id', [SalesController, 'show']).as('sales.show')
-    router.post('sales', [SalesController, 'store']).as('sales.store')
-    router.post('sales/:id/confirm', [SalesController, 'confirm']).as('sales.confirm')
-    router.post('sales/:id/cancel', [SalesController, 'cancel']).as('sales.cancel')
+    router
+      .group(() => {
+        router.get('sales', [SalesController, 'index']).as('sales.index')
+        router.get('sales/:id', [SalesController, 'show']).as('sales.show')
+        router.post('sales', [SalesController, 'store']).as('sales.store')
+        router.post('sales/:id/confirm', [SalesController, 'confirm']).as('sales.confirm')
+        router.post('sales/:id/cancel', [SalesController, 'cancel']).as('sales.cancel')
+      })
+      .use(middleware.module({ module: 'sales' }))
 
     // ── Invoices ──────────────────────────────────────────────────────
-    router.get('invoices', [InvoicesController, 'index']).as('invoices.index')
-    router.get('invoices/:id', [InvoicesController, 'show']).as('invoices.show')
-    router.post('invoices/:id/payments', [InvoicesController, 'pay']).as('invoices.pay')
-    router.post('invoices/:id/void', [InvoicesController, 'void']).as('invoices.void')
-    router.get('invoices/:id/download', [InvoicesController, 'download']).as('invoices.download')
+    router
+      .group(() => {
+        router.get('invoices', [InvoicesController, 'index']).as('invoices.index')
+        router.get('invoices/:id', [InvoicesController, 'show']).as('invoices.show')
+        router.post('invoices/:id/payments', [InvoicesController, 'pay']).as('invoices.pay')
+        router.post('invoices/:id/void', [InvoicesController, 'void']).as('invoices.void')
+        router
+          .get('invoices/:id/download', [InvoicesController, 'download'])
+          .as('invoices.download')
+      })
+      .use(middleware.module({ module: 'invoices' }))
 
     // ── POS ──────────────────────────────────────────────────────────
-    router.get('pos', [PosController, 'index']).as('pos.index')
-    router.post('pos/sell', [PosController, 'sell']).as('pos.sell')
+    router
+      .group(() => {
+        router.get('pos', [PosController, 'index']).as('pos.index')
+        router.post('pos/sell', [PosController, 'sell']).as('pos.sell')
+      })
+      .use(middleware.module({ module: 'pos' }))
 
     // ── Reports ───────────────────────────────────────────────────────
-    router.get('reports/profit', [ReportsController, 'profit']).as('reports.profit')
-    router.get('reports/inventory', [ReportsController, 'inventory']).as('reports.inventory')
-    router.get('reports/jobs', [ReportsController, 'jobs']).as('reports.jobs')
+    router
+      .group(() => {
+        router.get('reports/profit', [ReportsController, 'profit']).as('reports.profit')
+        router.get('reports/inventory', [ReportsController, 'inventory']).as('reports.inventory')
+        router.get('reports/jobs', [ReportsController, 'jobs']).as('reports.jobs')
+      })
+      .use(middleware.module({ module: 'reports' }))
   })
   .use(middleware.auth())

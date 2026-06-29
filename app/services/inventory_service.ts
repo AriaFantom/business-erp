@@ -7,6 +7,7 @@ import StockMovement from '#models/stock_movement'
 import type User from '#models/user'
 import { InsufficientStockError } from '#services/domain_errors'
 import { audit } from '#services/audit'
+import { assertModulesEnabled } from '#services/modules/module_service'
 
 export type ItemKind = 'material' | 'component' | 'product' | 'machine'
 
@@ -79,6 +80,11 @@ export async function applyMovement(input: MovementInput): Promise<StockMovement
     // Machines are not fungible stock; they exist as rows in `machines` instead.
     return
   }
+
+  // Safety net: every stock mutation in the app funnels through here, so a single
+  // guard keeps inventory immutable while the Inventory module is disabled.
+  // Dependency rules mean purchase/manufacturing/sales are already off too.
+  await assertModulesEnabled('inventory')
 
   const { trx, actor } = input
 

@@ -51,4 +51,5 @@ export const middleware = router.named({
   firstUserSetup: () => import('#middleware/first_user_setup_middleware'),
   guest: () => import('#middleware/guest_middleware'),
   auth: () => import('#middleware/auth_middleware'),
+  module: () => import('#middleware/ensure_module_middleware'),
 })

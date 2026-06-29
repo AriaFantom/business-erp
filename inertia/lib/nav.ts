@@ -2,6 +2,7 @@ import { navItems, type NavItem } from '@/components/sidebar_nav'
 import type { Data } from '@generated/data'
 
 export type SidebarUser = NonNullable<Data.SharedProps['user']>
+export type EnabledModules = string[] | undefined
 
 export function hasPermission(user: SidebarUser | undefined, key?: string): boolean {
   if (!key) return true
@@ -9,11 +10,25 @@ export function hasPermission(user: SidebarUser | undefined, key?: string): bool
   return user.isOwner || user.permissions.includes(key)
 }
 
-export function isVisible(item: NavItem, user: SidebarUser | undefined): boolean {
+/**
+ * Module gate — independent of permissions. When `enabledModules` is undefined
+ * (e.g. before shared props hydrate) we don't hide anything.
+ */
+export function isModuleEnabled(enabledModules: EnabledModules, key?: string): boolean {
+  if (!key) return true
+  if (!enabledModules) return true
+  return enabledModules.includes(key)
+}
+
+export function isVisible(
+  item: NavItem,
+  user: SidebarUser | undefined,
+  enabledModules?: EnabledModules
+): boolean {
   if (item.children && item.children.length > 0) {
-    return item.children.some((c) => isVisible(c, user))
+    return item.children.some((c) => isVisible(c, user, enabledModules))
   }
-  return hasPermission(user, item.permission)
+  return hasPermission(user, item.permission) && isModuleEnabled(enabledModules, item.module)
 }
 
 export function isActive(itemUrl: string, currentUrl: string): boolean {
@@ -29,17 +44,20 @@ export type NavLink = {
   section?: string
 }
 
-/** Flattened, permission-filtered leaf links — used by the command palette. */
-export function visibleNavLinks(user: SidebarUser | undefined): NavLink[] {
+/** Flattened, permission- and module-filtered leaf links — used by the command palette. */
+export function visibleNavLinks(
+  user: SidebarUser | undefined,
+  enabledModules?: EnabledModules
+): NavLink[] {
   const links: NavLink[] = []
   for (const item of navItems) {
     if (item.children && item.children.length > 0) {
       for (const child of item.children) {
-        if (child.url !== '#' && isVisible(child, user)) {
+        if (child.url !== '#' && isVisible(child, user, enabledModules)) {
           links.push({ title: child.title, url: child.url, icon: child.icon, section: item.title })
         }
       }
-    } else if (item.url !== '#' && isVisible(item, user)) {
+    } else if (item.url !== '#' && isVisible(item, user, enabledModules)) {
       links.push({ title: item.title, url: item.url, icon: item.icon })
     }
   }

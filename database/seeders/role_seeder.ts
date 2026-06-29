@@ -38,6 +38,8 @@ export default class extends BaseSeeder {
         parentRoleId: admin.id,
       }
     )
-    await member.syncPermissions(permissions.active().filter((k) => k.endsWith('.view')))
+    await member.syncPermissions(
+      permissions.active().filter((k) => k.endsWith('.view') && !k.startsWith('settings.'))
+    )
   }
 }

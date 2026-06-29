@@ -24,8 +24,9 @@ import { isActive, isVisible, type SidebarUser } from '@/lib/nav'
 import type { Data } from '@generated/data'
 
 export function NavMain() {
-  const { user } = usePage<Data.SharedProps>().props as unknown as {
+  const { user, enabledModules } = usePage<Data.SharedProps>().props as unknown as {
     user: SidebarUser | undefined
+    enabledModules: string[] | undefined
   }
   const currentUrl = usePage().url
   const { isMobile, setOpenMobile } = useSidebar()
@@ -38,7 +39,7 @@ export function NavMain() {
       <SidebarGroupLabel>Navigation</SidebarGroupLabel>
       <SidebarMenu>
         {navItems
-          .filter((item) => isVisible(item, user))
+          .filter((item) => isVisible(item, user, enabledModules))
           .map((item) => {
             if (!item.children || item.children.length === 0) {
               const active = isActive(item.url, currentUrl)
@@ -54,7 +55,7 @@ export function NavMain() {
               )
             }
 
-            const visibleChildren = item.children.filter((c) => isVisible(c, user))
+            const visibleChildren = item.children.filter((c) => isVisible(c, user, enabledModules))
             const anyChildActive = visibleChildren.some((c) => isActive(c.url, currentUrl))
 
             return (

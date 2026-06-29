@@ -27,6 +27,7 @@ export const controllers = {
   Root: () => import('#controllers/root_controller'),
   Sales: () => import('#controllers/sales_controller'),
   Session: () => import('#controllers/session_controller'),
+  Settings: () => import('#controllers/settings_controller'),
   Suppliers: () => import('#controllers/suppliers_controller'),
   Users: () => import('#controllers/users_controller'),
 }

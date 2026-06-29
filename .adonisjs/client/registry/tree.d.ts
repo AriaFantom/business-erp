@@ -30,6 +30,11 @@ export interface ApiDefinition {
     store: typeof routes['roles.store']
     destroy: typeof routes['roles.destroy']
   }
+  settings: {
+    modules: typeof routes['settings.modules'] & {
+      update: typeof routes['settings.modules.update']
+    }
+  }
   profile: {
     show: typeof routes['profile.show']
     update: typeof routes['profile.update']

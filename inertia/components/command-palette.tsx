@@ -20,10 +20,11 @@ import { Search } from 'lucide-react'
  */
 export function CommandPalette() {
   const [open, setOpen] = useState(false)
-  const { user } = usePage<Data.SharedProps>().props as unknown as {
+  const { user, enabledModules } = usePage<Data.SharedProps>().props as unknown as {
     user: SidebarUser | undefined
+    enabledModules: string[] | undefined
   }
-  const links = visibleNavLinks(user)
+  const links = visibleNavLinks(user, enabledModules)
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {

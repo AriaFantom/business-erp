@@ -119,6 +119,12 @@ export const permissions = definePermissions({
   reports: {
     view: 'View profit / inventory / job reports',
   },
+
+  // ── Application settings ─────────────────────────────────────────────
+  settings: {
+    view: 'View application settings',
+    manageModules: 'Enable or disable application modules',
+  },
 })
 
 export type AppPermissions = typeof permissions

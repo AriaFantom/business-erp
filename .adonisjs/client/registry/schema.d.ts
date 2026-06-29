@@ -211,6 +211,30 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/roles_controller').default['destroy']>>>
     }
   }
+  'settings.modules': {
+    methods: ["GET","HEAD"]
+    pattern: '/system/modules'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/settings_controller').default['showModules']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/settings_controller').default['showModules']>>>
+    }
+  }
+  'settings.modules.update': {
+    methods: ["POST"]
+    pattern: '/system/modules'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/settings').updateModulesValidator)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#validators/settings').updateModulesValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/settings_controller').default['updateModules']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/settings_controller').default['updateModules']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
   'profile.show': {
     methods: ["GET","HEAD"]
     pattern: '/profile'
