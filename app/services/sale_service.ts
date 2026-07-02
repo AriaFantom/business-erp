@@ -5,13 +5,13 @@ import SaleItem from '#models/sale_item'
 import Quotation from '#models/quotation'
 import QuotationItem from '#models/quotation_item'
 import Customer from '#models/customer'
-import Product from '#models/product'
 import type User from '#models/user'
 import { audit } from '#services/audit'
 import { nextDocNumber } from '#services/numbering'
 import { generateInvoiceForSale } from '#services/invoice_service'
 import { applyMovement, invalidateSnapshotCache } from '#services/inventory_service'
 import { InvalidStateError } from '#services/domain_errors'
+import { resolveSaleLinePricing } from '#services/pricing'
 
 export type SaleLineInput = {
   productId?: number | null
@@ -30,6 +30,7 @@ export async function createSale(input: {
   quotationId?: number | null
   note?: string | null
   items: SaleLineInput[]
+  allowPriceOverride: boolean
   actor: User
 }): Promise<Sale> {
   const customer = await Customer.findOrFail(input.customerId)
@@ -46,15 +47,29 @@ export async function createSale(input: {
   for (const it of input.items) {
     if (it.qty <= 0) throw new Error('Quantity must be greater than zero.')
     if (it.unitPrice < 0) throw new Error('Unit price cannot be negative.')
-    if (it.productId) await Product.findOrFail(it.productId)
   }
+
+  // Server-side price enforcement for product lines. Free-form lines have
+  // nothing to price them from, so their manual unitPrice/taxRatePct stand
+  // (same convention as quotation buildLine).
+  const pricedItems = await Promise.all(
+    input.items.map(async (l) => {
+      if (!l.productId) return l
+      const pricing = await resolveSaleLinePricing({
+        productId: l.productId,
+        requestedUnitPrice: l.unitPrice,
+        allowOverride: input.allowPriceOverride,
+      })
+      return { ...l, unitPrice: pricing.unitPrice, taxRatePct: pricing.taxRatePct }
+    })
+  )
 
   return db.transaction(async (trx) => {
     const number = await nextDocNumber('SO', trx)
     let subtotal = 0
     let tax = 0
     let total = 0
-    const lines = input.items.map((l) => {
+    const lines = pricedItems.map((l) => {
       const ls = round2(l.qty * l.unitPrice)
       const lt = round2((ls * l.taxRatePct) / 100)
       const lto = round2(ls + lt)

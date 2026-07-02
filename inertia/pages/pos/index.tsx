@@ -1,6 +1,8 @@
 import { type ReactElement, useMemo, useState } from 'react'
-import { router, useForm } from '@inertiajs/react'
+import { router, useForm, usePage } from '@inertiajs/react'
 import { Trash2 } from 'lucide-react'
+import { hasPermission } from '@/lib/nav'
+import type { InertiaProps } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -63,6 +65,8 @@ function round2(n: number) {
 }
 
 export default function PosPage({ products, categories, customers, filters }: PageProps) {
+  const { user } = usePage<InertiaProps<PageProps>>().props
+  const canOverridePrice = hasPermission(user, 'sales.overridePrice')
   const [cart, setCart] = useState<CartLine[]>([])
   const [customerId, setCustomerId] = useState<string>(
     customers[0] ? String(customers[0].id) : ''
@@ -132,11 +136,8 @@ export default function PosPage({ products, categories, customers, filters }: Pa
   }
 
   function changePrice(productId: number, unitPrice: number) {
+    if (!canOverridePrice) return
     patchLine(productId, { unitPrice: Math.max(0, unitPrice) })
-  }
-
-  function changeTax(productId: number, taxRatePct: number) {
-    patchLine(productId, { taxRatePct: Math.max(0, taxRatePct) })
   }
 
   function removeLine(productId: number) {
@@ -147,6 +148,10 @@ export default function PosPage({ products, categories, customers, filters }: Pa
     setCart([])
   }
 
+  // Fresh key whenever the cart contents change; a double-click/retry of the
+  // same cart reuses the key so the server can replay the original sale.
+  const idempotencyKey = useMemo(() => crypto.randomUUID(), [cart])
+
   function checkout(e: React.FormEvent) {
     e.preventDefault()
     if (!customerId) return
@@ -155,11 +160,11 @@ export default function PosPage({ products, categories, customers, filters }: Pa
       customerId: Number(customerId),
       paymentMethod,
       paymentReference: paymentReference || undefined,
+      idempotencyKey,
       items: cart.map((l) => ({
         productId: l.productId,
         qty: l.qty,
         unitPrice: l.unitPrice,
-        taxRatePct: l.taxRatePct,
       })),
     }))
     post('/pos/sell', {
@@ -341,18 +346,20 @@ export default function PosPage({ products, categories, customers, filters }: Pa
                           step="0.01"
                           min="0"
                           value={l.unitPrice}
+                          disabled={!canOverridePrice}
+                          title={
+                            canOverridePrice
+                              ? undefined
+                              : 'You need the price-override permission to edit line prices.'
+                          }
                           onChange={(e) => changePrice(l.productId, Number(e.target.value))}
                         />
                       </div>
                       <div className="flex flex-col gap-1">
                         <span className="text-[10px] text-muted-foreground">Tax %</span>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={l.taxRatePct}
-                          onChange={(e) => changeTax(l.productId, Number(e.target.value))}
-                        />
+                        <div className="flex h-9 items-center rounded-md border border-input bg-muted/40 px-3 text-sm text-muted-foreground">
+                          {l.taxRatePct.toFixed(2)}
+                        </div>
                       </div>
                     </div>
                     <div className="flex justify-between text-[11px] text-muted-foreground">

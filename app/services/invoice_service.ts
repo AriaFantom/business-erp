@@ -103,7 +103,9 @@ export async function recordPayment(input: {
       })
     }
 
-    const remaining = round2(Number(invoice.total) - Number(invoice.paidTotal))
+    const remaining = round2(
+      Number(invoice.total) - Number(invoice.paidTotal) - Number(invoice.creditTotal)
+    )
     if (input.amount > remaining + 0.001) {
       throw new OverpaymentError({ remaining, attempted: input.amount })
     }
@@ -120,7 +122,8 @@ export async function recordPayment(input: {
 
     const newPaid = round2(Number(invoice.paidTotal) + input.amount)
     invoice.paidTotal = String(newPaid)
-    invoice.status = newPaid >= Number(invoice.total) - 0.001 ? 'paid' : 'partial'
+    invoice.status =
+      newPaid + Number(invoice.creditTotal) >= Number(invoice.total) - 0.001 ? 'paid' : 'partial'
     await invoice.save()
     await invalidatePdf(invoice)
 
@@ -147,6 +150,13 @@ export async function voidInvoice(invoiceId: number, actor: User): Promise<Invoi
       throw new InvalidStateError({
         entity: 'invoice',
         from: 'has payments',
+        to: 'void',
+      })
+    }
+    if (Number(invoice.creditTotal) > 0) {
+      throw new InvalidStateError({
+        entity: 'invoice',
+        from: 'has credit notes',
         to: 'void',
       })
     }

@@ -69,6 +69,7 @@ export const permissions = definePermissions({
     create: 'Create / edit draft purchases',
     confirm: 'Confirm a purchase (writes stock movements)',
     cancel: 'Cancel a draft purchase',
+    return: 'Return items from a confirmed purchase (debit note)',
   },
 
   // ── Production ───────────────────────────────────────────────────────
@@ -101,6 +102,8 @@ export const permissions = definePermissions({
     create: 'Create / edit draft sales',
     confirm: 'Confirm a sale (issues an invoice)',
     cancel: 'Cancel a draft sale',
+    overridePrice: 'Override the suggested unit price on POS/manual sales',
+    return: 'Return sold items and issue a credit note/refund',
   },
   invoices: {
     view: 'View invoices',

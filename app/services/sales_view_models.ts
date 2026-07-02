@@ -1,10 +1,15 @@
 import Sale from '#models/sale'
 import SaleItem from '#models/sale_item'
+import SaleReturn from '#models/sale_return'
+import SaleReturnItem from '#models/sale_return_item'
 import Invoice from '#models/invoice'
 import InvoiceItem from '#models/invoice_item'
 import InvoicePayment from '#models/invoice_payment'
 import Customer from '#models/customer'
 import Product from '#models/product'
+import ProductCategory from '#models/product_category'
+import { computeUnitPrice } from '#services/pricing'
+import { latestProductCost } from '#services/job_costing'
 
 export async function getSalesIndexViewModel(
   filters: { q?: string; status?: string; customerId?: number } = {}
@@ -20,6 +25,25 @@ export async function getSalesIndexViewModel(
   ])
   const cById = new Map(customers.map((c) => [c.id, c]))
 
+  // Suggested pricing per product, from the same source as the server-side
+  // enforcement (resolveSaleLinePricing), so the create-sale dialog prefills
+  // a price the server will accept without treating it as an override.
+  const categoryIds = [
+    ...new Set(products.map((p) => p.categoryId).filter((id): id is number => !!id)),
+  ]
+  const cats = categoryIds.length ? await ProductCategory.query().whereIn('id', categoryIds) : []
+  const catById = new Map(cats.map((c) => [c.id, c]))
+  const breakdowns = await Promise.all(
+    products.map(async (p) => {
+      const cost = await latestProductCost(p.id)
+      return computeUnitPrice({
+        costPrice: cost,
+        product: p,
+        category: p.categoryId ? (catById.get(p.categoryId) ?? null) : null,
+      })
+    })
+  )
+
   return {
     sales: sales.map((s) => ({
       id: s.id,
@@ -32,22 +56,37 @@ export async function getSalesIndexViewModel(
       quotationId: s.quotationId,
     })),
     customers: customers.map((c) => ({ id: c.id, name: c.name })),
-    products: products.map((p) => ({
+    products: products.map((p, idx) => ({
       id: p.id,
       sku: p.sku,
       name: p.name,
-      taxRatePct: p.taxRatePct,
+      taxRatePct: breakdowns[idx].taxRatePct,
+      suggestedUnitPrice: breakdowns[idx].unitPrice,
     })),
   }
 }
 
 export async function getSaleShowViewModel(id: number) {
   const sale = await Sale.findOrFail(id)
-  const [items, customer, invoice] = await Promise.all([
+  const [items, customer, invoice, returns] = await Promise.all([
     SaleItem.query().where('sale_id', id).orderBy('id', 'asc'),
     Customer.find(sale.customerId),
     Invoice.findBy('sale_id', id),
+    SaleReturn.query().where('sale_id', id).orderBy('id', 'desc'),
   ])
+
+  // Already-returned qty per sale line, across all credit notes.
+  const returnItems = returns.length
+    ? await SaleReturnItem.query().whereIn(
+        'sale_return_id',
+        returns.map((r) => r.id)
+      )
+    : []
+  const returnedByItem = new Map<number, number>()
+  for (const ri of returnItems) {
+    returnedByItem.set(ri.saleItemId, (returnedByItem.get(ri.saleItemId) ?? 0) + Number(ri.qty))
+  }
+
   return {
     sale: {
       id: sale.id,
@@ -71,6 +110,7 @@ export async function getSaleShowViewModel(id: number) {
       lineSubtotal: it.lineSubtotal,
       lineTax: it.lineTax,
       lineTotal: it.lineTotal,
+      returnedQty: returnedByItem.get(it.id) ?? 0,
     })),
     invoice: invoice
       ? {
@@ -79,8 +119,19 @@ export async function getSaleShowViewModel(id: number) {
           status: invoice.status,
           total: invoice.total,
           paidTotal: invoice.paidTotal,
+          creditTotal: invoice.creditTotal,
         }
       : null,
+    returns: returns.map((r) => ({
+      id: r.id,
+      number: r.number,
+      createdAt: r.createdAt?.toISO() ?? null,
+      total: r.total,
+      creditApplied: r.creditApplied,
+      refundAmount: r.refundAmount,
+      refundMethod: r.refundMethod,
+      note: r.note,
+    })),
   }
 }
 
@@ -112,10 +163,11 @@ export async function getInvoicesIndexViewModel(
 
 export async function getInvoiceShowViewModel(id: number) {
   const invoice = await Invoice.findOrFail(id)
-  const [items, payments, customer] = await Promise.all([
+  const [items, payments, customer, creditNotes] = await Promise.all([
     InvoiceItem.query().where('invoice_id', id).orderBy('id', 'asc'),
     InvoicePayment.query().where('invoice_id', id).orderBy('paid_at', 'asc'),
     Customer.find(invoice.customerId),
+    SaleReturn.query().where('invoice_id', id).orderBy('id', 'asc'),
   ])
   return {
     invoice: {
@@ -129,6 +181,7 @@ export async function getInvoiceShowViewModel(id: number) {
       taxTotal: invoice.taxTotal,
       total: invoice.total,
       paidTotal: invoice.paidTotal,
+      creditTotal: invoice.creditTotal,
       customer: customer
         ? {
             id: customer.id,
@@ -157,6 +210,16 @@ export async function getInvoiceShowViewModel(id: number) {
       method: p.method,
       paidAt: p.paidAt.toISO(),
       reference: p.reference,
+    })),
+    creditNotes: creditNotes.map((cn) => ({
+      id: cn.id,
+      saleId: cn.saleId,
+      number: cn.number,
+      createdAt: cn.createdAt?.toISO() ?? null,
+      total: cn.total,
+      creditApplied: cn.creditApplied,
+      refundAmount: cn.refundAmount,
+      refundMethod: cn.refundMethod,
     })),
   }
 }

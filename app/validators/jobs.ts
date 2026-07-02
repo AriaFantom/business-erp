@@ -37,6 +37,7 @@ export const completeJobValidator = vine.compile(
 export const failJobValidator = vine.compile(
   vine.object({
     reason: vine.string().trim().maxLength(500).optional(),
+    returnMaterials: vine.boolean().optional(),
   })
 )
 

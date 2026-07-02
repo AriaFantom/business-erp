@@ -4,6 +4,9 @@ import Expense from '#models/expense'
 import ProductionJob from '#models/production_job'
 import db from '@adonisjs/lucid/services/db'
 
+// Mirrors the union the machines pages expect; the schema column is a bare string.
+export type MachineStatus = 'idle' | 'running' | 'maintenance' | 'offline' | 'retired'
+
 type IndexFilters = { q?: string; status?: string }
 
 export async function getMachinesIndexViewModel(filters: IndexFilters = {}) {
@@ -55,7 +58,7 @@ export async function getMachinesIndexViewModel(filters: IndexFilters = {}) {
         name: m.name,
         model: m.model,
         serialNumber: m.serialNumber,
-        status: m.status,
+        status: m.status as MachineStatus,
         currentJobId: m.currentJobId,
         purchaseCost: String(purchaseCost),
         expenseTotal: String(expenseTotal),
@@ -83,7 +86,7 @@ export async function getMachineShowViewModel(id: number) {
       name: machine.name,
       model: machine.model,
       serialNumber: machine.serialNumber,
-      status: machine.status,
+      status: machine.status as MachineStatus,
       currentJobId: machine.currentJobId,
       notes: machine.notes,
       acquiredAt: machine.acquiredAt?.toISO() ?? null,

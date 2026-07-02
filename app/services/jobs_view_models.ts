@@ -11,6 +11,17 @@ import ProductRecipe from '#models/product_recipe'
 import { totalChainCost } from '#services/job_costing'
 import { DateTime } from 'luxon'
 
+export type JobStatus =
+  | 'draft'
+  | 'in_progress'
+  | 'paused'
+  | 'awaiting_confirmation'
+  | 'completed'
+  | 'failed'
+  | 'cancelled'
+
+export type JobStageStatus = 'pending' | 'in_progress' | 'completed' | 'skipped'
+
 export async function getJobsIndexViewModel(
   filters: { q?: string; status?: string; productId?: number } = {}
 ) {
@@ -68,13 +79,15 @@ export async function getJobShowViewModel(jobId: number) {
 
   const chainCost = await totalChainCost(jobId)
   const idleMachines = await Machine.query().where('status', 'idle').orderBy('name', 'asc')
-  const recipe = await ProductRecipe.query().where('product_id', job.productId)
+  const recipe = await ProductRecipe.query()
+    .where('product_id', job.productId)
+    .where('is_current', true)
 
   return {
     job: {
       id: job.id,
       number: job.number,
-      status: job.status,
+      status: job.status as JobStatus,
       productId: job.productId,
       productName: product?.name ?? '—',
       plannedQty: job.plannedQty,
@@ -107,6 +120,7 @@ export async function getJobShowViewModel(jobId: number) {
         itemSku: item?.sku ?? '—',
         qtyConsumed: c.qtyConsumed,
         qtyWasted: c.qtyWasted,
+        qtyReturned: c.qtyReturned,
         unitCostAtConsume: c.unitCostAtConsume,
         lineCost: c.lineCost,
         reason: c.reason,
@@ -145,7 +159,7 @@ export async function getJobShowViewModel(jobId: number) {
       sequence: s.sequence,
       name: s.name,
       estimatedDurationMin: s.estimatedDurationMin,
-      status: s.status,
+      status: s.status as JobStageStatus,
       startedAt: s.startedAt?.toISO() ?? null,
       completedAt: s.completedAt?.toISO() ?? null,
       autoCompleteAt: s.autoCompleteAt?.toISO() ?? null,

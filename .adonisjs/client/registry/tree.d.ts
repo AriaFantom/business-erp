@@ -119,6 +119,9 @@ export interface ApiDefinition {
     store: typeof routes['purchases.store']
     confirm: typeof routes['purchases.confirm']
     cancel: typeof routes['purchases.cancel']
+    returns: {
+      store: typeof routes['purchases.returns.store']
+    }
   }
   jobs: {
     index: typeof routes['jobs.index']
@@ -161,6 +164,9 @@ export interface ApiDefinition {
     store: typeof routes['sales.store']
     confirm: typeof routes['sales.confirm']
     cancel: typeof routes['sales.cancel']
+    returns: {
+      store: typeof routes['sales.returns.store']
+    }
   }
   invoices: {
     index: typeof routes['invoices.index']

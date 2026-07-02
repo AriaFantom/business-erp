@@ -895,6 +895,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/purchases_controller').default['cancel']>>>
     }
   }
+  'purchases.returns.store': {
+    methods: ["POST"]
+    pattern: '/purchases/:id/returns'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/purchases').returnPurchaseValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#validators/purchases').returnPurchaseValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/purchases_controller').default['storeReturn']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/purchases_controller').default['storeReturn']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
   'jobs.index': {
     methods: ["GET","HEAD"]
     pattern: '/jobs'
@@ -1301,6 +1313,18 @@ export interface Registry {
       query: {}
       response: ExtractResponse<Awaited<ReturnType<import('#controllers/sales_controller').default['cancel']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/sales_controller').default['cancel']>>>
+    }
+  }
+  'sales.returns.store': {
+    methods: ["POST"]
+    pattern: '/sales/:id/returns'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/sales').returnSaleValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#validators/sales').returnSaleValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/sales_controller').default['storeReturn']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/sales_controller').default['storeReturn']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
   'invoices.index': {

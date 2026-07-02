@@ -78,6 +78,7 @@ export type ScannedRoutes = {
     'purchases.store': { paramsTuple?: []; params?: {} }
     'purchases.confirm': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'purchases.cancel': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'purchases.returns.store': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.index': { paramsTuple?: []; params?: {} }
     'jobs.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.store': { paramsTuple?: []; params?: {} }
@@ -112,6 +113,7 @@ export type ScannedRoutes = {
     'sales.store': { paramsTuple?: []; params?: {} }
     'sales.confirm': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'sales.cancel': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'sales.returns.store': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'invoices.index': { paramsTuple?: []; params?: {} }
     'invoices.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'invoices.pay': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
@@ -259,6 +261,7 @@ export type ScannedRoutes = {
     'purchases.store': { paramsTuple?: []; params?: {} }
     'purchases.confirm': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'purchases.cancel': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'purchases.returns.store': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.store': { paramsTuple?: []; params?: {} }
     'jobs.start': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.pause': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
@@ -283,6 +286,7 @@ export type ScannedRoutes = {
     'sales.store': { paramsTuple?: []; params?: {} }
     'sales.confirm': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'sales.cancel': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'sales.returns.store': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'invoices.pay': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'invoices.void': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'pos.sell': { paramsTuple?: []; params?: {} }

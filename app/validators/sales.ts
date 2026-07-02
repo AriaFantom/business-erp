@@ -17,6 +17,22 @@ export const createSaleValidator = vine.compile(
   })
 )
 
+export const returnSaleValidator = vine.compile(
+  vine.object({
+    items: vine
+      .array(
+        vine.object({
+          saleItemId: vine.number().positive().withoutDecimals(),
+          qty: vine.number().positive().withoutDecimals(),
+        })
+      )
+      .minLength(1)
+      .maxLength(200),
+    refundMethod: vine.enum(['cash', 'bank', 'upi', 'other']).optional(),
+    note: vine.string().trim().maxLength(2000).optional(),
+  })
+)
+
 export const recordPaymentValidator = vine.compile(
   vine.object({
     amount: vine.number().min(0.01).max(99_999_999_999),

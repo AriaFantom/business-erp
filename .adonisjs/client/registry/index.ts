@@ -450,6 +450,12 @@ const routes = {
     tokens: [{"old":"/purchases/:id/cancel","type":0,"val":"purchases","end":""},{"old":"/purchases/:id/cancel","type":1,"val":"id","end":""},{"old":"/purchases/:id/cancel","type":0,"val":"cancel","end":""}],
     types: placeholder as Registry['purchases.cancel']['types'],
   },
+  'purchases.returns.store': {
+    methods: ["POST"],
+    pattern: '/purchases/:id/returns',
+    tokens: [{"old":"/purchases/:id/returns","type":0,"val":"purchases","end":""},{"old":"/purchases/:id/returns","type":1,"val":"id","end":""},{"old":"/purchases/:id/returns","type":0,"val":"returns","end":""}],
+    types: placeholder as Registry['purchases.returns.store']['types'],
+  },
   'jobs.index': {
     methods: ["GET","HEAD"],
     pattern: '/jobs',
@@ -653,6 +659,12 @@ const routes = {
     pattern: '/sales/:id/cancel',
     tokens: [{"old":"/sales/:id/cancel","type":0,"val":"sales","end":""},{"old":"/sales/:id/cancel","type":1,"val":"id","end":""},{"old":"/sales/:id/cancel","type":0,"val":"cancel","end":""}],
     types: placeholder as Registry['sales.cancel']['types'],
+  },
+  'sales.returns.store': {
+    methods: ["POST"],
+    pattern: '/sales/:id/returns',
+    tokens: [{"old":"/sales/:id/returns","type":0,"val":"sales","end":""},{"old":"/sales/:id/returns","type":1,"val":"id","end":""},{"old":"/sales/:id/returns","type":0,"val":"returns","end":""}],
+    types: placeholder as Registry['sales.returns.store']['types'],
   },
   'invoices.index': {
     methods: ["GET","HEAD"],

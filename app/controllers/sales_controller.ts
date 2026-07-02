@@ -1,7 +1,8 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import { createSaleValidator } from '#validators/sales'
+import { createSaleValidator, returnSaleValidator } from '#validators/sales'
 import { getSaleShowViewModel, getSalesIndexViewModel } from '#services/sales_view_models'
 import { cancelSale, confirmSale, createSale } from '#services/sale_service'
+import { createSaleReturn } from '#services/sale_return_service'
 import { DomainError } from '#services/domain_errors'
 
 export default class SalesController {
@@ -44,6 +45,7 @@ export default class SalesController {
           unitPrice: i.unitPrice,
           taxRatePct: i.taxRatePct,
         })),
+        allowPriceOverride: await bouncer.allows('sales.overridePrice' as never),
         actor: auth.user!,
       })
       session.flash('success', `Sale ${sale.number} created.`)
@@ -62,6 +64,34 @@ export default class SalesController {
     try {
       const sale = await confirmSale(Number(params.id), auth.user!)
       session.flash('success', `Sale ${sale.number} confirmed; invoice issued.`)
+    } catch (err) {
+      if (err instanceof DomainError) {
+        session.flash('error', err.message)
+        return response.redirect().back()
+      }
+      throw err
+    }
+    return response.redirect().back()
+  }
+
+  async storeReturn({ params, request, auth, bouncer, response, session }: HttpContext) {
+    await bouncer.authorize('sales.return' as never)
+    const payload = await request.validateUsing(returnSaleValidator)
+    try {
+      const ret = await createSaleReturn({
+        saleId: Number(params.id),
+        items: payload.items,
+        refundMethod: payload.refundMethod ?? null,
+        note: payload.note ?? null,
+        actor: auth.user!,
+      })
+      const refund = Number(ret.refundAmount)
+      session.flash(
+        'success',
+        refund > 0
+          ? `Credit note ${ret.number} issued; refund ${ret.refundAmount} via ${ret.refundMethod}.`
+          : `Credit note ${ret.number} issued; ${ret.creditApplied} applied to the invoice.`
+      )
     } catch (err) {
       if (err instanceof DomainError) {
         session.flash('error', err.message)

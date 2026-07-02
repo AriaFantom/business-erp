@@ -7,6 +7,8 @@ import { posSellValidator } from '#validators/pos'
 import { completePosSale } from '#services/pos_service'
 import { signCatalogImageUrl } from '#services/catalog_image_storage'
 import { computeUnitPrice } from '#services/pricing'
+import { latestProductCost } from '#services/job_costing'
+import { withIdempotency } from '#services/idempotency'
 import { DomainError } from '#services/domain_errors'
 
 export default class PosController {
@@ -52,28 +54,12 @@ export default class PosController {
     const cats = categoryIds.length ? await ProductCategory.query().whereIn('id', categoryIds) : []
     const catById = new Map(cats.map((c) => [c.id, c]))
 
-    // Latest completed-job unit cost per product, weighted by produced_qty.
-    const costRows =
-      products.length > 0
-        ? await db
-            .from('production_jobs')
-            .whereIn(
-              'product_id',
-              products.map((p) => p.id)
-            )
-            .where('status', 'completed')
-            .where('produced_qty', '>', 0)
-            .groupBy('product_id')
-            .select('product_id')
-            .sum({ totalCost: 'total_cost' })
-            .sum({ totalQty: 'produced_qty' })
-        : []
+    // Cost basis per product. Must use the same source as the server-side
+    // price enforcement (resolveSaleLinePricing → latestProductCost), so the
+    // suggested price shown here matches what checkout will accept.
+    const costs = await Promise.all(products.map((p) => latestProductCost(p.id)))
     const costByProduct = new Map<number, number>()
-    for (const row of costRows) {
-      const total = Number(row.totalCost ?? 0)
-      const qty = Number(row.totalQty ?? 0)
-      costByProduct.set(Number(row.product_id), qty > 0 ? total / qty : 0)
-    }
+    products.forEach((p, idx) => costByProduct.set(p.id, costs[idx] ?? 0))
 
     const signed = await Promise.all(products.map((p) => signCatalogImageUrl(p.imageKey)))
 
@@ -120,15 +106,38 @@ export default class PosController {
   async sell({ request, auth, bouncer, response, session }: HttpContext) {
     await bouncer.authorize('pos.sell' as never)
     const payload = await request.validateUsing(posSellValidator)
+    const allowPriceOverride = await bouncer.allows('sales.overridePrice' as never)
     try {
-      const result = await completePosSale({
-        customerId: payload.customerId,
-        items: payload.items,
-        paymentMethod: payload.paymentMethod,
-        paymentReference: payload.paymentReference ?? null,
-        actor: auth.user!,
-      })
-      session.flash('success', `Sale completed (${result.total.toFixed(2)}). Invoice ready.`)
+      const run = () =>
+        completePosSale({
+          customerId: payload.customerId,
+          items: payload.items,
+          paymentMethod: payload.paymentMethod,
+          paymentReference: payload.paymentReference ?? null,
+          allowPriceOverride,
+          actor: auth.user!,
+        })
+
+      let result: Awaited<ReturnType<typeof run>>
+      let replayed = false
+      if (payload.idempotencyKey) {
+        const outcome = await withIdempotency({
+          actor: auth.user!,
+          route: 'pos.sell',
+          key: payload.idempotencyKey,
+          run,
+        })
+        result = outcome.value
+        replayed = outcome.replayed
+      } else {
+        result = await run()
+      }
+
+      if (replayed) {
+        session.flash('success', 'Duplicate submission — showing the original sale.')
+      } else {
+        session.flash('success', `Sale completed (${result.total.toFixed(2)}). Invoice ready.`)
+      }
       return response.redirect(`/invoices/${result.invoiceId}`)
     } catch (err) {
       if (err instanceof DomainError) {

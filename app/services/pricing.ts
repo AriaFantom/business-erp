@@ -2,6 +2,7 @@ import env from '#start/env'
 import Product from '#models/product'
 import ProductCategory from '#models/product_category'
 import { latestProductCost } from '#services/job_costing'
+import { DomainError } from '#services/domain_errors'
 
 export type RoundingRule = 'nearest_50_paise' | 'nearest_rupee' | 'none'
 
@@ -135,6 +136,78 @@ function numberOrZero(v: string | number | null | undefined): number {
   if (v === null || v === undefined) return 0
   const n = Number(v)
   return Number.isFinite(n) ? n : 0
+}
+
+export type SaleLinePricing = {
+  unitPrice: number
+  taxRatePct: number
+  overridden: boolean
+  costPrice: number | null
+}
+
+/** Tolerance for treating a client-echoed price as "the suggested price". */
+const PRICE_MATCH_TOLERANCE = 0.005
+
+/**
+ * Server-side price enforcement for sale lines (POS + manual sales).
+ *
+ * The suggested price and tax rate are always derived on the server; the
+ * client-supplied price only matters when it deviates from the suggestion,
+ * in which case it is an override that requires `allowOverride` and can
+ * never go below the cost basis.
+ */
+export async function resolveSaleLinePricing(opts: {
+  productId: number
+  requestedUnitPrice?: number | null
+  allowOverride: boolean
+}): Promise<SaleLinePricing> {
+  const product = await Product.findOrFail(opts.productId)
+  const category = product.categoryId ? await ProductCategory.find(product.categoryId) : null
+  const cost = await latestProductCost(opts.productId)
+  const breakdown = computeUnitPrice({
+    costPrice: cost,
+    product,
+    category,
+  })
+
+  const requested = opts.requestedUnitPrice
+  const matchesSuggestion =
+    requested === null ||
+    requested === undefined ||
+    Math.abs(requested - breakdown.unitPrice) < PRICE_MATCH_TOLERANCE
+
+  if (matchesSuggestion) {
+    return {
+      unitPrice: breakdown.unitPrice,
+      taxRatePct: breakdown.taxRatePct,
+      overridden: false,
+      costPrice: breakdown.costPrice,
+    }
+  }
+
+  if (!opts.allowOverride) {
+    throw new DomainError({
+      code: 'PRICE_OVERRIDE_FORBIDDEN',
+      field: 'unitPrice',
+      message: `You are not allowed to override the price of "${product.name}" (suggested ${breakdown.unitPrice.toFixed(2)}).`,
+    })
+  }
+
+  const costFloor = breakdown.costPrice ?? 0
+  if (requested < costFloor) {
+    throw new DomainError({
+      code: 'PRICE_BELOW_COST',
+      field: 'unitPrice',
+      message: `Unit price for "${product.name}" cannot go below its cost basis (${costFloor.toFixed(2)}).`,
+    })
+  }
+
+  return {
+    unitPrice: applyRounding(requested, 'none'),
+    taxRatePct: breakdown.taxRatePct,
+    overridden: true,
+    costPrice: breakdown.costPrice,
+  }
 }
 
 /**

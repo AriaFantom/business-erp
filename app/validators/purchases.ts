@@ -20,3 +20,18 @@ export const createPurchaseValidator = vine.compile(
     items: vine.array(lineRule).minLength(1).maxLength(200),
   })
 )
+
+export const returnPurchaseValidator = vine.compile(
+  vine.object({
+    items: vine
+      .array(
+        vine.object({
+          purchaseItemId: vine.number().positive().withoutDecimals(),
+          qty: qtyRule,
+        })
+      )
+      .minLength(1)
+      .maxLength(200),
+    note: vine.string().trim().maxLength(2000).optional(),
+  })
+)

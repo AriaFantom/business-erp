@@ -1,5 +1,7 @@
 import Purchase from '#models/purchase'
 import PurchaseItem from '#models/purchase_item'
+import PurchaseReturn from '#models/purchase_return'
+import PurchaseReturnItem from '#models/purchase_return_item'
 import Supplier from '#models/supplier'
 import Material from '#models/material'
 import Component from '#models/component'
@@ -76,6 +78,22 @@ export async function getPurchaseShowViewModel(id: number) {
 
   const itemIds = items.map((i) => i.id)
   const machines = itemIds.length ? await Machine.query().whereIn('purchase_item_id', itemIds) : []
+
+  // Returns (debit notes) against this purchase + already-returned qty per line.
+  const returns = await PurchaseReturn.query().where('purchase_id', id).orderBy('id', 'desc')
+  const returnItems = returns.length
+    ? await PurchaseReturnItem.query().whereIn(
+        'purchase_return_id',
+        returns.map((r) => r.id)
+      )
+    : []
+  const returnedByItem = new Map<number, number>()
+  for (const ri of returnItems) {
+    returnedByItem.set(
+      ri.purchaseItemId,
+      (returnedByItem.get(ri.purchaseItemId) ?? 0) + Number(ri.qty)
+    )
+  }
   const machinesByItem = new Map<number, Array<{ id: number; name: string }>>()
   for (const m of machines) {
     if (!m.purchaseItemId) continue
@@ -112,8 +130,16 @@ export async function getPurchaseShowViewModel(id: number) {
         lineSubtotal: it.lineSubtotal,
         lineTax: it.lineTax,
         lineTotal: it.lineTotal,
+        returnedQty: returnedByItem.get(it.id) ?? 0,
         machines: machinesByItem.get(it.id) ?? [],
       }
     }),
+    returns: returns.map((r) => ({
+      id: r.id,
+      number: r.number,
+      createdAt: r.createdAt?.toISO() ?? null,
+      total: r.total,
+      note: r.note,
+    })),
   }
 }

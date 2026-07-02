@@ -52,7 +52,13 @@ type SaleRow = {
 }
 
 type CustomerOpt = { id: number; name: string }
-type ProductOpt = { id: number; sku: string; name: string; taxRatePct: string | null }
+type ProductOpt = {
+  id: number
+  sku: string
+  name: string
+  taxRatePct: number
+  suggestedUnitPrice: number
+}
 
 type Filters = { q: string; status: string; customerId: string }
 
@@ -94,8 +100,10 @@ function NewSaleDialog({
         productId: id,
         description: p.name,
         qty: 1,
-        unitPrice: 0,
-        taxRatePct: p.taxRatePct ? Number(p.taxRatePct) : 18,
+        // Server-suggested price; edits are server-enforced (override
+        // permission required, floored at cost). Tax is server-derived.
+        unitPrice: p.suggestedUnitPrice,
+        taxRatePct: p.taxRatePct,
       },
     ])
   }
@@ -232,6 +240,12 @@ function NewSaleDialog({
                           type="number"
                           step="0.01"
                           value={ln.taxRatePct}
+                          disabled={!!ln.productId}
+                          title={
+                            ln.productId
+                              ? 'Tax on product lines is derived on the server.'
+                              : undefined
+                          }
                           onChange={(e) =>
                             updateLine(i, { taxRatePct: Number(e.target.value) })
                           }

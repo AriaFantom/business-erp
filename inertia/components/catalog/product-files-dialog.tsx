@@ -192,7 +192,9 @@ export function ProductFilesDialog({ productId, productName, initialCount }: Pro
           description="The file will be deleted from object storage. This cannot be undone."
           confirmLabel="Remove"
           variant="destructive"
-          onConfirm={() => pending && confirmRemove(pending)}
+          onConfirm={() => {
+            if (pending) confirmRemove(pending)
+          }}
         />
       </DialogContent>
     </Dialog>

@@ -11,12 +11,13 @@ import { nextDocNumber } from '#services/numbering'
 import { generateInvoiceForSale } from '#services/invoice_service'
 import { applyMovement, invalidateSnapshotCache } from '#services/inventory_service'
 import { InvalidStateError } from '#services/domain_errors'
+import { resolveSaleLinePricing } from '#services/pricing'
 
 export type PosLineInput = {
   productId: number
   qty: number
-  unitPrice: number
-  taxRatePct: number
+  /** Requested price. Omitted → the server-suggested price is used. */
+  unitPrice?: number | null
 }
 
 type PaymentMethod = 'cash' | 'bank' | 'upi' | 'other'
@@ -36,6 +37,7 @@ export async function completePosSale(input: {
   items: PosLineInput[]
   paymentMethod: PaymentMethod
   paymentReference?: string | null
+  allowPriceOverride: boolean
   actor: User
 }): Promise<{ saleId: number; invoiceId: number; total: number }> {
   if (input.items.length === 0) {
@@ -43,7 +45,9 @@ export async function completePosSale(input: {
   }
   for (const it of input.items) {
     if (it.qty <= 0) throw new Error('Quantity must be greater than zero.')
-    if (it.unitPrice < 0) throw new Error('Unit price cannot be negative.')
+    if (it.unitPrice !== null && it.unitPrice !== undefined && it.unitPrice < 0) {
+      throw new Error('Unit price cannot be negative.')
+    }
   }
 
   const customer = await Customer.findOrFail(input.customerId)
@@ -64,20 +68,37 @@ export async function completePosSale(input: {
     if (!p.isActive) throw new Error(`Product "${p.name}" is archived.`)
   }
 
+  // Server-side price enforcement: the unit price and tax rate come from the
+  // pricing service; a deviating client price is an override that requires
+  // the sales.overridePrice permission and is floored at cost.
+  const pricingByLine = await Promise.all(
+    input.items.map((it) =>
+      resolveSaleLinePricing({
+        productId: it.productId,
+        requestedUnitPrice: it.unitPrice,
+        allowOverride: input.allowPriceOverride,
+      })
+    )
+  )
+
   const result = await db.transaction(async (trx) => {
     let subtotal = 0
     let taxTotal = 0
     let total = 0
-    const lines = input.items.map((l) => {
-      const ls = round2(l.qty * l.unitPrice)
-      const lt = round2((ls * l.taxRatePct) / 100)
+    const lines = input.items.map((l, idx) => {
+      const pricing = pricingByLine[idx]
+      const ls = round2(l.qty * pricing.unitPrice)
+      const lt = round2((ls * pricing.taxRatePct) / 100)
       const lto = round2(ls + lt)
       subtotal += ls
       taxTotal += lt
       total += lto
       const p = productById.get(l.productId)!
       return {
-        ...l,
+        productId: l.productId,
+        qty: l.qty,
+        unitPrice: pricing.unitPrice,
+        taxRatePct: pricing.taxRatePct,
         description: `${p.name} (${p.sku})`,
         lineSubtotal: ls,
         lineTax: lt,

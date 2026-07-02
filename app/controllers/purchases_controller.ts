@@ -1,11 +1,16 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { DateTime } from 'luxon'
-import { createPurchaseValidator } from '#validators/purchases'
+import { createPurchaseValidator, returnPurchaseValidator } from '#validators/purchases'
 import {
   getPurchasesIndexViewModel,
   getPurchaseShowViewModel,
 } from '#services/purchases_view_models'
-import { cancelPurchase, confirmPurchase, createPurchase } from '#services/purchase_service'
+import {
+  cancelPurchase,
+  confirmPurchase,
+  createPurchase,
+  returnPurchaseItems,
+} from '#services/purchase_service'
 import { DomainError } from '#services/domain_errors'
 
 export default class PurchasesController {
@@ -61,6 +66,27 @@ export default class PurchasesController {
     try {
       const p = await confirmPurchase(Number(params.id), auth.user!)
       session.flash('success', `Purchase ${p.number} confirmed; stock updated.`)
+    } catch (err) {
+      if (err instanceof DomainError) {
+        session.flash('error', err.message)
+        return response.redirect().back()
+      }
+      throw err
+    }
+    return response.redirect().back()
+  }
+
+  async storeReturn({ params, request, auth, bouncer, response, session }: HttpContext) {
+    await bouncer.authorize('purchases.return' as never)
+    const payload = await request.validateUsing(returnPurchaseValidator)
+    try {
+      const ret = await returnPurchaseItems({
+        purchaseId: Number(params.id),
+        items: payload.items,
+        note: payload.note ?? null,
+        actor: auth.user!,
+      })
+      session.flash('success', `Return ${ret.number} recorded; stock updated.`)
     } catch (err) {
       if (err instanceof DomainError) {
         session.flash('error', err.message)

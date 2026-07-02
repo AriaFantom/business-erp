@@ -195,6 +195,9 @@ router
     router.post('purchases', [PurchasesController, 'store']).as('purchases.store')
     router.post('purchases/:id/confirm', [PurchasesController, 'confirm']).as('purchases.confirm')
     router.post('purchases/:id/cancel', [PurchasesController, 'cancel']).as('purchases.cancel')
+    router
+      .post('purchases/:id/returns', [PurchasesController, 'storeReturn'])
+      .as('purchases.returns.store')
 
     // ── Production jobs ───────────────────────────────────────────────
     router.get('jobs', [JobsController, 'index']).as('jobs.index')
@@ -245,6 +248,7 @@ router
     router.post('sales', [SalesController, 'store']).as('sales.store')
     router.post('sales/:id/confirm', [SalesController, 'confirm']).as('sales.confirm')
     router.post('sales/:id/cancel', [SalesController, 'cancel']).as('sales.cancel')
+    router.post('sales/:id/returns', [SalesController, 'storeReturn']).as('sales.returns.store')
 
     // ── Invoices ──────────────────────────────────────────────────────
     router.get('invoices', [InvoicesController, 'index']).as('invoices.index')

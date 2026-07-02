@@ -12,6 +12,7 @@ export type ItemKind = 'material' | 'component' | 'product' | 'machine'
 
 export type MovementReason =
   | 'purchase'
+  | 'purchase_return'
   | 'job_consume'
   | 'job_return'
   | 'job_produce'
@@ -54,16 +55,21 @@ async function lockInventory(
 
   if (existing) return existing
 
-  // Need to insert + immediately lock. Insert under transaction; subsequent
-  // writers in another transaction will hit the unique index and retry.
-  const inv = new Inventory()
-  inv.itemKind = itemKind
-  inv.itemId = itemId
-  inv.qty = '0'
-  inv.avgUnitCost = '0'
-  inv.useTransaction(trx)
-  await inv.save()
-  return inv
+  // Create-then-lock without risking a unique-violation aborting the caller's
+  // transaction: ON CONFLICT DO NOTHING tolerates a concurrent insert (waiting
+  // for it to commit if needed), and the follow-up SELECT ... FOR UPDATE then
+  // locks whichever row won.
+  await trx.rawQuery(
+    `INSERT INTO inventory (item_kind, item_id, qty, avg_unit_cost, created_at, updated_at)
+     VALUES (?, ?, 0, 0, NOW(), NOW())
+     ON CONFLICT (item_kind, item_id) DO NOTHING`,
+    [itemKind, itemId]
+  )
+  return Inventory.query({ client: trx })
+    .where('itemKind', itemKind)
+    .where('itemId', itemId)
+    .forUpdate()
+    .firstOrFail()
 }
 
 /**
@@ -90,6 +96,11 @@ export async function applyMovement(input: MovementInput): Promise<StockMovement
   const oldQty = Number(inv.qty)
   const oldAvg = Number(inv.avgUnitCost)
   const newQty = oldQty + input.qty
+
+  // Outbound movements always leave the ledger at the current weighted-average
+  // cost — that is the COGS basis, regardless of what the caller passed
+  // (e.g. POS passes the sale price, which belongs on the sale line, not here).
+  const movementUnitCost = input.qty < 0 ? oldAvg : input.unitCost
 
   if (newQty < 0) {
     throw new InsufficientStockError({
@@ -120,7 +131,7 @@ export async function applyMovement(input: MovementInput): Promise<StockMovement
   move.itemKind = input.itemKind
   move.itemId = input.itemId
   move.qty = String(input.qty)
-  move.unitCost = String(input.unitCost)
+  move.unitCost = movementUnitCost.toFixed(4)
   move.reason = input.reason
   move.referenceType = input.referenceType ?? null
   move.referenceId = input.referenceId ?? null
@@ -137,7 +148,7 @@ export async function applyMovement(input: MovementInput): Promise<StockMovement
     targetId: input.itemId,
     payload: {
       qty: input.qty,
-      unitCost: input.unitCost,
+      unitCost: movementUnitCost,
       reference: input.referenceType ? { type: input.referenceType, id: input.referenceId } : null,
     },
     trx,
