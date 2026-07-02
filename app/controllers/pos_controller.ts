@@ -3,8 +3,18 @@ import db from '@adonisjs/lucid/services/db'
 import Customer from '#models/customer'
 import Product from '#models/product'
 import ProductCategory from '#models/product_category'
-import { posSellValidator } from '#validators/pos'
+import {
+  posSellValidator,
+  openCashSessionValidator,
+  closeCashSessionValidator,
+} from '#validators/pos'
 import { completePosSale } from '#services/pos_service'
+import {
+  getOpenSession,
+  getSessionSummary,
+  openSession,
+  closeSession,
+} from '#services/cash_session_service'
 import { signCatalogImageUrl } from '#services/catalog_image_storage'
 import { computeUnitPrice } from '#services/pricing'
 import { latestProductCost } from '#services/job_costing'
@@ -14,6 +24,29 @@ import { DomainError } from '#services/domain_errors'
 export default class PosController {
   async index({ request, inertia, bouncer }: HttpContext) {
     await bouncer.authorize('pos.view' as never)
+    const canManageSession = await bouncer.allows('pos.manageSession' as never)
+    const openSess = await getOpenSession()
+    let cashSession: {
+      id: number
+      number: string
+      openedAt: string | null
+      openingFloat: number
+      summary: { byMethod: Record<string, string>; salesCount: number; expectedCash: number }
+    } | null = null
+    if (openSess) {
+      const summary = await getSessionSummary(openSess)
+      const byMethod: Record<string, string> = {}
+      for (const [method, total] of Object.entries(summary.byMethod)) {
+        byMethod[method] = total.toFixed(2)
+      }
+      cashSession = {
+        id: openSess.id,
+        number: openSess.number,
+        openedAt: openSess.openedAt.toISO(),
+        openingFloat: Number(openSess.openingFloat),
+        summary: { byMethod, salesCount: summary.salesCount, expectedCash: summary.expectedCash },
+      }
+    }
     const qs = request.qs()
     const q = typeof qs.q === 'string' ? qs.q : ''
     const categoryId = qs.categoryId ? Number(qs.categoryId) : null
@@ -100,6 +133,8 @@ export default class PosController {
         q,
         categoryId: categoryId ? String(categoryId) : 'all',
       },
+      cashSession,
+      canManageSession,
     })
   }
 
@@ -139,6 +174,47 @@ export default class PosController {
         session.flash('success', `Sale completed (${result.total.toFixed(2)}). Invoice ready.`)
       }
       return response.redirect(`/invoices/${result.invoiceId}`)
+    } catch (err) {
+      if (err instanceof DomainError) {
+        session.flash('error', err.message)
+        return response.redirect().back()
+      }
+      throw err
+    }
+  }
+
+  async openSession({ request, auth, bouncer, response, session }: HttpContext) {
+    await bouncer.authorize('pos.manageSession' as never)
+    const payload = await request.validateUsing(openCashSessionValidator)
+    try {
+      const cashSession = await openSession({
+        openingFloat: payload.openingFloat,
+        actor: auth.user!,
+      })
+      session.flash('success', `Cash session ${cashSession.number} opened.`)
+      return response.redirect().back()
+    } catch (err) {
+      if (err instanceof DomainError) {
+        session.flash('error', err.message)
+        return response.redirect().back()
+      }
+      throw err
+    }
+  }
+
+  async closeSession({ request, auth, bouncer, response, session }: HttpContext) {
+    await bouncer.authorize('pos.manageSession' as never)
+    const payload = await request.validateUsing(closeCashSessionValidator)
+    try {
+      const cashSession = await closeSession({
+        countedCash: payload.countedCash,
+        note: payload.note ?? null,
+        actor: auth.user!,
+      })
+      const variance = Number(cashSession.variance)
+      const varianceLabel = variance === 0 ? 'no variance' : `variance ${variance.toFixed(2)}`
+      session.flash('success', `Cash session ${cashSession.number} closed (${varianceLabel}).`)
+      return response.redirect().back()
     } catch (err) {
       if (err instanceof DomainError) {
         session.flash('error', err.message)

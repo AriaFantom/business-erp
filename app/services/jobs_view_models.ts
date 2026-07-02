@@ -98,6 +98,8 @@ export async function getJobShowViewModel(jobId: number) {
       totalMaterialCost: job.totalMaterialCost,
       totalComponentCost: job.totalComponentCost,
       totalExpense: job.totalExpense,
+      machineMinutes: job.machineMinutes,
+      totalMachineCost: job.totalMachineCost,
       totalCost: job.totalCost,
       unitCost: job.unitCost,
       chainCost: String(chainCost),

@@ -60,6 +60,8 @@ type Job = {
   totalMaterialCost: string
   totalComponentCost: string
   totalExpense: string
+  machineMinutes: number
+  totalMachineCost: string
   totalCost: string
   unitCost: string
   chainCost: string
@@ -140,6 +142,13 @@ type PageProps = {
   idleMachines: IdleMachine[]
   productRecipe: RecipeItem[]
   serverNow: string
+}
+
+function formatMinutes(totalMinutes: number): string {
+  const h = Math.floor(totalMinutes / 60)
+  const m = totalMinutes % 60
+  if (h === 0) return `${m}m`
+  return `${h}h ${m}m`
 }
 
 function PostAction({
@@ -802,6 +811,10 @@ export default function JobShow({
               <dd className="text-right">{job.totalComponentCost}</dd>
               <dt className="text-muted-foreground">Expenses</dt>
               <dd className="text-right">{job.totalExpense}</dd>
+              <dt className="text-muted-foreground">Machine time</dt>
+              <dd className="text-right">
+                {formatMinutes(job.machineMinutes)} · {job.totalMachineCost}
+              </dd>
               <dt className="font-medium">Total</dt>
               <dd className="text-right font-medium">{job.totalCost}</dd>
               <dt className="text-muted-foreground">Unit cost</dt>

@@ -113,6 +113,15 @@ export interface ApiDefinition {
     index: typeof routes['inventory.index']
     adjust: typeof routes['inventory.adjust']
   }
+  stockTakes: {
+    index: typeof routes['stockTakes.index']
+    store: typeof routes['stockTakes.store']
+    show: typeof routes['stockTakes.show']
+    saveCounts: typeof routes['stockTakes.saveCounts']
+    refresh: typeof routes['stockTakes.refresh']
+    complete: typeof routes['stockTakes.complete']
+    cancel: typeof routes['stockTakes.cancel']
+  }
   purchases: {
     index: typeof routes['purchases.index']
     show: typeof routes['purchases.show']
@@ -121,6 +130,9 @@ export interface ApiDefinition {
     cancel: typeof routes['purchases.cancel']
     returns: {
       store: typeof routes['purchases.returns.store']
+    }
+    payments: {
+      store: typeof routes['purchases.payments.store']
     }
   }
   jobs: {
@@ -178,6 +190,10 @@ export interface ApiDefinition {
   pos: {
     index: typeof routes['pos.index']
     sell: typeof routes['pos.sell']
+    session: {
+      open: typeof routes['pos.session.open']
+      close: typeof routes['pos.session.close']
+    }
   }
   reports: {
     profit: typeof routes['reports.profit']

@@ -20,3 +20,16 @@ export const posSellValidator = vine.compile(
       .maxLength(200),
   })
 )
+
+export const openCashSessionValidator = vine.compile(
+  vine.object({
+    openingFloat: vine.number().min(0).max(99_999_999_999),
+  })
+)
+
+export const closeCashSessionValidator = vine.compile(
+  vine.object({
+    countedCash: vine.number().min(0).max(99_999_999_999),
+    note: vine.string().trim().maxLength(2000).optional(),
+  })
+)

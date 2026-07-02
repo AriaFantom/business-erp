@@ -2,6 +2,7 @@ import Purchase from '#models/purchase'
 import PurchaseItem from '#models/purchase_item'
 import PurchaseReturn from '#models/purchase_return'
 import PurchaseReturnItem from '#models/purchase_return_item'
+import PurchasePayment from '#models/purchase_payment'
 import Supplier from '#models/supplier'
 import Material from '#models/material'
 import Component from '#models/component'
@@ -30,6 +31,20 @@ export async function getPurchasesIndexViewModel(
 
   const supplierById = new Map(suppliers.map((s) => [s.id, s]))
 
+  // Supplier-credit totals from returns, per purchase, for the balance column.
+  const purchaseIds = purchases.map((p) => p.id)
+  const returnSums = purchaseIds.length
+    ? await PurchaseReturn.query()
+        .whereIn('purchase_id', purchaseIds)
+        .select('purchase_id')
+        .sum('total as returns_total')
+        .groupBy('purchase_id')
+    : []
+  const returnsByPurchase = new Map<number, number>(
+    returnSums.map((r) => [r.purchaseId, Number(r.$extras.returns_total)])
+  )
+  const round2 = (n: number) => Math.round(n * 100) / 100
+
   return {
     purchases: purchases.map((p) => ({
       id: p.id,
@@ -39,6 +54,13 @@ export async function getPurchasesIndexViewModel(
       status: p.status,
       purchasedAt: p.purchasedAt?.toISO() ?? null,
       total: p.total,
+      paidTotal: p.paidTotal,
+      balanceDue:
+        p.status === 'confirmed'
+          ? String(
+              round2(Number(p.total) - (returnsByPurchase.get(p.id) ?? 0) - Number(p.paidTotal))
+            )
+          : '0',
       confirmedAt: p.confirmedAt?.toISO() ?? null,
     })),
     suppliers: suppliers.map((s) => ({ id: s.id, name: s.name })),
@@ -81,6 +103,7 @@ export async function getPurchaseShowViewModel(id: number) {
 
   // Returns (debit notes) against this purchase + already-returned qty per line.
   const returns = await PurchaseReturn.query().where('purchase_id', id).orderBy('id', 'desc')
+  const payments = await PurchasePayment.query().where('purchase_id', id).orderBy('paid_at', 'desc')
   const returnItems = returns.length
     ? await PurchaseReturnItem.query().whereIn(
         'purchase_return_id',
@@ -102,6 +125,12 @@ export async function getPurchaseShowViewModel(id: number) {
     machinesByItem.set(m.purchaseItemId, arr)
   }
 
+  const returnsTotal = returns.reduce((s, r) => s + Number(r.total), 0)
+  const balanceDue =
+    purchase.status === 'confirmed'
+      ? Math.round((Number(purchase.total) - returnsTotal - Number(purchase.paidTotal)) * 100) / 100
+      : 0
+
   return {
     purchase: {
       id: purchase.id,
@@ -112,6 +141,9 @@ export async function getPurchaseShowViewModel(id: number) {
       subtotal: purchase.subtotal,
       taxTotal: purchase.taxTotal,
       total: purchase.total,
+      paidTotal: purchase.paidTotal,
+      returnsTotal: String(returnsTotal),
+      balanceDue: String(balanceDue),
       note: purchase.note,
       confirmedAt: purchase.confirmedAt?.toISO() ?? null,
       cancelledAt: purchase.cancelledAt?.toISO() ?? null,
@@ -140,6 +172,14 @@ export async function getPurchaseShowViewModel(id: number) {
       createdAt: r.createdAt?.toISO() ?? null,
       total: r.total,
       note: r.note,
+    })),
+    payments: payments.map((p) => ({
+      id: p.id,
+      amount: p.amount,
+      method: p.method,
+      paidAt: p.paidAt?.toISO() ?? null,
+      reference: p.reference,
+      note: p.note,
     })),
   }
 }

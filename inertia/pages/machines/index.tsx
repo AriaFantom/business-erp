@@ -43,9 +43,12 @@ type Row = {
   serialNumber: string | null
   status: MachineStatus
   currentJobId: number | null
+  hourlyRate: string
   purchaseCost: string
   expenseTotal: string
   totalSpent: string
+  runMinutes30d: number
+  machineCost30d: string
 }
 
 type Filters = { q: string; status: string }
@@ -76,6 +79,7 @@ function NewMachineDialog() {
     model: '',
     serialNumber: '',
     notes: '',
+    hourlyRate: '0',
   })
 
   return (
@@ -127,6 +131,23 @@ function NewMachineDialog() {
             />
             {errors.notes && <span className="text-xs text-destructive">{errors.notes}</span>}
           </div>
+          <div className="flex flex-col gap-1">
+            <Label>Hourly rate</Label>
+            <Input
+              type="number"
+              step="0.01"
+              min={0}
+              value={data.hourlyRate}
+              onChange={(e) => setData('hourlyRate', e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Cost per machine-hour (electricity + depreciation + upkeep) — folded into job cost
+              from actual run time.
+            </p>
+            {errors.hourlyRate && (
+              <span className="text-xs text-destructive">{errors.hourlyRate}</span>
+            )}
+          </div>
           <DialogFooter>
             <Button type="submit" disabled={processing}>
               {processing ? 'Saving…' : 'Add machine'}
@@ -136,6 +157,13 @@ function NewMachineDialog() {
       </DialogContent>
     </Dialog>
   )
+}
+
+function formatMinutes(totalMinutes: number): string {
+  const h = Math.floor(totalMinutes / 60)
+  const m = totalMinutes % 60
+  if (h === 0) return `${m}m`
+  return `${h}h ${m}m`
 }
 
 function Field({
@@ -260,6 +288,8 @@ export default function MachinesIndex({ machines, filters, counts }: PageProps) 
                   <TableHead className="text-right">Purchase</TableHead>
                   <TableHead className="text-right">Expenses</TableHead>
                   <TableHead className="text-right">Total spent</TableHead>
+                  <TableHead className="text-right">Run time (30d)</TableHead>
+                  <TableHead className="text-right">Recovered (30d)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -294,6 +324,10 @@ export default function MachinesIndex({ machines, filters, counts }: PageProps) 
                     <TableCell className="text-right font-medium tabular-nums">
                       {m.totalSpent}
                     </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatMinutes(m.runMinutes30d)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">{m.machineCost30d}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

@@ -24,6 +24,7 @@ const ComponentsController = () => import('#controllers/components_controller')
 const ProductsController = () => import('#controllers/products_controller')
 const ProductCategoriesController = () => import('#controllers/product_categories_controller')
 const InventoryController = () => import('#controllers/inventory_controller')
+const StockTakesController = () => import('#controllers/stock_takes_controller')
 const PurchasesController = () => import('#controllers/purchases_controller')
 const JobsController = () => import('#controllers/jobs_controller')
 const MachinesController = () => import('#controllers/machines_controller')
@@ -189,6 +190,24 @@ router
     router.get('inventory', [InventoryController, 'index']).as('inventory.index')
     router.post('inventory/adjustments', [InventoryController, 'adjust']).as('inventory.adjust')
 
+    // Stock takes — the GET list route must be registered before any
+    // param-style inventory routes so it isn't shadowed.
+    router.get('inventory/stock-takes', [StockTakesController, 'index']).as('stockTakes.index')
+    router.post('inventory/stock-takes', [StockTakesController, 'store']).as('stockTakes.store')
+    router.get('inventory/stock-takes/:id', [StockTakesController, 'show']).as('stockTakes.show')
+    router
+      .post('inventory/stock-takes/:id/counts', [StockTakesController, 'saveCounts'])
+      .as('stockTakes.saveCounts')
+    router
+      .post('inventory/stock-takes/:id/refresh', [StockTakesController, 'refresh'])
+      .as('stockTakes.refresh')
+    router
+      .post('inventory/stock-takes/:id/complete', [StockTakesController, 'complete'])
+      .as('stockTakes.complete')
+    router
+      .post('inventory/stock-takes/:id/cancel', [StockTakesController, 'cancel'])
+      .as('stockTakes.cancel')
+
     // ── Purchases ─────────────────────────────────────────────────────
     router.get('purchases', [PurchasesController, 'index']).as('purchases.index')
     router.get('purchases/:id', [PurchasesController, 'show']).as('purchases.show')
@@ -198,6 +217,9 @@ router
     router
       .post('purchases/:id/returns', [PurchasesController, 'storeReturn'])
       .as('purchases.returns.store')
+    router
+      .post('purchases/:id/payments', [PurchasesController, 'storePayment'])
+      .as('purchases.payments.store')
 
     // ── Production jobs ───────────────────────────────────────────────
     router.get('jobs', [JobsController, 'index']).as('jobs.index')
@@ -260,6 +282,8 @@ router
     // ── POS ──────────────────────────────────────────────────────────
     router.get('pos', [PosController, 'index']).as('pos.index')
     router.post('pos/sell', [PosController, 'sell']).as('pos.sell')
+    router.post('pos/session/open', [PosController, 'openSession']).as('pos.session.open')
+    router.post('pos/session/close', [PosController, 'closeSession']).as('pos.session.close')
 
     // ── Reports ───────────────────────────────────────────────────────
     router.get('reports/profit', [ReportsController, 'profit']).as('reports.profit')

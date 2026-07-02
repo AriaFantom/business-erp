@@ -10,7 +10,7 @@ import { audit } from '#services/audit'
 import { nextDocNumber } from '#services/numbering'
 import { generateInvoiceForSale } from '#services/invoice_service'
 import { applyMovement, invalidateSnapshotCache } from '#services/inventory_service'
-import { InvalidStateError } from '#services/domain_errors'
+import { DomainError, InvalidStateError } from '#services/domain_errors'
 import { resolveSaleLinePricing } from '#services/pricing'
 
 export type SaleLineInput = {
@@ -197,6 +197,30 @@ export async function confirmSale(saleId: number, actor: User): Promise<Sale> {
         from: sale.status,
         to: 'confirmed',
       })
+    }
+
+    // Credit-limit gate: block confirmation when the customer's open
+    // receivable plus this sale would exceed their limit (null = no limit).
+    // POS is unaffected — it pays in full immediately and never calls this.
+    const customer = await Customer.query({ client: trx })
+      .where('id', sale.customerId)
+      .firstOrFail()
+    if (customer.creditLimit !== null) {
+      const limit = Number(customer.creditLimit)
+      const balanceRow = await trx
+        .from('invoices')
+        .where('customer_id', customer.id)
+        .whereNot('status', 'void')
+        .select(trx.raw('COALESCE(SUM(total - paid_total - credit_total), 0) as balance'))
+        .first()
+      const openBalance = Math.max(0, Number(balanceRow?.balance ?? 0))
+      const saleTotal = Number(sale.total)
+      if (openBalance + saleTotal > limit + 0.001) {
+        throw new DomainError({
+          code: 'CREDIT_LIMIT_EXCEEDED',
+          message: `Credit limit exceeded for ${customer.name}: limit ${limit.toFixed(2)}, open balance ${openBalance.toFixed(2)}, this sale ${saleTotal.toFixed(2)}.`,
+        })
+      }
     }
 
     // Deduct stock for every line that points at a real product. Free-form

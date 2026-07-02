@@ -14,8 +14,10 @@ import { DateTime } from 'luxon'
  * Must be called from inside the transaction that creates the document
  * row, so that a rolled-back insert does not consume a number.
  */
+export type DocScope = 'INV' | 'QT' | 'PO' | 'JOB' | 'SO' | 'CN' | 'PRT' | 'ST' | 'CS'
+
 export async function nextDocNumber(
-  scope: 'INV' | 'QT' | 'PO' | 'JOB' | 'SO' | 'CN' | 'PRT',
+  scope: DocScope,
   trx: TransactionClientContract,
   at: DateTime = DateTime.now()
 ): Promise<string> {
@@ -45,9 +47,6 @@ export async function nextDocNumber(
 }
 
 /** Convenience helper that runs in its own transaction. Prefer the trx form. */
-export async function nextDocNumberStandalone(
-  scope: 'INV' | 'QT' | 'PO' | 'JOB' | 'SO' | 'CN' | 'PRT',
-  at?: DateTime
-): Promise<string> {
+export async function nextDocNumberStandalone(scope: DocScope, at?: DateTime): Promise<string> {
   return db.transaction((trx) => nextDocNumber(scope, trx, at))
 }

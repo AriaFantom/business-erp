@@ -25,6 +25,7 @@ export const permissions = definePermissions({
   inventory: {
     view: 'View on-hand inventory and stock movements',
     adjust: 'Manually adjust inventory levels',
+    stockTake: 'Create, count and complete stock-take sessions',
   },
   materials: {
     view: 'View materials',
@@ -70,6 +71,7 @@ export const permissions = definePermissions({
     confirm: 'Confirm a purchase (writes stock movements)',
     cancel: 'Cancel a draft purchase',
     return: 'Return items from a confirmed purchase (debit note)',
+    pay: 'Record supplier payments against a purchase',
   },
 
   // ── Production ───────────────────────────────────────────────────────
@@ -116,6 +118,7 @@ export const permissions = definePermissions({
   pos: {
     view: 'Open the point-of-sale terminal',
     sell: 'Complete a POS sale (creates sale + invoice + payment)',
+    manageSession: 'Open and close cash register sessions (Z-report)',
   },
 
   // ── Reports ──────────────────────────────────────────────────────────

@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon'
 import Sale from '#models/sale'
 import SaleItem from '#models/sale_item'
 import SaleReturn from '#models/sale_return'
@@ -144,20 +145,57 @@ export async function getInvoicesIndexViewModel(
   if (filters.q) query.whereILike('number', `%${filters.q.trim()}%`)
   const [invoices, customers] = await Promise.all([query, Customer.query().orderBy('name', 'asc')])
   const cById = new Map(customers.map((c) => [c.id, c]))
+
+  const round2 = (n: number) => Math.round(n * 100) / 100
+  const now = DateTime.now()
+  const overdueDaysOf = (inv: Invoice, balance: number) => {
+    if (balance <= 0.005 || inv.status === 'void') return 0
+    const days = Math.floor(now.diff(inv.dueAt, 'days').days)
+    return days > 0 ? days : 0
+  }
+
+  // Receivables aging over ALL open invoices (not just the filtered page):
+  // balances bucketed by days past due.
+  const openInvoices = await Invoice.query()
+    .whereNot('status', 'void')
+    .whereRaw('total - paid_total - credit_total > 0.005')
+  const aging = { current: 0, d1_30: 0, d31_60: 0, d61_90: 0, d90plus: 0 }
+  for (const inv of openInvoices) {
+    const balance = round2(Number(inv.total) - Number(inv.paidTotal) - Number(inv.creditTotal))
+    const days = overdueDaysOf(inv, balance)
+    if (days <= 0) aging.current += balance
+    else if (days <= 30) aging.d1_30 += balance
+    else if (days <= 60) aging.d31_60 += balance
+    else if (days <= 90) aging.d61_90 += balance
+    else aging.d90plus += balance
+  }
+
   return {
-    invoices: invoices.map((i) => ({
-      id: i.id,
-      number: i.number,
-      saleId: i.saleId,
-      customerId: i.customerId,
-      customerName: cById.get(i.customerId)?.name ?? '—',
-      status: i.status,
-      issuedAt: i.issuedAt.toISO(),
-      dueAt: i.dueAt.toISO(),
-      total: i.total,
-      paidTotal: i.paidTotal,
-    })),
+    invoices: invoices.map((i) => {
+      const balance = round2(Number(i.total) - Number(i.paidTotal) - Number(i.creditTotal))
+      return {
+        id: i.id,
+        number: i.number,
+        saleId: i.saleId,
+        customerId: i.customerId,
+        customerName: cById.get(i.customerId)?.name ?? '—',
+        status: i.status,
+        issuedAt: i.issuedAt.toISO(),
+        dueAt: i.dueAt.toISO(),
+        total: i.total,
+        paidTotal: i.paidTotal,
+        balance: String(Math.max(0, balance)),
+        overdueDays: overdueDaysOf(i, balance),
+      }
+    }),
     customers: customers.map((c) => ({ id: c.id, name: c.name })),
+    aging: {
+      current: round2(aging.current),
+      d1_30: round2(aging.d1_30),
+      d31_60: round2(aging.d31_60),
+      d61_90: round2(aging.d61_90),
+      d90plus: round2(aging.d90plus),
+    },
   }
 }
 

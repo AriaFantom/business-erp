@@ -48,6 +48,8 @@ type PurchaseRow = {
   status: string
   purchasedAt: string | null
   total: string
+  paidTotal: string
+  balanceDue: string
   confirmedAt: string | null
 }
 
@@ -330,6 +332,7 @@ const PURCHASE_COLUMNS: ColumnDef[] = [
   { key: 'status', label: 'Status' },
   { key: 'purchasedOn', label: 'Purchased on' },
   { key: 'total', label: 'Total' },
+  { key: 'due', label: 'Due' },
   { key: 'actions', label: 'Actions', required: true },
 ]
 
@@ -429,6 +432,7 @@ export default function PurchasesIndex({
                   {isVisible('total') && (
                     <TableHead className="text-right">Total</TableHead>
                   )}
+                  {isVisible('due') && <TableHead className="text-right">Due</TableHead>}
                   {isVisible('actions') && (
                     <TableHead className="w-20 text-right">
                       <ColumnVisibilityMenu
@@ -459,6 +463,15 @@ export default function PurchasesIndex({
                     )}
                     {isVisible('total') && (
                       <TableCell className="text-right">{p.total}</TableCell>
+                    )}
+                    {isVisible('due') && (
+                      <TableCell className="text-right tabular-nums">
+                        {p.status === 'confirmed' && Number(p.balanceDue) > 0.005 ? (
+                          <span className="font-medium">{p.balanceDue}</span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                     )}
                     {isVisible('actions') && (
                       <TableCell className="text-right">

@@ -34,9 +34,21 @@ type Purchase = {
   subtotal: string
   taxTotal: string
   total: string
+  paidTotal: string
+  returnsTotal: string
+  balanceDue: string
   note: string | null
   confirmedAt: string | null
   cancelledAt: string | null
+}
+
+type Payment = {
+  id: number
+  amount: string
+  method: string
+  paidAt: string | null
+  reference: string | null
+  note: string | null
 }
 
 type Item = {
@@ -63,7 +75,12 @@ type PurchaseReturn = {
   note: string | null
 }
 
-type PageProps = { purchase: Purchase; items: Item[]; returns: PurchaseReturn[] }
+type PageProps = {
+  purchase: Purchase
+  items: Item[]
+  returns: PurchaseReturn[]
+  payments: Payment[]
+}
 
 function PostAction({
   path,
@@ -204,7 +221,89 @@ function ReturnItemsDialog({ purchaseId, items }: { purchaseId: number; items: I
   )
 }
 
-export default function PurchaseShow({ purchase, items, returns }: PageProps) {
+function RecordPaymentDialog({ purchase }: { purchase: Purchase }) {
+  const [open, setOpen] = useState(false)
+  const { data, setData, post, processing, reset } = useForm({
+    amount: purchase.balanceDue,
+    method: 'bank',
+    reference: '',
+    note: '',
+  })
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline">Record payment</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Record supplier payment</DialogTitle>
+        </DialogHeader>
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(e) => {
+            e.preventDefault()
+            post(`/purchases/${purchase.id}/payments`, {
+              preserveScroll: true,
+              onSuccess: () => {
+                reset()
+                setOpen(false)
+              },
+            })
+          }}
+        >
+          <div className="flex flex-col gap-1">
+            <Label>Amount (balance due: {purchase.balanceDue})</Label>
+            <Input
+              type="number"
+              min={0.01}
+              max={Number(purchase.balanceDue)}
+              step="0.01"
+              value={data.amount}
+              onChange={(e) => setData('amount', e.target.value)}
+              required
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label>Method</Label>
+            <select
+              className="border-input h-9 rounded-md border bg-transparent px-3 text-sm"
+              value={data.method}
+              onChange={(e) => setData('method', e.target.value)}
+            >
+              <option value="bank">Bank</option>
+              <option value="cash">Cash</option>
+              <option value="upi">UPI</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label>Reference</Label>
+            <Input
+              value={data.reference}
+              placeholder="UTR / cheque no. (optional)"
+              onChange={(e) => setData('reference', e.target.value)}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label>Note</Label>
+            <Input
+              value={data.note}
+              placeholder="Optional"
+              onChange={(e) => setData('note', e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button type="submit" disabled={processing || Number(data.amount) <= 0}>
+              {processing ? 'Saving…' : 'Record payment'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+export default function PurchaseShow({ purchase, items, returns, payments }: PageProps) {
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-8">
       <div className="flex items-end justify-between">
@@ -217,7 +316,10 @@ export default function PurchaseShow({ purchase, items, returns }: PageProps) {
         <div className="flex items-center gap-2">
           <StatusBadge kind="purchase" status={purchase.status} />
           {purchase.status === 'confirmed' && (
-            <ReturnItemsDialog purchaseId={purchase.id} items={items} />
+            <>
+              <ReturnItemsDialog purchaseId={purchase.id} items={items} />
+              {Number(purchase.balanceDue) > 0.005 && <RecordPaymentDialog purchase={purchase} />}
+            </>
           )}
           {purchase.status === 'draft' && (
             <>
@@ -309,10 +411,56 @@ export default function PurchaseShow({ purchase, items, returns }: PageProps) {
             <dd className="text-right">{purchase.taxTotal}</dd>
             <dt className="font-medium">Total</dt>
             <dd className="text-right font-medium">{purchase.total}</dd>
+            {purchase.status === 'confirmed' && (
+              <>
+                {Number(purchase.returnsTotal) > 0 && (
+                  <>
+                    <dt className="text-muted-foreground">Returned (credit)</dt>
+                    <dd className="text-right">-{purchase.returnsTotal}</dd>
+                  </>
+                )}
+                <dt className="text-muted-foreground">Paid</dt>
+                <dd className="text-right">-{purchase.paidTotal}</dd>
+                <dt className="font-medium">Balance due</dt>
+                <dd className="text-right font-medium">{purchase.balanceDue}</dd>
+              </>
+            )}
           </dl>
           {purchase.note && <p className="mt-3 text-sm text-muted-foreground">{purchase.note}</p>}
         </CardContent>
       </Card>
+
+      {payments.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Payments</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Method</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>Reference</TableHead>
+                  <TableHead>Note</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {payments.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell>{p.paidAt?.slice(0, 10) ?? '—'}</TableCell>
+                    <TableCell className="capitalize">{p.method}</TableCell>
+                    <TableCell className="text-right">{p.amount}</TableCell>
+                    <TableCell className="text-muted-foreground">{p.reference ?? '—'}</TableCell>
+                    <TableCell className="text-muted-foreground">{p.note ?? '—'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       {returns.length > 0 && (
         <Card>

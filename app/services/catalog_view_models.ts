@@ -622,6 +622,7 @@ export type SupplierRow = {
   email: string | null
   phone: string | null
   isActive: boolean
+  outstanding: string
 }
 
 export async function getSuppliersViewModel(filters: ListFilters = {}) {
@@ -634,6 +635,26 @@ export async function getSuppliersViewModel(filters: ListFilters = {}) {
     return q
   })
   const suppliers = await query
+
+  // Payable per supplier = confirmed purchase totals − payments − return credits.
+  const [dueRows, returnRows] = await Promise.all([
+    db
+      .from('purchases')
+      .where('status', 'confirmed')
+      .groupBy('supplier_id')
+      .select('supplier_id')
+      .select(db.raw('SUM(total - paid_total) as due')),
+    db
+      .from('purchase_returns')
+      .groupBy('supplier_id')
+      .select('supplier_id')
+      .sum({ credit: 'total' }),
+  ])
+  const dueBySupplier = new Map(dueRows.map((r: any) => [Number(r.supplier_id), Number(r.due)]))
+  const creditBySupplier = new Map(
+    returnRows.map((r: any) => [Number(r.supplier_id), Number(r.credit)])
+  )
+
   return {
     suppliers: suppliers.map<SupplierRow>((s) => ({
       id: s.id,
@@ -642,6 +663,10 @@ export async function getSuppliersViewModel(filters: ListFilters = {}) {
       email: s.email,
       phone: s.phone,
       isActive: s.isActive,
+      outstanding: Math.max(
+        0,
+        Math.round(((dueBySupplier.get(s.id) ?? 0) - (creditBySupplier.get(s.id) ?? 0)) * 100) / 100
+      ).toFixed(2),
     })),
     counts,
   }
@@ -659,6 +684,8 @@ export type CustomerRow = {
   email: string | null
   phone: string | null
   isActive: boolean
+  creditLimit: string | null
+  openBalance: string
 }
 
 export async function getCustomersViewModel(filters: ListFilters = {}) {
@@ -671,6 +698,18 @@ export async function getCustomersViewModel(filters: ListFilters = {}) {
     return q
   })
   const customers = await query
+
+  // Open receivable per customer = non-void invoice totals − payments − credits.
+  const balanceRows = await db
+    .from('invoices')
+    .whereNot('status', 'void')
+    .groupBy('customer_id')
+    .select('customer_id')
+    .select(db.raw('SUM(total - paid_total - credit_total) as balance'))
+  const balanceByCustomer = new Map(
+    balanceRows.map((r: any) => [Number(r.customer_id), Number(r.balance)])
+  )
+
   return {
     customers: customers.map<CustomerRow>((c) => ({
       id: c.id,
@@ -679,6 +718,10 @@ export async function getCustomersViewModel(filters: ListFilters = {}) {
       email: c.email,
       phone: c.phone,
       isActive: c.isActive,
+      creditLimit: c.creditLimit,
+      openBalance: Math.max(0, Math.round((balanceByCustomer.get(c.id) ?? 0) * 100) / 100).toFixed(
+        2
+      ),
     })),
     counts,
   }

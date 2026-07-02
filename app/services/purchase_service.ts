@@ -4,6 +4,7 @@ import Purchase from '#models/purchase'
 import PurchaseItem from '#models/purchase_item'
 import PurchaseReturn from '#models/purchase_return'
 import PurchaseReturnItem from '#models/purchase_return_item'
+import PurchasePayment from '#models/purchase_payment'
 import Material from '#models/material'
 import Component from '#models/component'
 import Machine from '#models/machine'
@@ -329,6 +330,75 @@ export async function returnPurchaseItems(input: ReturnPurchaseInput): Promise<P
 
   await invalidateSnapshotCache()
   return result
+}
+
+export type PurchasePaymentInput = {
+  purchaseId: number
+  amount: number
+  method: 'cash' | 'bank' | 'upi' | 'other'
+  reference?: string | null
+  note?: string | null
+  actor: User
+}
+
+/**
+ * Record a supplier payment against a confirmed purchase.
+ *
+ * The payable is the purchase total minus supplier credits from purchase
+ * returns; payments may never exceed the remaining balance.
+ */
+export async function recordPurchasePayment(input: PurchasePaymentInput): Promise<PurchasePayment> {
+  return db.transaction(async (trx) => {
+    const purchase = await Purchase.query({ client: trx })
+      .where('id', input.purchaseId)
+      .forUpdate()
+      .firstOrFail()
+    if (purchase.status !== 'confirmed') {
+      throw new InvalidStateError({
+        entity: 'purchase',
+        from: purchase.status,
+        to: 'paid',
+      })
+    }
+
+    const returnsRow = await PurchaseReturn.query({ client: trx })
+      .where('purchase_id', purchase.id)
+      .sum('total as returns_total')
+      .first()
+    const returnsTotal = Number(returnsRow?.$extras.returns_total ?? 0)
+    const remaining = round2(Number(purchase.total) - returnsTotal - Number(purchase.paidTotal))
+    if (input.amount <= 0 || input.amount > remaining + 0.001) {
+      throw new DomainError({
+        code: 'PAYMENT_EXCEEDS_DUE',
+        message: `Cannot pay ${round2(input.amount)}: remaining balance on ${purchase.number} is ${Math.max(0, remaining)}.`,
+      })
+    }
+
+    const payment = new PurchasePayment()
+    payment.purchaseId = purchase.id
+    payment.amount = String(round2(input.amount))
+    payment.method = input.method
+    payment.paidAt = DateTime.now()
+    payment.reference = input.reference ?? null
+    payment.note = input.note ?? null
+    payment.recordedByUserId = input.actor.id
+    payment.useTransaction(trx)
+    await payment.save()
+
+    purchase.paidTotal = String(round2(Number(purchase.paidTotal) + input.amount))
+    await purchase.save()
+
+    await audit({
+      actor: input.actor,
+      action: 'purchase.payment',
+      targetType: 'purchase',
+      targetId: purchase.id,
+      payload: { amount: round2(input.amount), method: input.method },
+      trx,
+    })
+
+    return payment
+  })
 }
 
 /** Cancel a draft purchase. Confirmed purchases cannot be cancelled. */

@@ -6,6 +6,7 @@ export const createMachineValidator = vine.compile(
     model: vine.string().trim().maxLength(80).optional(),
     serialNumber: vine.string().trim().maxLength(80).optional(),
     notes: vine.string().trim().maxLength(2000).optional(),
+    hourlyRate: vine.number().min(0).optional(),
   })
 )
 
@@ -15,6 +16,7 @@ export const updateMachineValidator = vine.compile(
     model: vine.string().trim().maxLength(80).nullable().optional(),
     serialNumber: vine.string().trim().maxLength(80).nullable().optional(),
     notes: vine.string().trim().maxLength(2000).nullable().optional(),
+    hourlyRate: vine.number().min(0).optional(),
   })
 )
 

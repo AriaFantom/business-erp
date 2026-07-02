@@ -5,12 +5,13 @@ import Product from '#models/product'
 import Sale from '#models/sale'
 import SaleItem from '#models/sale_item'
 import InvoicePayment from '#models/invoice_payment'
+import CashSession from '#models/cash_session'
 import type User from '#models/user'
 import { audit } from '#services/audit'
 import { nextDocNumber } from '#services/numbering'
 import { generateInvoiceForSale } from '#services/invoice_service'
 import { applyMovement, invalidateSnapshotCache } from '#services/inventory_service'
-import { InvalidStateError } from '#services/domain_errors'
+import { DomainError, InvalidStateError } from '#services/domain_errors'
 import { resolveSaleLinePricing } from '#services/pricing'
 
 export type PosLineInput = {
@@ -108,6 +109,17 @@ export async function completePosSale(input: {
 
     const now = DateTime.now()
 
+    // Cash sales require an open register; other methods (card/UPI/etc.)
+    // are allowed with or without a session, but get tagged onto one when
+    // open so the Z-report can show their totals too.
+    const openSession = await CashSession.query({ client: trx }).where('status', 'open').first()
+    if (input.paymentMethod === 'cash' && !openSession) {
+      throw new DomainError({
+        code: 'NO_OPEN_CASH_SESSION',
+        message: 'Open a cash session before taking cash payments.',
+      })
+    }
+
     const sale = new Sale()
     sale.number = await nextDocNumber('SO', trx)
     sale.customerId = input.customerId
@@ -164,6 +176,7 @@ export async function completePosSale(input: {
     payment.paidAt = now
     payment.reference = input.paymentReference ?? null
     payment.recordedByUserId = input.actor.id
+    payment.cashSessionId = openSession?.id ?? null
     payment.useTransaction(trx)
     await payment.save()
 

@@ -26,6 +26,39 @@ export class AuditEventSchema extends BaseModel {
   declare targetType: string | null
 }
 
+export class CashSessionSchema extends BaseModel {
+  static $columns = ['closedAt', 'closedByUserId', 'countedCash', 'createdAt', 'expectedCash', 'id', 'note', 'number', 'openedAt', 'openedByUserId', 'openingFloat', 'status', 'updatedAt', 'variance'] as const
+  $columns = CashSessionSchema.$columns
+  @column.dateTime()
+  declare closedAt: DateTime | null
+  @column()
+  declare closedByUserId: number | null
+  @column()
+  declare countedCash: string | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare expectedCash: string | null
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare note: string | null
+  @column()
+  declare number: string
+  @column.dateTime()
+  declare openedAt: DateTime
+  @column()
+  declare openedByUserId: number | null
+  @column()
+  declare openingFloat: string
+  @column()
+  declare status: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare variance: string | null
+}
+
 export class ComponentSchema extends BaseModel {
   static $columns = ['createdAt', 'defaultSupplierId', 'defaultUnitCost', 'id', 'imageKey', 'isActive', 'name', 'reorderThresholdQty', 'sku', 'unit', 'updatedAt'] as const
   $columns = ComponentSchema.$columns
@@ -54,12 +87,14 @@ export class ComponentSchema extends BaseModel {
 }
 
 export class CustomerSchema extends BaseModel {
-  static $columns = ['billingAddress', 'createdAt', 'email', 'gstin', 'id', 'isActive', 'name', 'phone', 'shippingAddress', 'updatedAt'] as const
+  static $columns = ['billingAddress', 'createdAt', 'creditLimit', 'email', 'gstin', 'id', 'isActive', 'name', 'phone', 'shippingAddress', 'updatedAt'] as const
   $columns = CustomerSchema.$columns
   @column()
   declare billingAddress: string | null
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
+  @column()
+  declare creditLimit: string | null
   @column()
   declare email: string | null
   @column()
@@ -217,10 +252,12 @@ export class InvoiceItemSchema extends BaseModel {
 }
 
 export class InvoicePaymentSchema extends BaseModel {
-  static $columns = ['amount', 'createdAt', 'id', 'invoiceId', 'method', 'paidAt', 'recordedByUserId', 'reference', 'updatedAt'] as const
+  static $columns = ['amount', 'cashSessionId', 'createdAt', 'id', 'invoiceId', 'method', 'paidAt', 'recordedByUserId', 'reference', 'updatedAt'] as const
   $columns = InvoicePaymentSchema.$columns
   @column()
   declare amount: string
+  @column()
+  declare cashSessionId: number | null
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column({ isPrimary: true })
@@ -308,7 +345,7 @@ export class JobMaterialConsumptionSchema extends BaseModel {
 }
 
 export class MachineSchema extends BaseModel {
-  static $columns = ['acquiredAt', 'createdAt', 'currentJobId', 'id', 'model', 'name', 'notes', 'purchaseItemId', 'serialNumber', 'status', 'updatedAt'] as const
+  static $columns = ['acquiredAt', 'createdAt', 'currentJobId', 'hourlyRate', 'id', 'model', 'name', 'notes', 'purchaseItemId', 'serialNumber', 'status', 'updatedAt'] as const
   $columns = MachineSchema.$columns
   @column.dateTime()
   declare acquiredAt: DateTime | null
@@ -316,6 +353,8 @@ export class MachineSchema extends BaseModel {
   declare createdAt: DateTime
   @column()
   declare currentJobId: number | null
+  @column()
+  declare hourlyRate: string
   @column({ isPrimary: true })
   declare id: number
   @column()
@@ -462,7 +501,7 @@ export class ProductionJobStageSchema extends BaseModel {
 }
 
 export class ProductionJobSchema extends BaseModel {
-  static $columns = ['autoCompleteAt', 'completedAt', 'createdAt', 'createdByUserId', 'currentStageId', 'estimatedDurationMin', 'id', 'machineId', 'note', 'number', 'parentJobId', 'pausedAt', 'plannedQty', 'producedQty', 'productId', 'remainingSeconds', 'startedAt', 'status', 'totalComponentCost', 'totalCost', 'totalExpense', 'totalMaterialCost', 'unitCost', 'updatedAt'] as const
+  static $columns = ['autoCompleteAt', 'completedAt', 'createdAt', 'createdByUserId', 'currentStageId', 'estimatedDurationMin', 'id', 'machineId', 'machineMinutes', 'note', 'number', 'parentJobId', 'pausedAt', 'plannedQty', 'producedQty', 'productId', 'remainingSeconds', 'startedAt', 'status', 'totalComponentCost', 'totalCost', 'totalExpense', 'totalMachineCost', 'totalMaterialCost', 'unitCost', 'updatedAt'] as const
   $columns = ProductionJobSchema.$columns
   @column.dateTime()
   declare autoCompleteAt: DateTime | null
@@ -480,6 +519,8 @@ export class ProductionJobSchema extends BaseModel {
   declare id: number
   @column()
   declare machineId: number | null
+  @column()
+  declare machineMinutes: number
   @column()
   declare note: string | null
   @column()
@@ -506,6 +547,8 @@ export class ProductionJobSchema extends BaseModel {
   declare totalCost: string
   @column()
   declare totalExpense: string
+  @column()
+  declare totalMachineCost: string
   @column()
   declare totalMaterialCost: string
   @column()
@@ -578,6 +621,31 @@ export class PurchaseItemSchema extends BaseModel {
   declare updatedAt: DateTime
 }
 
+export class PurchasePaymentSchema extends BaseModel {
+  static $columns = ['amount', 'createdAt', 'id', 'method', 'note', 'paidAt', 'purchaseId', 'recordedByUserId', 'reference', 'updatedAt'] as const
+  $columns = PurchasePaymentSchema.$columns
+  @column()
+  declare amount: string
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare method: string
+  @column()
+  declare note: string | null
+  @column.dateTime()
+  declare paidAt: DateTime
+  @column()
+  declare purchaseId: number
+  @column()
+  declare recordedByUserId: number | null
+  @column()
+  declare reference: string | null
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
 export class PurchaseReturnItemSchema extends BaseModel {
   static $columns = ['createdAt', 'id', 'itemId', 'itemKind', 'lineTotal', 'purchaseItemId', 'purchaseReturnId', 'qty', 'unitCost', 'updatedAt'] as const
   $columns = PurchaseReturnItemSchema.$columns
@@ -627,7 +695,7 @@ export class PurchaseReturnSchema extends BaseModel {
 }
 
 export class PurchaseSchema extends BaseModel {
-  static $columns = ['attachmentKey', 'cancelledAt', 'cancelledByUserId', 'confirmedAt', 'confirmedByUserId', 'createdAt', 'createdByUserId', 'id', 'note', 'number', 'purchasedAt', 'status', 'subtotal', 'supplierId', 'taxTotal', 'total', 'updatedAt'] as const
+  static $columns = ['attachmentKey', 'cancelledAt', 'cancelledByUserId', 'confirmedAt', 'confirmedByUserId', 'createdAt', 'createdByUserId', 'id', 'note', 'number', 'paidTotal', 'purchasedAt', 'status', 'subtotal', 'supplierId', 'taxTotal', 'total', 'updatedAt'] as const
   $columns = PurchaseSchema.$columns
   @column()
   declare attachmentKey: string | null
@@ -649,6 +717,8 @@ export class PurchaseSchema extends BaseModel {
   declare note: string | null
   @column()
   declare number: string
+  @column()
+  declare paidTotal: string
   @column.dateTime()
   declare purchasedAt: DateTime
   @column()
@@ -955,6 +1025,52 @@ export class StockMovementSchema extends BaseModel {
   declare referenceType: string | null
   @column()
   declare unitCost: string
+}
+
+export class StockTakeItemSchema extends BaseModel {
+  static $columns = ['countedQty', 'createdAt', 'expectedQty', 'id', 'itemId', 'itemKind', 'stockTakeId', 'unitCost', 'updatedAt'] as const
+  $columns = StockTakeItemSchema.$columns
+  @column()
+  declare countedQty: string | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare expectedQty: string
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare itemId: number
+  @column()
+  declare itemKind: string
+  @column()
+  declare stockTakeId: number
+  @column()
+  declare unitCost: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
+export class StockTakeSchema extends BaseModel {
+  static $columns = ['completedAt', 'completedByUserId', 'createdAt', 'createdByUserId', 'id', 'note', 'number', 'status', 'updatedAt'] as const
+  $columns = StockTakeSchema.$columns
+  @column.dateTime()
+  declare completedAt: DateTime | null
+  @column()
+  declare completedByUserId: number | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare createdByUserId: number | null
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare note: string | null
+  @column()
+  declare number: string
+  @column()
+  declare status: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
 }
 
 export class SupplierSchema extends BaseModel {

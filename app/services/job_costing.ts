@@ -47,8 +47,36 @@ function round4(n: number): number {
 }
 
 /**
+ * Sum stage run time (completed_at - started_at, in minutes) across every
+ * stage of a job that actually ran to completion. Stages that never started
+ * or are still open are excluded. Rounded to the nearest minute, clamped
+ * to >= 0 in case of clock skew.
+ */
+export async function computeMachineRunMinutes(
+  jobId: number,
+  trx: TransactionClientContract
+): Promise<number> {
+  const row = await trx
+    .from('production_job_stages')
+    .where('job_id', jobId)
+    .whereNotNull('started_at')
+    .whereNotNull('completed_at')
+    .select(
+      db.raw('COALESCE(SUM(EXTRACT(EPOCH FROM (completed_at - started_at)) / 60), 0) as minutes')
+    )
+    .first()
+  const minutes = Math.round(Number(row?.minutes ?? 0))
+  return Math.max(0, minutes)
+}
+
+/**
  * Recompute and persist the four totals on a job. Must run inside the same
  * transaction as the consumption / expense / completion that triggered it.
+ *
+ * total_machine_cost is only ever set by completeJobInTrx (at completion
+ * time); for draft/in_progress/paused/awaiting_confirmation jobs it stays at
+ * its '0' default, so folding it into totalCost here is a no-op for the
+ * material-return and expense-add paths that call this before completion.
  */
 export async function recomputeJobTotals(
   jobId: number,
@@ -65,12 +93,12 @@ export async function recomputeJobTotals(
     else if (c.itemKind === 'component') componentCost += cost
   }
   const expenseTotal = expenses.reduce((s, e) => s + Number(e.amount), 0)
-  const totalCost = materialCost + componentCost + expenseTotal
 
   const job = await ProductionJob.query({ client: trx })
     .where('id', jobId)
     .forUpdate()
     .firstOrFail()
+  const totalCost = materialCost + componentCost + expenseTotal + Number(job.totalMachineCost)
   const unitCost = job.producedQty > 0 ? totalCost / job.producedQty : 0
 
   job.totalMaterialCost = String(round2(materialCost))
@@ -452,6 +480,18 @@ export async function completeJobInTrx(
   job.completedAt = DateTime.now()
   job.autoCompleteAt = null
   job.currentStageId = null
+
+  // Fold machine run time into the job's cost before totals/unit-cost are
+  // (re)computed, so the finished-goods inbound valuation below reflects it.
+  // machineId can be null (e.g. jobs created before machines were required,
+  // or manually cleared) — minutes are still recorded, cost is just 0.
+  const machineMinutes = await computeMachineRunMinutes(job.id, trx)
+  const machine = job.machineId
+    ? await Machine.query({ client: trx }).where('id', job.machineId).first()
+    : null
+  const machineCost = machine ? round2((machineMinutes / 60) * Number(machine.hourlyRate)) : 0
+  job.machineMinutes = machineMinutes
+  job.totalMachineCost = String(machineCost)
   await job.save()
 
   await recomputeJobTotals(job.id, trx)
@@ -615,6 +655,9 @@ async function returnJobMaterials(
   return returnedLines
 }
 
+// failJob/cancelJob never book finished goods, so machine_minutes and
+// total_machine_cost are intentionally left at their '0' default — there's
+// no output to fold the machine-hour cost into.
 export async function failJob(input: {
   jobId: number
   reason?: string | null

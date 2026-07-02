@@ -10,6 +10,7 @@ export async function createMachine(input: {
   model?: string | null
   serialNumber?: string | null
   notes?: string | null
+  hourlyRate?: number
   actor: User
 }): Promise<Machine> {
   return db.transaction(async (trx) => {
@@ -24,6 +25,7 @@ export async function createMachine(input: {
     machine.model = input.model ?? null
     machine.serialNumber = input.serialNumber ?? null
     machine.notes = input.notes ?? null
+    machine.hourlyRate = String(input.hourlyRate ?? 0)
     machine.status = 'idle'
     machine.acquiredAt = DateTime.now()
     machine.useTransaction(trx)
@@ -46,6 +48,7 @@ export async function updateMachine(
     model?: string | null
     serialNumber?: string | null
     notes?: string | null
+    hourlyRate?: number
   },
   actor: User
 ): Promise<Machine> {
@@ -55,6 +58,7 @@ export async function updateMachine(
     if (patch.model !== undefined) machine.model = patch.model
     if (patch.serialNumber !== undefined) machine.serialNumber = patch.serialNumber
     if (patch.notes !== undefined) machine.notes = patch.notes
+    if (patch.hourlyRate !== undefined) machine.hourlyRate = String(patch.hourlyRate)
     await machine.save()
     await audit({
       actor,

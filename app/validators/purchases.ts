@@ -21,6 +21,15 @@ export const createPurchaseValidator = vine.compile(
   })
 )
 
+export const payPurchaseValidator = vine.compile(
+  vine.object({
+    amount: vine.number().min(0.01).max(99_999_999_999),
+    method: vine.enum(['cash', 'bank', 'upi', 'other']),
+    reference: vine.string().trim().maxLength(200).optional(),
+    note: vine.string().trim().maxLength(2000).optional(),
+  })
+)
+
 export const returnPurchaseValidator = vine.compile(
   vine.object({
     items: vine

@@ -420,6 +420,48 @@ const routes = {
     tokens: [{"old":"/inventory/adjustments","type":0,"val":"inventory","end":""},{"old":"/inventory/adjustments","type":0,"val":"adjustments","end":""}],
     types: placeholder as Registry['inventory.adjust']['types'],
   },
+  'stockTakes.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/inventory/stock-takes',
+    tokens: [{"old":"/inventory/stock-takes","type":0,"val":"inventory","end":""},{"old":"/inventory/stock-takes","type":0,"val":"stock-takes","end":""}],
+    types: placeholder as Registry['stockTakes.index']['types'],
+  },
+  'stockTakes.store': {
+    methods: ["POST"],
+    pattern: '/inventory/stock-takes',
+    tokens: [{"old":"/inventory/stock-takes","type":0,"val":"inventory","end":""},{"old":"/inventory/stock-takes","type":0,"val":"stock-takes","end":""}],
+    types: placeholder as Registry['stockTakes.store']['types'],
+  },
+  'stockTakes.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/inventory/stock-takes/:id',
+    tokens: [{"old":"/inventory/stock-takes/:id","type":0,"val":"inventory","end":""},{"old":"/inventory/stock-takes/:id","type":0,"val":"stock-takes","end":""},{"old":"/inventory/stock-takes/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['stockTakes.show']['types'],
+  },
+  'stockTakes.saveCounts': {
+    methods: ["POST"],
+    pattern: '/inventory/stock-takes/:id/counts',
+    tokens: [{"old":"/inventory/stock-takes/:id/counts","type":0,"val":"inventory","end":""},{"old":"/inventory/stock-takes/:id/counts","type":0,"val":"stock-takes","end":""},{"old":"/inventory/stock-takes/:id/counts","type":1,"val":"id","end":""},{"old":"/inventory/stock-takes/:id/counts","type":0,"val":"counts","end":""}],
+    types: placeholder as Registry['stockTakes.saveCounts']['types'],
+  },
+  'stockTakes.refresh': {
+    methods: ["POST"],
+    pattern: '/inventory/stock-takes/:id/refresh',
+    tokens: [{"old":"/inventory/stock-takes/:id/refresh","type":0,"val":"inventory","end":""},{"old":"/inventory/stock-takes/:id/refresh","type":0,"val":"stock-takes","end":""},{"old":"/inventory/stock-takes/:id/refresh","type":1,"val":"id","end":""},{"old":"/inventory/stock-takes/:id/refresh","type":0,"val":"refresh","end":""}],
+    types: placeholder as Registry['stockTakes.refresh']['types'],
+  },
+  'stockTakes.complete': {
+    methods: ["POST"],
+    pattern: '/inventory/stock-takes/:id/complete',
+    tokens: [{"old":"/inventory/stock-takes/:id/complete","type":0,"val":"inventory","end":""},{"old":"/inventory/stock-takes/:id/complete","type":0,"val":"stock-takes","end":""},{"old":"/inventory/stock-takes/:id/complete","type":1,"val":"id","end":""},{"old":"/inventory/stock-takes/:id/complete","type":0,"val":"complete","end":""}],
+    types: placeholder as Registry['stockTakes.complete']['types'],
+  },
+  'stockTakes.cancel': {
+    methods: ["POST"],
+    pattern: '/inventory/stock-takes/:id/cancel',
+    tokens: [{"old":"/inventory/stock-takes/:id/cancel","type":0,"val":"inventory","end":""},{"old":"/inventory/stock-takes/:id/cancel","type":0,"val":"stock-takes","end":""},{"old":"/inventory/stock-takes/:id/cancel","type":1,"val":"id","end":""},{"old":"/inventory/stock-takes/:id/cancel","type":0,"val":"cancel","end":""}],
+    types: placeholder as Registry['stockTakes.cancel']['types'],
+  },
   'purchases.index': {
     methods: ["GET","HEAD"],
     pattern: '/purchases',
@@ -455,6 +497,12 @@ const routes = {
     pattern: '/purchases/:id/returns',
     tokens: [{"old":"/purchases/:id/returns","type":0,"val":"purchases","end":""},{"old":"/purchases/:id/returns","type":1,"val":"id","end":""},{"old":"/purchases/:id/returns","type":0,"val":"returns","end":""}],
     types: placeholder as Registry['purchases.returns.store']['types'],
+  },
+  'purchases.payments.store': {
+    methods: ["POST"],
+    pattern: '/purchases/:id/payments',
+    tokens: [{"old":"/purchases/:id/payments","type":0,"val":"purchases","end":""},{"old":"/purchases/:id/payments","type":1,"val":"id","end":""},{"old":"/purchases/:id/payments","type":0,"val":"payments","end":""}],
+    types: placeholder as Registry['purchases.payments.store']['types'],
   },
   'jobs.index': {
     methods: ["GET","HEAD"],
@@ -707,6 +755,18 @@ const routes = {
     pattern: '/pos/sell',
     tokens: [{"old":"/pos/sell","type":0,"val":"pos","end":""},{"old":"/pos/sell","type":0,"val":"sell","end":""}],
     types: placeholder as Registry['pos.sell']['types'],
+  },
+  'pos.session.open': {
+    methods: ["POST"],
+    pattern: '/pos/session/open',
+    tokens: [{"old":"/pos/session/open","type":0,"val":"pos","end":""},{"old":"/pos/session/open","type":0,"val":"session","end":""},{"old":"/pos/session/open","type":0,"val":"open","end":""}],
+    types: placeholder as Registry['pos.session.open']['types'],
+  },
+  'pos.session.close': {
+    methods: ["POST"],
+    pattern: '/pos/session/close',
+    tokens: [{"old":"/pos/session/close","type":0,"val":"pos","end":""},{"old":"/pos/session/close","type":0,"val":"session","end":""},{"old":"/pos/session/close","type":0,"val":"close","end":""}],
+    types: placeholder as Registry['pos.session.close']['types'],
   },
   'reports.profit': {
     methods: ["GET","HEAD"],

@@ -11,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
 import { StatusBadge } from '@/components/status-badge'
 import { EmptyState } from '@/components/empty-state'
 import DashboardLayout from '@/layouts/dashboard-layout'
@@ -28,20 +29,64 @@ type InvoiceRow = {
   dueAt: string | null
   total: string
   paidTotal: string
+  balance: string
+  overdueDays: number
 }
 
 type CustomerOpt = { id: number; name: string }
 
 type Filters = { q: string; status: string; customerId: string }
 
+type Aging = {
+  current: number
+  d1_30: number
+  d31_60: number
+  d61_90: number
+  d90plus: number
+}
+
 type PageProps = {
   invoices: InvoiceRow[]
   customers: CustomerOpt[]
   filters: Filters
+  aging: Aging
+}
+
+function AgingStrip({ aging }: { aging: Aging }) {
+  const buckets = [
+    { label: 'Current', value: aging.current },
+    { label: '1–30 days', value: aging.d1_30 },
+    { label: '31–60 days', value: aging.d31_60 },
+    { label: '61–90 days', value: aging.d61_90 },
+    { label: '90+ days', value: aging.d90plus },
+  ]
+  return (
+    <Card>
+      <CardContent className="py-4">
+        <p className="mb-2 text-xs font-medium uppercase text-muted-foreground">
+          Receivables aging (all open invoices)
+        </p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+          {buckets.map((b, i) => (
+            <div key={b.label}>
+              <p className="text-xs text-muted-foreground">{b.label}</p>
+              <p
+                className={`text-sm font-semibold tabular-nums ${
+                  i >= 3 && b.value > 0 ? 'text-destructive' : ''
+                }`}
+              >
+                ₹{b.value.toFixed(2)}
+              </p>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  )
 }
 
 
-export default function InvoicesIndex({ invoices, customers, filters }: PageProps) {
+export default function InvoicesIndex({ invoices, customers, filters, aging }: PageProps) {
   const outstanding = invoices
     .filter((i: InvoiceRow) => i.status === 'unpaid' || i.status === 'partial')
     .reduce((s, i) => s + (Number(i.total) - Number(i.paidTotal)), 0)
@@ -67,6 +112,8 @@ export default function InvoicesIndex({ invoices, customers, filters }: PageProp
           icon={Wallet}
         />
       </div>
+
+      <AgingStrip aging={aging} />
 
       <ListToolbar
         basePath="/invoices"
@@ -134,7 +181,14 @@ export default function InvoicesIndex({ invoices, customers, filters }: PageProp
                       <StatusBadge kind="invoice" status={i.status} />
                     </TableCell>
                     <TableCell>{i.issuedAt?.slice(0, 10) ?? '—'}</TableCell>
-                    <TableCell>{i.dueAt?.slice(0, 10) ?? '—'}</TableCell>
+                    <TableCell>
+                      <span className="flex items-center gap-2">
+                        {i.dueAt?.slice(0, 10) ?? '—'}
+                        {i.overdueDays > 0 && (
+                          <Badge variant="destructive">{i.overdueDays}d overdue</Badge>
+                        )}
+                      </span>
+                    </TableCell>
                     <TableCell className="text-right">{i.total}</TableCell>
                     <TableCell className="text-right">{i.paidTotal}</TableCell>
                     <TableCell className="text-right">

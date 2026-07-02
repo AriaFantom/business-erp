@@ -25,7 +25,12 @@ export default class CustomersController {
   async store({ request, auth, bouncer, response, session }: HttpContext) {
     await bouncer.authorize('customers.create' as never)
     const payload = await request.validateUsing(createCustomerValidator)
-    const customer = await Customer.create({ ...payload, isActive: true })
+    const { creditLimit, ...rest } = payload
+    const customer = await Customer.create({
+      ...rest,
+      creditLimit: creditLimit === null || creditLimit === undefined ? null : String(creditLimit),
+      isActive: true,
+    })
     await audit({
       actor: auth.user!,
       action: 'customer.create',
@@ -41,7 +46,11 @@ export default class CustomersController {
     await bouncer.authorize('customers.update' as never)
     const customer = await Customer.findOrFail(params.id)
     const payload = await request.validateUsing(updateCustomerValidator)
-    customer.merge(payload)
+    const { creditLimit, ...rest } = payload
+    customer.merge(rest)
+    if (creditLimit !== undefined) {
+      customer.creditLimit = creditLimit === null ? null : String(creditLimit)
+    }
     await customer.save()
     await audit({
       actor: auth.user!,

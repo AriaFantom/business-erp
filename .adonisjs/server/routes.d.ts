@@ -73,12 +73,20 @@ export type ScannedRoutes = {
     'product_categories.restore': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'inventory.index': { paramsTuple?: []; params?: {} }
     'inventory.adjust': { paramsTuple?: []; params?: {} }
+    'stockTakes.index': { paramsTuple?: []; params?: {} }
+    'stockTakes.store': { paramsTuple?: []; params?: {} }
+    'stockTakes.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'stockTakes.saveCounts': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'stockTakes.refresh': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'stockTakes.complete': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'stockTakes.cancel': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'purchases.index': { paramsTuple?: []; params?: {} }
     'purchases.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'purchases.store': { paramsTuple?: []; params?: {} }
     'purchases.confirm': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'purchases.cancel': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'purchases.returns.store': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'purchases.payments.store': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.index': { paramsTuple?: []; params?: {} }
     'jobs.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.store': { paramsTuple?: []; params?: {} }
@@ -121,6 +129,8 @@ export type ScannedRoutes = {
     'invoices.download': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'pos.index': { paramsTuple?: []; params?: {} }
     'pos.sell': { paramsTuple?: []; params?: {} }
+    'pos.session.open': { paramsTuple?: []; params?: {} }
+    'pos.session.close': { paramsTuple?: []; params?: {} }
     'reports.profit': { paramsTuple?: []; params?: {} }
     'reports.inventory': { paramsTuple?: []; params?: {} }
     'reports.jobs': { paramsTuple?: []; params?: {} }
@@ -147,6 +157,8 @@ export type ScannedRoutes = {
     'products.qr.download': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'product_categories.index': { paramsTuple?: []; params?: {} }
     'inventory.index': { paramsTuple?: []; params?: {} }
+    'stockTakes.index': { paramsTuple?: []; params?: {} }
+    'stockTakes.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'purchases.index': { paramsTuple?: []; params?: {} }
     'purchases.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.index': { paramsTuple?: []; params?: {} }
@@ -189,6 +201,8 @@ export type ScannedRoutes = {
     'products.qr.download': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'product_categories.index': { paramsTuple?: []; params?: {} }
     'inventory.index': { paramsTuple?: []; params?: {} }
+    'stockTakes.index': { paramsTuple?: []; params?: {} }
+    'stockTakes.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'purchases.index': { paramsTuple?: []; params?: {} }
     'purchases.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.index': { paramsTuple?: []; params?: {} }
@@ -258,10 +272,16 @@ export type ScannedRoutes = {
     'product_categories.archive': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'product_categories.restore': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'inventory.adjust': { paramsTuple?: []; params?: {} }
+    'stockTakes.store': { paramsTuple?: []; params?: {} }
+    'stockTakes.saveCounts': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'stockTakes.refresh': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'stockTakes.complete': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'stockTakes.cancel': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'purchases.store': { paramsTuple?: []; params?: {} }
     'purchases.confirm': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'purchases.cancel': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'purchases.returns.store': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'purchases.payments.store': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.store': { paramsTuple?: []; params?: {} }
     'jobs.start': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.pause': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
@@ -290,6 +310,8 @@ export type ScannedRoutes = {
     'invoices.pay': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'invoices.void': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'pos.sell': { paramsTuple?: []; params?: {} }
+    'pos.session.open': { paramsTuple?: []; params?: {} }
+    'pos.session.close': { paramsTuple?: []; params?: {} }
   }
 }
 declare module '@adonisjs/core/types/http' {
