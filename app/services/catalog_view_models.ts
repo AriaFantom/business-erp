@@ -213,13 +213,13 @@ export async function getProductsViewModel(filters: ListFilters & { categoryId?:
       : [],
     ids.length > 0
       ? db
-          .from('sale_items')
-          .join('sales', 'sales.id', 'sale_items.sale_id')
-          .whereIn('sale_items.product_id', ids)
-          .where('sales.status', 'confirmed')
-          .groupBy('sale_items.product_id')
-          .select('sale_items.product_id as product_id')
-          .sum({ qty: 'sale_items.qty' })
+          .from('order_items')
+          .join('orders', 'orders.id', 'order_items.order_id')
+          .whereIn('order_items.product_id', ids)
+          .where('orders.status', 'confirmed')
+          .groupBy('order_items.product_id')
+          .select('order_items.product_id as product_id')
+          .sum({ qty: 'order_items.qty' })
       : [],
     ids.length > 0
       ? db
@@ -366,11 +366,11 @@ export async function getProductShowViewModel(id: number): Promise<ProductShowDa
         .sum({ produced: 'produced_qty' })
         .first(),
       db
-        .from('sale_items')
-        .join('sales', 'sales.id', 'sale_items.sale_id')
-        .where('sale_items.product_id', id)
-        .where('sales.status', 'confirmed')
-        .sum({ qty: 'sale_items.qty' })
+        .from('order_items')
+        .join('orders', 'orders.id', 'order_items.order_id')
+        .where('order_items.product_id', id)
+        .where('orders.status', 'confirmed')
+        .sum({ qty: 'order_items.qty' })
         .first(),
       ProductionJob.query()
         .where('product_id', id)
@@ -564,15 +564,15 @@ export async function getProductCategoriesViewModel(filters: ListFilters = {}) {
   const [categories, salesRows, productCountRows] = await Promise.all([
     query,
     db
-      .from('sale_items as si')
-      .join('sales as s', 's.id', 'si.sale_id')
-      .join('products as p', 'p.id', 'si.product_id')
+      .from('order_items as oi')
+      .join('orders as o', 'o.id', 'oi.order_id')
+      .join('products as p', 'p.id', 'oi.product_id')
       .whereNotNull('p.category_id')
-      .where('s.status', 'confirmed')
+      .where('o.status', 'confirmed')
       .groupBy('p.category_id')
       .select('p.category_id as categoryId')
-      .sum({ revenue: 'si.line_total' })
-      .sum({ units: 'si.qty' }),
+      .sum({ revenue: 'oi.line_total' })
+      .sum({ units: 'oi.qty' }),
     db
       .from('products')
       .whereNotNull('category_id')

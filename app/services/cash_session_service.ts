@@ -2,7 +2,7 @@ import db from '@adonisjs/lucid/services/db'
 import { DateTime } from 'luxon'
 import CashSession from '#models/cash_session'
 import InvoicePayment from '#models/invoice_payment'
-import SaleReturn from '#models/sale_return'
+import OrderReturn from '#models/order_return'
 import type User from '#models/user'
 import { audit } from '#services/audit'
 import { nextDocNumber } from '#services/numbering'
@@ -97,10 +97,10 @@ export async function closeSession(input: {
       .first()
     const cashIn = Number(cashInRow?.$extras.total ?? 0)
 
-    // sale_returns has no cash_session_id column, so cash refunds during
+    // order_returns has no cash_session_id column, so cash refunds during
     // this session are approximated by a time window (refunds recorded
     // since the session opened) rather than an exact session link.
-    const refundsRow = await SaleReturn.query({ client: trx })
+    const refundsRow = await OrderReturn.query({ client: trx })
       .where('refund_method', 'cash')
       .where('created_at', '>=', session.openedAt.toSQL()!)
       .sum('refund_amount as total')

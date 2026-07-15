@@ -36,7 +36,7 @@ import { Download } from 'lucide-react'
 type Invoice = {
   id: number
   number: string
-  saleId: number
+  orderId: number
   status: string
   issuedAt: string | null
   dueAt: string | null
@@ -71,7 +71,7 @@ type Payment = {
 
 type CreditNote = {
   id: number
-  saleId: number
+  orderId: number
   number: string
   createdAt: string | null
   total: string
@@ -235,10 +235,10 @@ export default function InvoiceShow({ invoice, items, payments, creditNotes }: P
           <p className="text-sm text-muted-foreground">
             {invoice.customer?.name ?? '—'} ·{' '}
             <Link
-              href={`/sales/${invoice.saleId}`}
+              href={`/orders/${invoice.orderId}`}
               className="underline-offset-2 hover:underline"
             >
-              sale #{invoice.saleId}
+              order #{invoice.orderId}
             </Link>{' '}
             · due {invoice.dueAt?.slice(0, 10) ?? '—'}
             {invoice.replacesInvoiceId ? (

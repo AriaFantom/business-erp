@@ -33,17 +33,19 @@ declare module '@adonisjs/inertia/types' {
     'machines/index': ExtractProps<(typeof import('../../inertia/pages/machines/index.tsx'))['default']>
     'machines/new': ExtractProps<(typeof import('../../inertia/pages/machines/new.tsx'))['default']>
     'machines/show': ExtractProps<(typeof import('../../inertia/pages/machines/show.tsx'))['default']>
+    'orders/index': ExtractProps<(typeof import('../../inertia/pages/orders/index.tsx'))['default']>
+    'orders/new': ExtractProps<(typeof import('../../inertia/pages/orders/new.tsx'))['default']>
+    'orders/show': ExtractProps<(typeof import('../../inertia/pages/orders/show.tsx'))['default']>
     'pos/index': ExtractProps<(typeof import('../../inertia/pages/pos/index.tsx'))['default']>
     'profile/edit': ExtractProps<(typeof import('../../inertia/pages/profile/edit.tsx'))['default']>
     'purchases/index': ExtractProps<(typeof import('../../inertia/pages/purchases/index.tsx'))['default']>
     'purchases/show': ExtractProps<(typeof import('../../inertia/pages/purchases/show.tsx'))['default']>
     'quotations/index': ExtractProps<(typeof import('../../inertia/pages/quotations/index.tsx'))['default']>
+    'quotations/new': ExtractProps<(typeof import('../../inertia/pages/quotations/new.tsx'))['default']>
     'quotations/show': ExtractProps<(typeof import('../../inertia/pages/quotations/show.tsx'))['default']>
     'reports/inventory': ExtractProps<(typeof import('../../inertia/pages/reports/inventory.tsx'))['default']>
     'reports/jobs': ExtractProps<(typeof import('../../inertia/pages/reports/jobs.tsx'))['default']>
     'reports/profit': ExtractProps<(typeof import('../../inertia/pages/reports/profit.tsx'))['default']>
-    'sales/index': ExtractProps<(typeof import('../../inertia/pages/sales/index.tsx'))['default']>
-    'sales/show': ExtractProps<(typeof import('../../inertia/pages/sales/show.tsx'))['default']>
     'suppliers/index': ExtractProps<(typeof import('../../inertia/pages/suppliers/index.tsx'))['default']>
     'system/invitations': ExtractProps<(typeof import('../../inertia/pages/system/invitations.tsx'))['default']>
     'system/roles': ExtractProps<(typeof import('../../inertia/pages/system/roles.tsx'))['default']>

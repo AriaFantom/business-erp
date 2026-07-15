@@ -21,7 +21,7 @@ import { StatCard } from '@/components/catalog/stat-card'
 type InvoiceRow = {
   id: number
   number: string
-  saleId: number
+  orderId: number
   customerId: number
   customerName: string
   status: string
@@ -151,10 +151,10 @@ export default function InvoicesIndex({ invoices, customers, filters, aging }: P
             <EmptyState
               icon={Receipt}
               title="No invoices found"
-              description="Invoices are created when a sale is confirmed. Confirm a sale to issue one."
+              description="Invoices are created when an order is confirmed. Confirm an order to issue one."
               action={
                 <Button asChild variant="outline">
-                  <Link href="/sales">Go to sales</Link>
+                  <Link href="/orders">Go to orders</Link>
                 </Button>
               }
             />

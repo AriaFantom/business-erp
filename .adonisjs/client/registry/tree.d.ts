@@ -161,6 +161,7 @@ export interface ApiDefinition {
   }
   quotations: {
     index: typeof routes['quotations.index']
+    new: typeof routes['quotations.new']
     show: typeof routes['quotations.show']
     store: typeof routes['quotations.store']
     send: typeof routes['quotations.send']
@@ -170,14 +171,15 @@ export interface ApiDefinition {
     suggestPrice: typeof routes['quotations.suggest_price']
     download: typeof routes['quotations.download']
   }
-  sales: {
-    index: typeof routes['sales.index']
-    show: typeof routes['sales.show']
-    store: typeof routes['sales.store']
-    confirm: typeof routes['sales.confirm']
-    cancel: typeof routes['sales.cancel']
+  orders: {
+    index: typeof routes['orders.index']
+    new: typeof routes['orders.new']
+    show: typeof routes['orders.show']
+    store: typeof routes['orders.store']
+    confirm: typeof routes['orders.confirm']
+    cancel: typeof routes['orders.cancel']
     returns: {
-      store: typeof routes['sales.returns.store']
+      store: typeof routes['orders.returns.store']
     }
   }
   invoices: {

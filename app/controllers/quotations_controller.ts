@@ -2,6 +2,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import React from 'react'
 import { createQuotationValidator, suggestPriceValidator } from '#validators/quotations'
 import {
+  getQuotationCreateViewModel,
   getQuotationShowViewModel,
   getQuotationsIndexViewModel,
 } from '#services/quotations_view_models'
@@ -12,7 +13,7 @@ import {
   sendQuotation,
 } from '#services/quotation_service'
 import { suggestPriceFor } from '#services/pricing'
-import { convertQuotationToSale } from '#services/sale_service'
+import { convertQuotationToOrder } from '#services/order_service'
 import { DomainError } from '#services/domain_errors'
 import Quotation from '#models/quotation'
 import env from '#start/env'
@@ -36,6 +37,11 @@ export default class QuotationsController {
         customerId: qs.customerId ? String(qs.customerId) : 'all',
       },
     })
+  }
+
+  async create({ inertia, bouncer }: HttpContext) {
+    await bouncer.authorize('quotations.create' as never)
+    return inertia.render('quotations/new', await getQuotationCreateViewModel())
   }
 
   async show({ params, inertia, bouncer }: HttpContext) {
@@ -108,11 +114,11 @@ export default class QuotationsController {
   }
 
   async convert({ params, auth, bouncer, response, session }: HttpContext) {
-    await bouncer.authorize('quotations.convertToSale' as never)
+    await bouncer.authorize('quotations.convertToOrder' as never)
     try {
-      const sale = await convertQuotationToSale(Number(params.id), auth.user!)
-      session.flash('success', `Sale ${sale.number} created from quotation.`)
-      return response.redirect().toPath(`/sales/${sale.id}`)
+      const order = await convertQuotationToOrder(Number(params.id), auth.user!)
+      session.flash('success', `Order ${order.number} created from quotation.`)
+      return response.redirect().toPath(`/orders/${order.id}`)
     } catch (err) {
       return this._domain(err, response, session)
     }

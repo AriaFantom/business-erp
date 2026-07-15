@@ -40,7 +40,7 @@ export type ProfitReport = {
 /**
  * Profit report over [from, to]:
  *  - revenue: non-void invoices issued in the window,
- *  - COGS: outbound 'sale' stock movements (net of 'sale_return'), valued at
+ *  - COGS: outbound 'order' stock movements (net of 'order_return'), valued at
  *    the weighted-average cost captured on each movement — i.e. the cost of
  *    the units actually sold, regardless of when they were produced,
  *  - net profit: revenue − COGS − operating expenses (expenses NOT linked to
@@ -66,11 +66,11 @@ export async function buildProfitReport(from: DateTime, to: DateTime): Promise<P
     .where('completed_at', '<=', toSql)
   const productionCost = completedJobs.reduce((s, j) => s + Number(j.totalCost), 0)
 
-  // COGS: sale movements are negative qty, returns positive, so -SUM(qty*cost)
+  // COGS: order movements are negative qty, returns positive, so -SUM(qty*cost)
   // nets them in one pass.
   const cogsRows = await db
     .from('stock_movements')
-    .whereIn('reason', ['sale', 'sale_return'])
+    .whereIn('reason', ['order', 'order_return'])
     .whereBetween('created_at', [fromSql, toSql])
     .select(db.raw('COALESCE(-SUM(qty * unit_cost), 0) as v'))
   const cogs = Number(cogsRows?.[0]?.v ?? 0)
@@ -88,20 +88,20 @@ export async function buildProfitReport(from: DateTime, to: DateTime): Promise<P
   const expenses = Number(expenseRows?.[0]?.v ?? 0)
   const operatingExpenses = Number(operatingExpenseRows?.[0]?.v ?? 0)
 
-  // Per-product revenue (confirmed sale_items) and COGS (sale movements).
+  // Per-product revenue (confirmed order_items) and COGS (order movements).
   const [revByProduct, costByProduct, products] = await Promise.all([
     db
-      .from('sale_items as si')
-      .join('sales as s', 's.id', 'si.sale_id')
-      .where('s.status', 'confirmed')
-      .whereBetween('s.confirmed_at', [fromSql, toSql])
-      .groupBy('si.product_id')
-      .select('si.product_id as productId')
-      .sum('si.line_total as revenue'),
+      .from('order_items as oi')
+      .join('orders as o', 'o.id', 'oi.order_id')
+      .where('o.status', 'confirmed')
+      .whereBetween('o.confirmed_at', [fromSql, toSql])
+      .groupBy('oi.product_id')
+      .select('oi.product_id as productId')
+      .sum('oi.line_total as revenue'),
     db
       .from('stock_movements')
       .where('item_kind', 'product')
-      .whereIn('reason', ['sale', 'sale_return'])
+      .whereIn('reason', ['order', 'order_return'])
       .whereBetween('created_at', [fromSql, toSql])
       .groupBy('item_id')
       .select('item_id as productId')

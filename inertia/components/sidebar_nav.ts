@@ -155,10 +155,10 @@ export const navItems: NavItem[] = [
         permission: 'quotations.view',
       },
       {
-        title: 'Sales',
-        url: '/sales',
+        title: 'Orders',
+        url: '/orders',
         icon: ScrollText,
-        permission: 'sales.view',
+        permission: 'orders.view',
       },
       {
         title: 'Invoices',

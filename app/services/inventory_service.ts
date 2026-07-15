@@ -16,8 +16,8 @@ export type MovementReason =
   | 'job_consume'
   | 'job_return'
   | 'job_produce'
-  | 'sale'
-  | 'sale_return'
+  | 'order'
+  | 'order_return'
   | 'adjustment_increase'
   | 'adjustment_decrease'
 
@@ -99,7 +99,7 @@ export async function applyMovement(input: MovementInput): Promise<StockMovement
 
   // Outbound movements always leave the ledger at the current weighted-average
   // cost — that is the COGS basis, regardless of what the caller passed
-  // (e.g. POS passes the sale price, which belongs on the sale line, not here).
+  // (e.g. POS passes the sale price, which belongs on the order line, not here).
   const movementUnitCost = input.qty < 0 ? oldAvg : input.unitCost
 
   if (newQty < 0) {

@@ -138,7 +138,15 @@ function numberOrZero(v: string | number | null | undefined): number {
   return Number.isFinite(n) ? n : 0
 }
 
-export type SaleLinePricing = {
+export type OrderLineInput = {
+  productId?: number | null
+  description: string
+  qty: number
+  unitPrice: number
+  taxRatePct: number
+}
+
+export type OrderLinePricing = {
   unitPrice: number
   taxRatePct: number
   overridden: boolean
@@ -149,18 +157,18 @@ export type SaleLinePricing = {
 const PRICE_MATCH_TOLERANCE = 0.005
 
 /**
- * Server-side price enforcement for sale lines (POS + manual sales).
+ * Server-side price enforcement for order lines (POS + manual orders).
  *
  * The suggested price and tax rate are always derived on the server; the
  * client-supplied price only matters when it deviates from the suggestion,
  * in which case it is an override that requires `allowOverride` and can
  * never go below the cost basis.
  */
-export async function resolveSaleLinePricing(opts: {
+export async function resolveOrderLinePricing(opts: {
   productId: number
   requestedUnitPrice?: number | null
   allowOverride: boolean
-}): Promise<SaleLinePricing> {
+}): Promise<OrderLinePricing> {
   const product = await Product.findOrFail(opts.productId)
   const category = product.categoryId ? await ProductCategory.find(product.categoryId) : null
   const cost = await latestProductCost(opts.productId)

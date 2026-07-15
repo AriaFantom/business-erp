@@ -32,7 +32,7 @@ import {
 import { StatusBadge } from '@/components/status-badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
 
-type Sale = {
+type Order = {
   id: number
   number: string
   status: string
@@ -67,7 +67,7 @@ type Invoice = {
   creditTotal: string
 }
 
-type SaleReturn = {
+type OrderReturn = {
   id: number
   number: string
   createdAt: string | null
@@ -79,10 +79,10 @@ type SaleReturn = {
 }
 
 type PageProps = {
-  sale: Sale
+  order: Order
   items: Item[]
   invoice: Invoice | null
-  returns: SaleReturn[]
+  returns: OrderReturn[]
 }
 
 function PostAction({
@@ -127,11 +127,11 @@ function round2(n: number): number {
 }
 
 function ReturnDialog({
-  saleId,
+  orderId,
   items,
   invoice,
 }: {
-  saleId: number
+  orderId: number
   items: Item[]
   invoice: Invoice | null
 }) {
@@ -145,7 +145,7 @@ function ReturnDialog({
 
   transform((d) => ({
     items: Object.entries(d.qtyByItem)
-      .map(([id, qty]) => ({ saleItemId: Number(id), qty: Number(qty) }))
+      .map(([id, qty]) => ({ orderItemId: Number(id), qty: Number(qty) }))
       .filter((l) => Number.isInteger(l.qty) && l.qty > 0),
     refundMethod: d.refundMethod || undefined,
     note: d.note.trim() || undefined,
@@ -188,7 +188,7 @@ function ReturnDialog({
           className="flex flex-col gap-4"
           onSubmit={(e) => {
             e.preventDefault()
-            post(`/sales/${saleId}/returns`, {
+            post(`/orders/${orderId}/returns`, {
               preserveScroll: true,
               onSuccess: () => {
                 reset()
@@ -294,41 +294,41 @@ function ReturnDialog({
   )
 }
 
-export default function SaleShow({ sale, items, invoice, returns }: PageProps) {
+export default function OrderShow({ order, items, invoice, returns }: PageProps) {
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-8">
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Sale {sale.number}</h1>
+          <h1 className="text-2xl font-semibold">Order {order.number}</h1>
           <p className="text-sm text-muted-foreground">
-            {sale.customer?.name ?? '—'}
-            {sale.quotationId ? (
+            {order.customer?.name ?? '—'}
+            {order.quotationId ? (
               <>
                 {' · from '}
                 <Link
-                  href={`/quotations/${sale.quotationId}`}
+                  href={`/quotations/${order.quotationId}`}
                   className="underline-offset-2 hover:underline"
                 >
-                  quotation #{sale.quotationId}
+                  quotation #{order.quotationId}
                 </Link>
               </>
             ) : null}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <StatusBadge kind="sale" status={sale.status} />
-          {sale.status === 'confirmed' && (
-            <ReturnDialog saleId={sale.id} items={items} invoice={invoice} />
+          <StatusBadge kind="order" status={order.status} />
+          {order.status === 'confirmed' && (
+            <ReturnDialog orderId={order.id} items={items} invoice={invoice} />
           )}
-          {sale.status === 'draft' && (
+          {order.status === 'draft' && (
             <>
               <PostAction
-                path={`/sales/${sale.id}/confirm`}
+                path={`/orders/${order.id}/confirm`}
                 label="Confirm & invoice"
-                confirmText="Confirm sale and issue invoice?"
+                confirmText="Confirm order and issue invoice?"
               />
               <PostAction
-                path={`/sales/${sale.id}/cancel`}
+                path={`/orders/${order.id}/cancel`}
                 label="Cancel"
                 variant="destructive"
                 confirmText="Cancel this draft?"
@@ -387,14 +387,14 @@ export default function SaleShow({ sale, items, invoice, returns }: PageProps) {
         <CardContent>
           <dl className="grid grid-cols-2 gap-2 text-sm">
             <dt className="text-muted-foreground">Subtotal</dt>
-            <dd className="text-right">{sale.subtotal}</dd>
+            <dd className="text-right">{order.subtotal}</dd>
             <dt className="text-muted-foreground">Tax</dt>
-            <dd className="text-right">{sale.taxTotal}</dd>
+            <dd className="text-right">{order.taxTotal}</dd>
             <dt className="font-medium">Total</dt>
-            <dd className="text-right font-medium">{sale.total}</dd>
+            <dd className="text-right font-medium">{order.total}</dd>
           </dl>
-          {sale.note && (
-            <p className="mt-3 text-sm text-muted-foreground">{sale.note}</p>
+          {order.note && (
+            <p className="mt-3 text-sm text-muted-foreground">{order.note}</p>
           )}
         </CardContent>
       </Card>
@@ -463,4 +463,4 @@ export default function SaleShow({ sale, items, invoice, returns }: PageProps) {
   )
 }
 
-SaleShow.layout = (page: ReactElement) => <DashboardLayout>{page}</DashboardLayout>
+OrderShow.layout = (page: ReactElement) => <DashboardLayout>{page}</DashboardLayout>

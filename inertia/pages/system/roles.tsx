@@ -310,7 +310,7 @@ export default function SystemRoles({ roles, permissionCatalog }: RolesPageProps
   const canDeleteRole = can('roles.delete')
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-8">
+    <div className="flex w-full flex-col gap-6 px-6 py-8">
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold">Role Management</h1>
         <p className="text-sm text-muted-foreground">

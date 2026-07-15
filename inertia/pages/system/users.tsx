@@ -203,7 +203,7 @@ export default function SystemUsers({
   const canAssign = actor.isOwner || (actor.permissions?.includes('users.assignRole') ?? false)
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-8">
+    <div className="flex w-full flex-col gap-6 px-6 py-8">
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold">User List</h1>
         <p className="text-sm text-muted-foreground">

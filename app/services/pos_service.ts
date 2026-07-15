@@ -2,17 +2,17 @@ import db from '@adonisjs/lucid/services/db'
 import { DateTime } from 'luxon'
 import Customer from '#models/customer'
 import Product from '#models/product'
-import Sale from '#models/sale'
-import SaleItem from '#models/sale_item'
+import Order from '#models/order'
+import OrderItem from '#models/order_item'
 import InvoicePayment from '#models/invoice_payment'
 import CashSession from '#models/cash_session'
 import type User from '#models/user'
 import { audit } from '#services/audit'
 import { nextDocNumber } from '#services/numbering'
-import { generateInvoiceForSale } from '#services/invoice_service'
+import { generateInvoiceForOrder } from '#services/invoice_service'
 import { applyMovement, invalidateSnapshotCache } from '#services/inventory_service'
 import { DomainError, InvalidStateError } from '#services/domain_errors'
-import { resolveSaleLinePricing } from '#services/pricing'
+import { resolveOrderLinePricing } from '#services/pricing'
 
 export type PosLineInput = {
   productId: number
@@ -28,19 +28,19 @@ function round2(n: number): number {
 }
 
 /**
- * Single-transaction POS sale: creates the sale (confirmed),
+ * Single-transaction POS order: creates the order (confirmed),
  * issues the invoice, and records a full-amount payment.
  *
  * Returns the invoice id so the UI can navigate to the receipt.
  */
-export async function completePosSale(input: {
+export async function completePosOrder(input: {
   customerId: number
   items: PosLineInput[]
   paymentMethod: PaymentMethod
   paymentReference?: string | null
   allowPriceOverride: boolean
   actor: User
-}): Promise<{ saleId: number; invoiceId: number; total: number }> {
+}): Promise<{ orderId: number; invoiceId: number; total: number }> {
   if (input.items.length === 0) {
     throw new Error('At least one line is required.')
   }
@@ -56,7 +56,7 @@ export async function completePosSale(input: {
     throw new InvalidStateError({
       entity: 'customer',
       from: 'archived',
-      to: 'used in POS sale',
+      to: 'used in POS order',
     })
   }
 
@@ -71,10 +71,10 @@ export async function completePosSale(input: {
 
   // Server-side price enforcement: the unit price and tax rate come from the
   // pricing service; a deviating client price is an override that requires
-  // the sales.overridePrice permission and is floored at cost.
+  // the orders.overridePrice permission and is floored at cost.
   const pricingByLine = await Promise.all(
     input.items.map((it) =>
-      resolveSaleLinePricing({
+      resolveOrderLinePricing({
         productId: it.productId,
         requestedUnitPrice: it.unitPrice,
         allowOverride: input.allowPriceOverride,
@@ -120,23 +120,23 @@ export async function completePosSale(input: {
       })
     }
 
-    const sale = new Sale()
-    sale.number = await nextDocNumber('SO', trx)
-    sale.customerId = input.customerId
-    sale.quotationId = null
-    sale.status = 'confirmed'
-    sale.subtotal = String(round2(subtotal))
-    sale.taxTotal = String(round2(taxTotal))
-    sale.total = String(round2(total))
-    sale.note = 'POS sale'
-    sale.confirmedAt = now
-    sale.createdByUserId = input.actor.id
-    sale.useTransaction(trx)
-    await sale.save()
+    const order = new Order()
+    order.number = await nextDocNumber('ORD', trx)
+    order.customerId = input.customerId
+    order.quotationId = null
+    order.status = 'confirmed'
+    order.subtotal = String(round2(subtotal))
+    order.taxTotal = String(round2(taxTotal))
+    order.total = String(round2(total))
+    order.note = 'POS order'
+    order.confirmedAt = now
+    order.createdByUserId = input.actor.id
+    order.useTransaction(trx)
+    await order.save()
 
     for (const l of lines) {
-      const item = new SaleItem()
-      item.saleId = sale.id
+      const item = new OrderItem()
+      item.orderId = order.id
       item.productId = l.productId
       item.description = l.description
       item.qty = l.qty
@@ -155,16 +155,16 @@ export async function completePosSale(input: {
         itemId: l.productId,
         qty: -l.qty,
         unitCost: l.unitPrice,
-        reason: 'sale',
-        referenceType: 'sale',
-        referenceId: sale.id,
+        reason: 'order',
+        referenceType: 'order',
+        referenceId: order.id,
         note: null,
         actor: input.actor,
         trx,
       })
     }
 
-    const invoice = await generateInvoiceForSale(sale, input.actor, trx, {
+    const invoice = await generateInvoiceForOrder(order, input.actor, trx, {
       issuedAt: now,
       dueAt: now,
     })
@@ -188,8 +188,8 @@ export async function completePosSale(input: {
     await audit({
       actor: input.actor,
       action: 'pos.sell',
-      targetType: 'sale',
-      targetId: sale.id,
+      targetType: 'order',
+      targetId: order.id,
       payload: {
         invoiceId: invoice.id,
         invoiceNumber: invoice.number,
@@ -200,7 +200,7 @@ export async function completePosSale(input: {
       trx,
     })
 
-    return { saleId: sale.id, invoiceId: invoice.id, total: round2(total) }
+    return { orderId: order.id, invoiceId: invoice.id, total: round2(total) }
   })
 
   await invalidateSnapshotCache()

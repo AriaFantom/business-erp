@@ -98,7 +98,7 @@ export default function PosPage({
   canManageSession,
 }: PageProps) {
   const { user } = usePage<InertiaProps<PageProps>>().props
-  const canOverridePrice = hasPermission(user, 'sales.overridePrice')
+  const canOverridePrice = hasPermission(user, 'orders.overridePrice')
   const [cart, setCart] = useState<CartLine[]>([])
   const [customerId, setCustomerId] = useState<string>(
     customers[0] ? String(customers[0].id) : ''

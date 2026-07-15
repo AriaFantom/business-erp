@@ -52,7 +52,7 @@ export type Crumb = { title: string; url?: string }
  * Build a breadcrumb trail from the nav definition and current URL.
  *
  * Matches the deepest nav leaf whose URL prefixes the path. List pages end at
- * the leaf; detail pages (`/sales/123`) keep the leaf as a link and append a
+ * the leaf; detail pages (`/orders/123`) keep the leaf as a link and append a
  * final crumb labelled with `detailLabel` (e.g. the record number).
  */
 export function breadcrumbTrail(currentUrl: string, detailLabel?: string): Crumb[] {

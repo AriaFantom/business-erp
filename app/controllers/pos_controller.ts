@@ -8,7 +8,7 @@ import {
   openCashSessionValidator,
   closeCashSessionValidator,
 } from '#validators/pos'
-import { completePosSale } from '#services/pos_service'
+import { completePosOrder } from '#services/pos_service'
 import {
   getOpenSession,
   getSessionSummary,
@@ -88,7 +88,7 @@ export default class PosController {
     const catById = new Map(cats.map((c) => [c.id, c]))
 
     // Cost basis per product. Must use the same source as the server-side
-    // price enforcement (resolveSaleLinePricing → latestProductCost), so the
+    // price enforcement (resolveOrderLinePricing → latestProductCost), so the
     // suggested price shown here matches what checkout will accept.
     const costs = await Promise.all(products.map((p) => latestProductCost(p.id)))
     const costByProduct = new Map<number, number>()
@@ -141,10 +141,10 @@ export default class PosController {
   async sell({ request, auth, bouncer, response, session }: HttpContext) {
     await bouncer.authorize('pos.sell' as never)
     const payload = await request.validateUsing(posSellValidator)
-    const allowPriceOverride = await bouncer.allows('sales.overridePrice' as never)
+    const allowPriceOverride = await bouncer.allows('orders.overridePrice' as never)
     try {
       const run = () =>
-        completePosSale({
+        completePosOrder({
           customerId: payload.customerId,
           items: payload.items,
           paymentMethod: payload.paymentMethod,
@@ -169,9 +169,9 @@ export default class PosController {
       }
 
       if (replayed) {
-        session.flash('success', 'Duplicate submission — showing the original sale.')
+        session.flash('success', 'Duplicate submission — showing the original order.')
       } else {
-        session.flash('success', `Sale completed (${result.total.toFixed(2)}). Invoice ready.`)
+        session.flash('success', `Order completed (${result.total.toFixed(2)}). Invoice ready.`)
       }
       return response.redirect(`/invoices/${result.invoiceId}`)
     } catch (err) {

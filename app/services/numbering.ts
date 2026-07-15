@@ -14,7 +14,7 @@ import { DateTime } from 'luxon'
  * Must be called from inside the transaction that creates the document
  * row, so that a rolled-back insert does not consume a number.
  */
-export type DocScope = 'INV' | 'QT' | 'PO' | 'JOB' | 'SO' | 'CN' | 'PRT' | 'ST' | 'CS'
+export type DocScope = 'INV' | 'QT' | 'PO' | 'JOB' | 'ORD' | 'CN' | 'PRT' | 'ST' | 'CS'
 
 export async function nextDocNumber(
   scope: DocScope,

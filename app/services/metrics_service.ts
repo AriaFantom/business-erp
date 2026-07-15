@@ -13,9 +13,9 @@ import { getWriteApi, getBucket, queryRows, isInfluxEnabled } from '#services/in
  * the dashboard and profit report. Everything no-ops when Influx is disabled.
  *
  * Daily totals are bucketed by the business confirmation timestamp:
- *   - sales/purchases → confirmed_at (status = 'confirmed')
+ *   - orders/purchases → confirmed_at (status = 'confirmed')
  *   - invoices        → issued_at   (status != 'void')
- *   - COGS            → stock_movements.created_at (reason sale/sale_return)
+ *   - COGS            → stock_movements.created_at (reason order/order_return)
  *   - expenses        → incurred_at
  */
 
@@ -59,7 +59,7 @@ export async function computeDailyMetrics(day: DateTime): Promise<DailyMetrics> 
     inventoryRows,
   ] = await Promise.all([
     db
-      .from('sales')
+      .from('orders')
       .where('status', 'confirmed')
       .whereBetween('confirmed_at', [start, end])
       .sum('total as v'),
@@ -75,7 +75,7 @@ export async function computeDailyMetrics(day: DateTime): Promise<DailyMetrics> 
       .sum('total as v'),
     db
       .from('stock_movements')
-      .whereIn('reason', ['sale', 'sale_return'])
+      .whereIn('reason', ['order', 'order_return'])
       .whereBetween('created_at', [start, end])
       .select(db.raw('COALESCE(-SUM(qty * unit_cost), 0) as v')),
     db
@@ -90,23 +90,23 @@ export async function computeDailyMetrics(day: DateTime): Promise<DailyMetrics> 
       .whereBetween('incurred_at', [start, end])
       .sum('amount as v'),
     db
-      .from('sales as s')
-      .join('customers as c', 'c.id', 's.customer_id')
-      .where('s.status', 'confirmed')
-      .whereBetween('s.confirmed_at', [start, end])
-      .groupBy('s.customer_id', 'c.name')
-      .select('s.customer_id as customerId', 'c.name as name')
-      .sum('s.total as v'),
+      .from('orders as o')
+      .join('customers as c', 'c.id', 'o.customer_id')
+      .where('o.status', 'confirmed')
+      .whereBetween('o.confirmed_at', [start, end])
+      .groupBy('o.customer_id', 'c.name')
+      .select('o.customer_id as customerId', 'c.name as name')
+      .sum('o.total as v'),
     db
-      .from('sale_items as si')
-      .join('sales as s', 's.id', 'si.sale_id')
-      .join('products as p', 'p.id', 'si.product_id')
-      .where('s.status', 'confirmed')
-      .whereBetween('s.confirmed_at', [start, end])
-      .groupBy('si.product_id', 'p.sku', 'p.name')
-      .select('si.product_id as productId', 'p.sku as sku', 'p.name as name')
-      .sum('si.qty as qty')
-      .sum('si.line_total as revenue'),
+      .from('order_items as oi')
+      .join('orders as o', 'o.id', 'oi.order_id')
+      .join('products as p', 'p.id', 'oi.product_id')
+      .where('o.status', 'confirmed')
+      .whereBetween('o.confirmed_at', [start, end])
+      .groupBy('oi.product_id', 'p.sku', 'p.name')
+      .select('oi.product_id as productId', 'p.sku as sku', 'p.name as name')
+      .sum('oi.qty as qty')
+      .sum('oi.line_total as revenue'),
     db
       .from('inventory')
       .groupBy('item_kind')

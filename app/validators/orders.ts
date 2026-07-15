@@ -8,7 +8,7 @@ const lineRule = vine.object({
   taxRatePct: vine.number().min(0).max(100),
 })
 
-export const createSaleValidator = vine.compile(
+export const createOrderValidator = vine.compile(
   vine.object({
     customerId: vine.number().positive(),
     quotationId: vine.number().positive().optional(),
@@ -17,12 +17,12 @@ export const createSaleValidator = vine.compile(
   })
 )
 
-export const returnSaleValidator = vine.compile(
+export const returnOrderValidator = vine.compile(
   vine.object({
     items: vine
       .array(
         vine.object({
-          saleItemId: vine.number().positive().withoutDecimals(),
+          orderItemId: vine.number().positive().withoutDecimals(),
           qty: vine.number().positive().withoutDecimals(),
         })
       )

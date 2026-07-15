@@ -1,44 +1,36 @@
 import db from '@adonisjs/lucid/services/db'
 import { DateTime } from 'luxon'
-import Sale from '#models/sale'
-import SaleItem from '#models/sale_item'
+import Order from '#models/order'
+import OrderItem from '#models/order_item'
 import Quotation from '#models/quotation'
 import QuotationItem from '#models/quotation_item'
 import Customer from '#models/customer'
 import type User from '#models/user'
 import { audit } from '#services/audit'
 import { nextDocNumber } from '#services/numbering'
-import { generateInvoiceForSale } from '#services/invoice_service'
+import { generateInvoiceForOrder } from '#services/invoice_service'
 import { applyMovement, invalidateSnapshotCache } from '#services/inventory_service'
 import { DomainError, InvalidStateError } from '#services/domain_errors'
-import { resolveSaleLinePricing } from '#services/pricing'
-
-export type SaleLineInput = {
-  productId?: number | null
-  description: string
-  qty: number
-  unitPrice: number
-  taxRatePct: number
-}
+import { resolveOrderLinePricing, type OrderLineInput } from '#services/pricing'
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100
 }
 
-export async function createSale(input: {
+export async function createOrder(input: {
   customerId: number
   quotationId?: number | null
   note?: string | null
-  items: SaleLineInput[]
+  items: OrderLineInput[]
   allowPriceOverride: boolean
   actor: User
-}): Promise<Sale> {
+}): Promise<Order> {
   const customer = await Customer.findOrFail(input.customerId)
   if (!customer.isActive) {
     throw new InvalidStateError({
       entity: 'customer',
       from: 'archived',
-      to: 'used in sale',
+      to: 'used in order',
     })
   }
   if (input.items.length === 0) {
@@ -55,7 +47,7 @@ export async function createSale(input: {
   const pricedItems = await Promise.all(
     input.items.map(async (l) => {
       if (!l.productId) return l
-      const pricing = await resolveSaleLinePricing({
+      const pricing = await resolveOrderLinePricing({
         productId: l.productId,
         requestedUnitPrice: l.unitPrice,
         allowOverride: input.allowPriceOverride,
@@ -65,7 +57,7 @@ export async function createSale(input: {
   )
 
   return db.transaction(async (trx) => {
-    const number = await nextDocNumber('SO', trx)
+    const number = await nextDocNumber('ORD', trx)
     let subtotal = 0
     let tax = 0
     let total = 0
@@ -79,22 +71,22 @@ export async function createSale(input: {
       return { ...l, lineSubtotal: ls, lineTax: lt, lineTotal: lto }
     })
 
-    const sale = new Sale()
-    sale.number = number
-    sale.customerId = input.customerId
-    sale.quotationId = input.quotationId ?? null
-    sale.status = 'draft'
-    sale.subtotal = String(round2(subtotal))
-    sale.taxTotal = String(round2(tax))
-    sale.total = String(round2(total))
-    sale.note = input.note ?? null
-    sale.createdByUserId = input.actor.id
-    sale.useTransaction(trx)
-    await sale.save()
+    const order = new Order()
+    order.number = number
+    order.customerId = input.customerId
+    order.quotationId = input.quotationId ?? null
+    order.status = 'draft'
+    order.subtotal = String(round2(subtotal))
+    order.taxTotal = String(round2(tax))
+    order.total = String(round2(total))
+    order.note = input.note ?? null
+    order.createdByUserId = input.actor.id
+    order.useTransaction(trx)
+    await order.save()
 
     for (const l of lines) {
-      const item = new SaleItem()
-      item.saleId = sale.id
+      const item = new OrderItem()
+      item.orderId = order.id
       item.productId = l.productId ?? null
       item.description = l.description
       item.qty = l.qty
@@ -109,21 +101,21 @@ export async function createSale(input: {
 
     await audit({
       actor: input.actor,
-      action: 'sale.create',
-      targetType: 'sale',
-      targetId: sale.id,
+      action: 'order.create',
+      targetType: 'order',
+      targetId: order.id,
       payload: { number, customerId: input.customerId, total },
       trx,
     })
-    return sale
+    return order
   })
 }
 
 /**
- * Convert an accepted quotation into a draft sale, copying lines and
+ * Convert an accepted quotation into a draft order, copying lines and
  * marking the quotation as 'converted'. Done in a single transaction.
  */
-export async function convertQuotationToSale(quotationId: number, actor: User): Promise<Sale> {
+export async function convertQuotationToOrder(quotationId: number, actor: User): Promise<Order> {
   return db.transaction(async (trx) => {
     const q = await Quotation.query({ client: trx })
       .where('id', quotationId)
@@ -138,38 +130,38 @@ export async function convertQuotationToSale(quotationId: number, actor: User): 
     }
 
     const items = await QuotationItem.query({ client: trx }).where('quotation_id', quotationId)
-    const number = await nextDocNumber('SO', trx)
+    const number = await nextDocNumber('ORD', trx)
 
-    const sale = new Sale()
-    sale.number = number
-    sale.customerId = q.customerId
-    sale.quotationId = q.id
-    sale.status = 'draft'
-    sale.subtotal = q.subtotal
-    sale.taxTotal = q.taxTotal
-    sale.total = q.total
-    sale.note = q.note
-    sale.createdByUserId = actor.id
-    sale.useTransaction(trx)
-    await sale.save()
+    const order = new Order()
+    order.number = number
+    order.customerId = q.customerId
+    order.quotationId = q.id
+    order.status = 'draft'
+    order.subtotal = q.subtotal
+    order.taxTotal = q.taxTotal
+    order.total = q.total
+    order.note = q.note
+    order.createdByUserId = actor.id
+    order.useTransaction(trx)
+    await order.save()
 
     for (const it of items) {
-      const si = new SaleItem()
-      si.saleId = sale.id
-      si.productId = it.productId
-      si.description = it.description
-      si.qty = it.qty
-      si.unitPrice = it.unitPrice
-      si.taxRatePct = it.taxRatePct
-      si.lineSubtotal = it.lineSubtotal
-      si.lineTax = it.lineTax
-      si.lineTotal = it.lineTotal
-      si.useTransaction(trx)
-      await si.save()
+      const oi = new OrderItem()
+      oi.orderId = order.id
+      oi.productId = it.productId
+      oi.description = it.description
+      oi.qty = it.qty
+      oi.unitPrice = it.unitPrice
+      oi.taxRatePct = it.taxRatePct
+      oi.lineSubtotal = it.lineSubtotal
+      oi.lineTax = it.lineTax
+      oi.lineTotal = it.lineTotal
+      oi.useTransaction(trx)
+      await oi.save()
     }
 
     q.status = 'converted'
-    q.convertedToSaleId = sale.id
+    q.convertedToOrderId = order.id
     await q.save()
 
     await audit({
@@ -177,33 +169,33 @@ export async function convertQuotationToSale(quotationId: number, actor: User): 
       action: 'quotation.convert',
       targetType: 'quotation',
       targetId: q.id,
-      payload: { saleId: sale.id, saleNumber: sale.number },
+      payload: { orderId: order.id, orderNumber: order.number },
       trx,
     })
-    return sale
+    return order
   })
 }
 
 /**
- * Confirm a draft sale; this also issues the invoice in the same transaction.
- * Returns the confirmed sale (the invoice id is on the invoice itself).
+ * Confirm a draft order; this also issues the invoice in the same transaction.
+ * Returns the confirmed order (the invoice id is on the invoice itself).
  */
-export async function confirmSale(saleId: number, actor: User): Promise<Sale> {
+export async function confirmOrder(orderId: number, actor: User): Promise<Order> {
   const result = await db.transaction(async (trx) => {
-    const sale = await Sale.query({ client: trx }).where('id', saleId).forUpdate().firstOrFail()
-    if (sale.status !== 'draft') {
+    const order = await Order.query({ client: trx }).where('id', orderId).forUpdate().firstOrFail()
+    if (order.status !== 'draft') {
       throw new InvalidStateError({
-        entity: 'sale',
-        from: sale.status,
+        entity: 'order',
+        from: order.status,
         to: 'confirmed',
       })
     }
 
     // Credit-limit gate: block confirmation when the customer's open
-    // receivable plus this sale would exceed their limit (null = no limit).
+    // receivable plus this order would exceed their limit (null = no limit).
     // POS is unaffected — it pays in full immediately and never calls this.
     const customer = await Customer.query({ client: trx })
-      .where('id', sale.customerId)
+      .where('id', order.customerId)
       .firstOrFail()
     if (customer.creditLimit !== null) {
       const limit = Number(customer.creditLimit)
@@ -214,11 +206,11 @@ export async function confirmSale(saleId: number, actor: User): Promise<Sale> {
         .select(trx.raw('COALESCE(SUM(total - paid_total - credit_total), 0) as balance'))
         .first()
       const openBalance = Math.max(0, Number(balanceRow?.balance ?? 0))
-      const saleTotal = Number(sale.total)
-      if (openBalance + saleTotal > limit + 0.001) {
+      const orderTotal = Number(order.total)
+      if (openBalance + orderTotal > limit + 0.001) {
         throw new DomainError({
           code: 'CREDIT_LIMIT_EXCEEDED',
-          message: `Credit limit exceeded for ${customer.name}: limit ${limit.toFixed(2)}, open balance ${openBalance.toFixed(2)}, this sale ${saleTotal.toFixed(2)}.`,
+          message: `Credit limit exceeded for ${customer.name}: limit ${limit.toFixed(2)}, open balance ${openBalance.toFixed(2)}, this order ${orderTotal.toFixed(2)}.`,
         })
       }
     }
@@ -226,7 +218,7 @@ export async function confirmSale(saleId: number, actor: User): Promise<Sale> {
     // Deduct stock for every line that points at a real product. Free-form
     // lines (productId = null) bypass inventory. applyMovement locks the
     // inventory row and throws InsufficientStockError on negative outcomes.
-    const items = await SaleItem.query({ client: trx }).where('sale_id', saleId)
+    const items = await OrderItem.query({ client: trx }).where('order_id', orderId)
     for (const it of items) {
       if (!it.productId) continue
       await applyMovement({
@@ -234,55 +226,55 @@ export async function confirmSale(saleId: number, actor: User): Promise<Sale> {
         itemId: it.productId,
         qty: -Number(it.qty),
         unitCost: Number(it.unitPrice),
-        reason: 'sale',
-        referenceType: 'sale',
-        referenceId: sale.id,
+        reason: 'order',
+        referenceType: 'order',
+        referenceId: order.id,
         note: null,
         actor,
         trx,
       })
     }
 
-    sale.status = 'confirmed'
-    sale.confirmedAt = DateTime.now()
-    await sale.save()
+    order.status = 'confirmed'
+    order.confirmedAt = DateTime.now()
+    await order.save()
 
-    await generateInvoiceForSale(sale, actor, trx)
+    await generateInvoiceForOrder(order, actor, trx)
 
     await audit({
       actor,
-      action: 'sale.confirm',
-      targetType: 'sale',
-      targetId: sale.id,
-      payload: { number: sale.number },
+      action: 'order.confirm',
+      targetType: 'order',
+      targetId: order.id,
+      payload: { number: order.number },
       trx,
     })
-    return sale
+    return order
   })
 
   await invalidateSnapshotCache()
   return result
 }
 
-export async function cancelSale(saleId: number, actor: User): Promise<Sale> {
+export async function cancelOrder(orderId: number, actor: User): Promise<Order> {
   return db.transaction(async (trx) => {
-    const sale = await Sale.query({ client: trx }).where('id', saleId).forUpdate().firstOrFail()
-    if (sale.status !== 'draft') {
+    const order = await Order.query({ client: trx }).where('id', orderId).forUpdate().firstOrFail()
+    if (order.status !== 'draft') {
       throw new InvalidStateError({
-        entity: 'sale',
-        from: sale.status,
+        entity: 'order',
+        from: order.status,
         to: 'cancelled',
       })
     }
-    sale.status = 'cancelled'
-    await sale.save()
+    order.status = 'cancelled'
+    await order.save()
     await audit({
       actor,
-      action: 'sale.cancel',
-      targetType: 'sale',
-      targetId: sale.id,
+      action: 'order.cancel',
+      targetType: 'order',
+      targetId: order.id,
       trx,
     })
-    return sale
+    return order
   })
 }

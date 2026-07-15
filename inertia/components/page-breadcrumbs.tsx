@@ -15,7 +15,7 @@ import { breadcrumbTrail } from '@/lib/nav'
 /**
  * Sniff a human label for a detail record from the page props. Most show pages
  * expose their entity under a single object prop with a `number` or `name`
- * field (`quotation.number`, `sale.number`, product `name`, …); fall back to
+ * field (`quotation.number`, `order.number`, product `name`, …); fall back to
  * undefined so the trail uses a generic label.
  */
 function detailLabelFromProps(props: Record<string, unknown>): string | undefined {

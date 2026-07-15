@@ -630,6 +630,12 @@ const routes = {
     tokens: [{"old":"/quotations","type":0,"val":"quotations","end":""}],
     types: placeholder as Registry['quotations.index']['types'],
   },
+  'quotations.new': {
+    methods: ["GET","HEAD"],
+    pattern: '/quotations/new',
+    tokens: [{"old":"/quotations/new","type":0,"val":"quotations","end":""},{"old":"/quotations/new","type":0,"val":"new","end":""}],
+    types: placeholder as Registry['quotations.new']['types'],
+  },
   'quotations.show': {
     methods: ["GET","HEAD"],
     pattern: '/quotations/:id',
@@ -678,41 +684,47 @@ const routes = {
     tokens: [{"old":"/quotations/:id/download","type":0,"val":"quotations","end":""},{"old":"/quotations/:id/download","type":1,"val":"id","end":""},{"old":"/quotations/:id/download","type":0,"val":"download","end":""}],
     types: placeholder as Registry['quotations.download']['types'],
   },
-  'sales.index': {
+  'orders.index': {
     methods: ["GET","HEAD"],
-    pattern: '/sales',
-    tokens: [{"old":"/sales","type":0,"val":"sales","end":""}],
-    types: placeholder as Registry['sales.index']['types'],
+    pattern: '/orders',
+    tokens: [{"old":"/orders","type":0,"val":"orders","end":""}],
+    types: placeholder as Registry['orders.index']['types'],
   },
-  'sales.show': {
+  'orders.new': {
     methods: ["GET","HEAD"],
-    pattern: '/sales/:id',
-    tokens: [{"old":"/sales/:id","type":0,"val":"sales","end":""},{"old":"/sales/:id","type":1,"val":"id","end":""}],
-    types: placeholder as Registry['sales.show']['types'],
+    pattern: '/orders/new',
+    tokens: [{"old":"/orders/new","type":0,"val":"orders","end":""},{"old":"/orders/new","type":0,"val":"new","end":""}],
+    types: placeholder as Registry['orders.new']['types'],
   },
-  'sales.store': {
-    methods: ["POST"],
-    pattern: '/sales',
-    tokens: [{"old":"/sales","type":0,"val":"sales","end":""}],
-    types: placeholder as Registry['sales.store']['types'],
+  'orders.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/orders/:id',
+    tokens: [{"old":"/orders/:id","type":0,"val":"orders","end":""},{"old":"/orders/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['orders.show']['types'],
   },
-  'sales.confirm': {
+  'orders.store': {
     methods: ["POST"],
-    pattern: '/sales/:id/confirm',
-    tokens: [{"old":"/sales/:id/confirm","type":0,"val":"sales","end":""},{"old":"/sales/:id/confirm","type":1,"val":"id","end":""},{"old":"/sales/:id/confirm","type":0,"val":"confirm","end":""}],
-    types: placeholder as Registry['sales.confirm']['types'],
+    pattern: '/orders',
+    tokens: [{"old":"/orders","type":0,"val":"orders","end":""}],
+    types: placeholder as Registry['orders.store']['types'],
   },
-  'sales.cancel': {
+  'orders.confirm': {
     methods: ["POST"],
-    pattern: '/sales/:id/cancel',
-    tokens: [{"old":"/sales/:id/cancel","type":0,"val":"sales","end":""},{"old":"/sales/:id/cancel","type":1,"val":"id","end":""},{"old":"/sales/:id/cancel","type":0,"val":"cancel","end":""}],
-    types: placeholder as Registry['sales.cancel']['types'],
+    pattern: '/orders/:id/confirm',
+    tokens: [{"old":"/orders/:id/confirm","type":0,"val":"orders","end":""},{"old":"/orders/:id/confirm","type":1,"val":"id","end":""},{"old":"/orders/:id/confirm","type":0,"val":"confirm","end":""}],
+    types: placeholder as Registry['orders.confirm']['types'],
   },
-  'sales.returns.store': {
+  'orders.cancel': {
     methods: ["POST"],
-    pattern: '/sales/:id/returns',
-    tokens: [{"old":"/sales/:id/returns","type":0,"val":"sales","end":""},{"old":"/sales/:id/returns","type":1,"val":"id","end":""},{"old":"/sales/:id/returns","type":0,"val":"returns","end":""}],
-    types: placeholder as Registry['sales.returns.store']['types'],
+    pattern: '/orders/:id/cancel',
+    tokens: [{"old":"/orders/:id/cancel","type":0,"val":"orders","end":""},{"old":"/orders/:id/cancel","type":1,"val":"id","end":""},{"old":"/orders/:id/cancel","type":0,"val":"cancel","end":""}],
+    types: placeholder as Registry['orders.cancel']['types'],
+  },
+  'orders.returns.store': {
+    methods: ["POST"],
+    pattern: '/orders/:id/returns',
+    tokens: [{"old":"/orders/:id/returns","type":0,"val":"orders","end":""},{"old":"/orders/:id/returns","type":1,"val":"id","end":""},{"old":"/orders/:id/returns","type":0,"val":"returns","end":""}],
+    types: placeholder as Registry['orders.returns.store']['types'],
   },
   'invoices.index': {
     methods: ["GET","HEAD"],

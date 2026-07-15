@@ -1,8 +1,8 @@
 import { DateTime } from 'luxon'
-import Sale from '#models/sale'
-import SaleItem from '#models/sale_item'
-import SaleReturn from '#models/sale_return'
-import SaleReturnItem from '#models/sale_return_item'
+import Order from '#models/order'
+import OrderItem from '#models/order_item'
+import OrderReturn from '#models/order_return'
+import OrderReturnItem from '#models/order_return_item'
 import Invoice from '#models/invoice'
 import InvoiceItem from '#models/invoice_item'
 import InvoicePayment from '#models/invoice_payment'
@@ -12,23 +12,44 @@ import ProductCategory from '#models/product_category'
 import { computeUnitPrice } from '#services/pricing'
 import { latestProductCost } from '#services/job_costing'
 
-export async function getSalesIndexViewModel(
+export async function getOrdersIndexViewModel(
   filters: { q?: string; status?: string; customerId?: number } = {}
 ) {
-  const query = Sale.query().orderBy('created_at', 'desc').limit(500)
+  const query = Order.query().orderBy('created_at', 'desc').limit(500)
   if (filters.status && filters.status !== 'all') query.where('status', filters.status)
   if (filters.customerId) query.where('customer_id', filters.customerId)
   if (filters.q) query.whereILike('number', `%${filters.q.trim()}%`)
-  const [sales, customers, products] = await Promise.all([
+  const [orders, customers] = await Promise.all([
     query,
     Customer.query().where('is_active', true).orderBy('name', 'asc'),
-    Product.query().where('is_active', true).orderBy('name', 'asc'),
   ])
   const cById = new Map(customers.map((c) => [c.id, c]))
 
+  return {
+    orders: orders.map((o) => ({
+      id: o.id,
+      number: o.number,
+      customerId: o.customerId,
+      customerName: cById.get(o.customerId)?.name ?? '—',
+      status: o.status,
+      total: o.total,
+      confirmedAt: o.confirmedAt?.toISO() ?? null,
+      quotationId: o.quotationId,
+    })),
+    customers: customers.map((c) => ({ id: c.id, name: c.name })),
+  }
+}
+
+export async function getOrderCreateViewModel() {
+  const [customers, products] = await Promise.all([
+    Customer.query().where('is_active', true).orderBy('name', 'asc'),
+    Product.query().where('is_active', true).orderBy('name', 'asc'),
+  ])
+
   // Suggested pricing per product, from the same source as the server-side
-  // enforcement (resolveSaleLinePricing), so the create-sale dialog prefills
-  // a price the server will accept without treating it as an override.
+  // enforcement (resolveOrderLinePricing), so the new-order page prefills a
+  // price the server will accept without treating it as an override. Tax is
+  // likewise server-derived per product.
   const categoryIds = [
     ...new Set(products.map((p) => p.categoryId).filter((id): id is number => !!id)),
   ]
@@ -46,16 +67,6 @@ export async function getSalesIndexViewModel(
   )
 
   return {
-    sales: sales.map((s) => ({
-      id: s.id,
-      number: s.number,
-      customerId: s.customerId,
-      customerName: cById.get(s.customerId)?.name ?? '—',
-      status: s.status,
-      total: s.total,
-      confirmedAt: s.confirmedAt?.toISO() ?? null,
-      quotationId: s.quotationId,
-    })),
     customers: customers.map((c) => ({ id: c.id, name: c.name })),
     products: products.map((p, idx) => ({
       id: p.id,
@@ -67,39 +78,39 @@ export async function getSalesIndexViewModel(
   }
 }
 
-export async function getSaleShowViewModel(id: number) {
-  const sale = await Sale.findOrFail(id)
+export async function getOrderShowViewModel(id: number) {
+  const order = await Order.findOrFail(id)
   const [items, customer, invoice, returns] = await Promise.all([
-    SaleItem.query().where('sale_id', id).orderBy('id', 'asc'),
-    Customer.find(sale.customerId),
-    Invoice.findBy('sale_id', id),
-    SaleReturn.query().where('sale_id', id).orderBy('id', 'desc'),
+    OrderItem.query().where('order_id', id).orderBy('id', 'asc'),
+    Customer.find(order.customerId),
+    Invoice.findBy('order_id', id),
+    OrderReturn.query().where('order_id', id).orderBy('id', 'desc'),
   ])
 
-  // Already-returned qty per sale line, across all credit notes.
+  // Already-returned qty per order line, across all credit notes.
   const returnItems = returns.length
-    ? await SaleReturnItem.query().whereIn(
-        'sale_return_id',
+    ? await OrderReturnItem.query().whereIn(
+        'order_return_id',
         returns.map((r) => r.id)
       )
     : []
   const returnedByItem = new Map<number, number>()
   for (const ri of returnItems) {
-    returnedByItem.set(ri.saleItemId, (returnedByItem.get(ri.saleItemId) ?? 0) + Number(ri.qty))
+    returnedByItem.set(ri.orderItemId, (returnedByItem.get(ri.orderItemId) ?? 0) + Number(ri.qty))
   }
 
   return {
-    sale: {
-      id: sale.id,
-      number: sale.number,
-      status: sale.status,
+    order: {
+      id: order.id,
+      number: order.number,
+      status: order.status,
       customer: customer ? { id: customer.id, name: customer.name } : null,
-      subtotal: sale.subtotal,
-      taxTotal: sale.taxTotal,
-      total: sale.total,
-      note: sale.note,
-      confirmedAt: sale.confirmedAt?.toISO() ?? null,
-      quotationId: sale.quotationId,
+      subtotal: order.subtotal,
+      taxTotal: order.taxTotal,
+      total: order.total,
+      note: order.note,
+      confirmedAt: order.confirmedAt?.toISO() ?? null,
+      quotationId: order.quotationId,
     },
     items: items.map((it) => ({
       id: it.id,
@@ -176,7 +187,7 @@ export async function getInvoicesIndexViewModel(
       return {
         id: i.id,
         number: i.number,
-        saleId: i.saleId,
+        orderId: i.orderId,
         customerId: i.customerId,
         customerName: cById.get(i.customerId)?.name ?? '—',
         status: i.status,
@@ -205,13 +216,13 @@ export async function getInvoiceShowViewModel(id: number) {
     InvoiceItem.query().where('invoice_id', id).orderBy('id', 'asc'),
     InvoicePayment.query().where('invoice_id', id).orderBy('paid_at', 'asc'),
     Customer.find(invoice.customerId),
-    SaleReturn.query().where('invoice_id', id).orderBy('id', 'asc'),
+    OrderReturn.query().where('invoice_id', id).orderBy('id', 'asc'),
   ])
   return {
     invoice: {
       id: invoice.id,
       number: invoice.number,
-      saleId: invoice.saleId,
+      orderId: invoice.orderId,
       status: invoice.status,
       issuedAt: invoice.issuedAt.toISO(),
       dueAt: invoice.dueAt.toISO(),
@@ -251,7 +262,7 @@ export async function getInvoiceShowViewModel(id: number) {
     })),
     creditNotes: creditNotes.map((cn) => ({
       id: cn.id,
-      saleId: cn.saleId,
+      orderId: cn.orderId,
       number: cn.number,
       createdAt: cn.createdAt?.toISO() ?? null,
       total: cn.total,

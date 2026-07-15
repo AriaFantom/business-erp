@@ -29,7 +29,7 @@ const PurchasesController = () => import('#controllers/purchases_controller')
 const JobsController = () => import('#controllers/jobs_controller')
 const MachinesController = () => import('#controllers/machines_controller')
 const QuotationsController = () => import('#controllers/quotations_controller')
-const SalesController = () => import('#controllers/sales_controller')
+const OrdersController = () => import('#controllers/orders_controller')
 const InvoicesController = () => import('#controllers/invoices_controller')
 const ReportsController = () => import('#controllers/reports_controller')
 const PosController = () => import('#controllers/pos_controller')
@@ -249,6 +249,7 @@ router
 
     // ── Quotations ────────────────────────────────────────────────────
     router.get('quotations', [QuotationsController, 'index']).as('quotations.index')
+    router.get('quotations/new', [QuotationsController, 'create']).as('quotations.new')
     router.get('quotations/:id', [QuotationsController, 'show']).as('quotations.show')
     router.post('quotations', [QuotationsController, 'store']).as('quotations.store')
     router.post('quotations/:id/send', [QuotationsController, 'send']).as('quotations.send')
@@ -264,13 +265,14 @@ router
       .get('quotations/:id/download', [QuotationsController, 'download'])
       .as('quotations.download')
 
-    // ── Sales ─────────────────────────────────────────────────────────
-    router.get('sales', [SalesController, 'index']).as('sales.index')
-    router.get('sales/:id', [SalesController, 'show']).as('sales.show')
-    router.post('sales', [SalesController, 'store']).as('sales.store')
-    router.post('sales/:id/confirm', [SalesController, 'confirm']).as('sales.confirm')
-    router.post('sales/:id/cancel', [SalesController, 'cancel']).as('sales.cancel')
-    router.post('sales/:id/returns', [SalesController, 'storeReturn']).as('sales.returns.store')
+    // ── Orders ────────────────────────────────────────────────────────
+    router.get('orders', [OrdersController, 'index']).as('orders.index')
+    router.get('orders/new', [OrdersController, 'create']).as('orders.new')
+    router.get('orders/:id', [OrdersController, 'show']).as('orders.show')
+    router.post('orders', [OrdersController, 'store']).as('orders.store')
+    router.post('orders/:id/confirm', [OrdersController, 'confirm']).as('orders.confirm')
+    router.post('orders/:id/cancel', [OrdersController, 'cancel']).as('orders.cancel')
+    router.post('orders/:id/returns', [OrdersController, 'storeReturn']).as('orders.returns.store')
 
     // ── Invoices ──────────────────────────────────────────────────────
     router.get('invoices', [InvoicesController, 'index']).as('invoices.index')

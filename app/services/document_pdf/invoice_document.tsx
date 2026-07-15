@@ -6,7 +6,7 @@ export type InvoicePdfData = {
   invoice: {
     id: number
     number: string
-    saleId: number
+    orderId: number
     status: string
     issuedAt: string | null
     dueAt: string | null

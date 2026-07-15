@@ -29,7 +29,7 @@ type Quotation = {
   sentAt: string | null
   acceptedAt: string | null
   rejectedAt: string | null
-  convertedToSaleId: number | null
+  convertedToOrderId: number | null
 }
 
 type BomEntry = {
@@ -131,16 +131,16 @@ export default function QuotationShow({ quotation, items }: PageProps) {
           {quotation.status === 'accepted' && (
             <PostAction
               path={`/quotations/${quotation.id}/convert`}
-              label="Convert to sale"
-              confirmText="Create a sale from this quotation?"
+              label="Convert to order"
+              confirmText="Create an order from this quotation?"
             />
           )}
-          {quotation.status === 'converted' && quotation.convertedToSaleId && (
+          {quotation.status === 'converted' && quotation.convertedToOrderId && (
             <a
-              href={`/sales/${quotation.convertedToSaleId}`}
+              href={`/orders/${quotation.convertedToOrderId}`}
               className="text-sm underline-offset-2 hover:underline"
             >
-              View sale →
+              View order →
             </a>
           )}
         </div>

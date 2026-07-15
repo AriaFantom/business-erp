@@ -228,7 +228,7 @@ function ArchiveAction({ path, name }: { path: string; name: string }) {
         open={open}
         onOpenChange={setOpen}
         title={`Archive ${name}?`}
-        description="The product will be hidden from new sales and quotations. You can reactivate it later."
+        description="The product will be hidden from new orders and quotations. You can reactivate it later."
         confirmLabel="Archive"
         variant="destructive"
         onConfirm={() => post(path, { preserveScroll: true })}
