@@ -4,6 +4,7 @@ import drive from '@adonisjs/drive/services/main'
 import logger from '@adonisjs/core/services/logger'
 import type { HttpContext } from '@adonisjs/core/http'
 import type * as React from 'react'
+import { streamStoredObject, NO_STORE } from '#services/file_streaming'
 
 type DocKind = 'invoice' | 'quotation'
 
@@ -39,28 +40,19 @@ export async function ensurePdf(
 }
 
 /**
- * Stream a stored PDF to the client via a signed URL redirect (S3/MinIO
- * serves directly). Falls back to streaming the buffer if signing fails.
+ * Stream a stored PDF straight through the app as an attachment. Access stays
+ * gated by the calling controller; a missing key resolves to a 404.
  */
 export async function streamPdf(
   key: string,
   response: HttpContext['response'],
   filename: string
 ): Promise<void> {
-  try {
-    const url = await drive.use().getSignedUrl(key, {
-      expiresIn: '5 minutes',
-      contentDisposition: `attachment; filename="${filename}"`,
-    } as never)
-    response.redirect(url)
-    return
-  } catch (err) {
-    logger.warn({ err, key }, 'document_pdf: signed URL failed, streaming buffer')
-    const buffer = await drive.use().getBytes(key)
-    response.header('Content-Disposition', `attachment; filename="${filename}"`)
-    response.type('application/pdf')
-    response.send(Buffer.from(buffer))
-  }
+  await streamStoredObject({ response }, key, {
+    mimeType: 'application/pdf',
+    downloadName: filename,
+    cacheControl: NO_STORE,
+  })
 }
 
 /**

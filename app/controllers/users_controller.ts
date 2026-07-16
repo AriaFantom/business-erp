@@ -2,6 +2,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import User from '#models/user'
 import { updateUserRolesValidator } from '#validators/users'
 import { ensureRolesAssignable, getUsersViewModel } from '#services/dashboard_view_models'
+import { streamStoredObject, IMMUTABLE_PRIVATE } from '#services/file_streaming'
 
 export default class UsersController {
   /** GET /system/users — list users in actor's scope */
@@ -12,6 +13,16 @@ export default class UsersController {
 
     const data = await getUsersViewModel(auth.user!)
     return inertia.render('system/users', data)
+  }
+
+  /** GET /users/:id/avatar — stream a user's avatar (self, or with users.view) */
+  async avatar({ params, auth, bouncer, response }: HttpContext) {
+    if (Number(params.id) !== auth.user!.id) {
+      await bouncer.authorize('users.view' as never)
+    }
+    const user = await User.findOrFail(params.id)
+    if (!user.avatarKey) return response.notFound({ error: 'File not found' })
+    return streamStoredObject({ response }, user.avatarKey, { cacheControl: IMMUTABLE_PRIVATE })
   }
 
   /** POST /system/users/:id/roles — change a user's role assignments */

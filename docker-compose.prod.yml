@@ -12,8 +12,8 @@ services:
       - ${ENV_FILE:-.env}
     environment:
       # Values that are stable across all deploys — secrets and per-deploy
-      # config (APP_KEY, APP_URL, AWS_*, S3_ENDPOINT, MINIO_*, POSTGRES_*) come
-      # from .env so this file can be committed without leaking credentials.
+      # config (APP_KEY, APP_URL, AWS_*, MINIO_*, POSTGRES_*) come from .env so
+      # this file can be committed without leaking credentials.
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: 3333
@@ -26,6 +26,11 @@ services:
       REDIS_PORT: 6379
       DRIVE_DISK: s3
       S3_FORCE_PATH_STYLE: 'true'
+      # MinIO and InfluxDB are internal-only services reached over the backend
+      # network by container hostname. These endpoints are fixed here (not in
+      # .env) so they can never be pointed at a public host by mistake.
+      S3_ENDPOINT: http://minio:9000
+      INFLUX_URL: http://influxdb:8086
       # When set to "true", the entrypoint runs `node ace migration:run --force`
       # before booting the server. Toggle with `MIGRATE=true ./deploy.sh up`.
       MIGRATE: ${MIGRATE:-false}
@@ -34,9 +39,13 @@ services:
       # safe on every boot — leaving it on guarantees roles + default catalog
       # rows exist on a fresh database.
       SEED: ${SEED:-false}
-    # No host port binding — NPM (running in docker) reaches the app over the
-    # shared `npm` network using the container hostname `layerdreams-app:3333`.
-    # The app is never reachable directly from the public internet.
+    # The app is the only service that publishes a host port. It binds to the
+    # interface:port given by APP_BIND (default 127.0.0.1:3333 — loopback only).
+    # Set APP_BIND=0.0.0.0:3333 (or SERVER_IP:3333) to expose it more widely.
+    # Anything in front of it (TLS termination, a domain, a reverse proxy) is
+    # out of scope of this stack and handled by the operator.
+    ports:
+      - '${APP_BIND:-127.0.0.1:3333}:3333'
     healthcheck:
       test:
         ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3333/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
@@ -53,9 +62,10 @@ services:
         condition: service_healthy
       createbuckets:
         condition: service_completed_successfully
+      influxdb:
+        condition: service_healthy
     networks:
       - backend
-      - npm
 
   postgres:
     image: postgres:17-alpine
@@ -97,16 +107,11 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-      # Public URLs the MinIO server advertises. NPM terminates TLS and
-      # forwards s3.layerdreams.com → minio:9000 (API) and
-      # s3-console.layerdreams.com → minio:9001 (web console).
-      MINIO_SERVER_URL: ${S3_ENDPOINT}
-      MINIO_BROWSER_REDIRECT_URL: ${MINIO_BROWSER_REDIRECT_URL}
-      # Allow signed-URL fetches from the panel origin in the browser.
-      MINIO_API_CORS_ALLOW_ORIGIN: ${APP_URL}
     command: server /data --console-address ":9001"
-    # No host port binding — NPM reaches MinIO over the shared `npm` network at
-    # `layerdreams-minio:9000` (API) and `layerdreams-minio:9001` (console).
+    # Internal storage only — no host port binding and no public URLs. The app
+    # is the sole client, reaching the S3 API over the backend network at
+    # http://minio:9000. All file access flows through the authenticated app;
+    # MinIO is never exposed to the browser or the public internet.
     volumes:
       - minio_data:/data
     healthcheck:
@@ -116,7 +121,6 @@ services:
       retries: 10
     networks:
       - backend
-      - npm
 
   createbuckets:
     image: minio/mc:latest
@@ -137,16 +141,41 @@ services:
     networks:
       - backend
 
+  influxdb:
+    image: influxdb:2
+    container_name: layerdreams-influxdb
+    restart: unless-stopped
+    # No host port binding — internal-only, reached by the app at
+    # http://influxdb:8086 over the backend network.
+    #
+    # `setup` mode only runs on FIRST boot against an empty volume: it
+    # initializes the org/bucket/admin user and mints DOCKER_INFLUXDB_INIT_ADMIN_TOKEN
+    # as the all-access token. On subsequent boots (volume already initialized)
+    # these vars are ignored. INFLUX_TOKEN must therefore stay stable — changing
+    # it will NOT re-key an existing volume and the app will fail to authenticate.
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUX_INIT_USERNAME}
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUX_INIT_PASSWORD}
+      DOCKER_INFLUXDB_INIT_ORG: ${INFLUX_ORG}
+      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUX_BUCKET}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUX_TOKEN}
+    volumes:
+      - influx_data:/var/lib/influxdb2
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8086/health']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend
+
 volumes:
   postgres_data:
   redis_data:
   minio_data:
+  influx_data:
 
 networks:
   backend:
     driver: bridge
-  # Shared network with the Nginx Proxy Manager stack so NPM can reach the app
-  # and MinIO by container hostname (no public port exposure required).
-  npm:
-    external: true
-    name: ngnix-proxy-manager_default

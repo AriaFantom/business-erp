@@ -1,11 +1,19 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { updateProfileValidator, updateAvatarValidator } from '#validators/profile'
 import { storeAvatar, removeAvatar } from '#services/avatar_storage'
+import { streamStoredObject, IMMUTABLE_PRIVATE } from '#services/file_streaming'
 
 export default class ProfileController {
   /** GET /profile */
   async show({ inertia }: HttpContext) {
     return inertia.render('profile/edit', {})
+  }
+
+  /** GET /profile/avatar — stream the current user's avatar */
+  async avatar({ auth, response }: HttpContext) {
+    const user = auth.user!
+    if (!user.avatarKey) return response.notFound({ error: 'File not found' })
+    return streamStoredObject({ response }, user.avatarKey, { cacheControl: IMMUTABLE_PRIVATE })
   }
 
   /** POST /profile — update first/last name */

@@ -51,13 +51,3 @@ export async function removeCatalogImage(owner: ImageOwner): Promise<void> {
   owner.imageKey = null
   await owner.save()
 }
-
-export async function signCatalogImageUrl(key: string | null): Promise<string | null> {
-  if (!key) return null
-  try {
-    return await drive.use().getSignedUrl(key, { expiresIn: '1 hour' })
-  } catch (err) {
-    logger.warn({ err, key }, 'catalog_image_storage: failed to sign image url')
-    return null
-  }
-}

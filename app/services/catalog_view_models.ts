@@ -8,8 +8,7 @@ import Supplier from '#models/supplier'
 import Customer from '#models/customer'
 import Inventory from '#models/inventory'
 import StockMovement from '#models/stock_movement'
-import { signCatalogImageUrl } from '#services/catalog_image_storage'
-import { signProductFileUrl } from '#services/product_attachment_storage'
+import { token } from '#services/file_streaming'
 import { latestProductCost } from '#services/job_costing'
 import { computeUnitPrice } from '#services/pricing'
 
@@ -102,9 +101,8 @@ export async function getMaterialsViewModel(filters: ListFilters & { type?: stri
     return q
   })
   const materials = await query
-  const signed = await Promise.all(materials.map((m) => signCatalogImageUrl(m.imageKey)))
   return {
-    materials: materials.map<MaterialRow>((m, idx) => ({
+    materials: materials.map<MaterialRow>((m) => ({
       id: m.id,
       sku: m.sku,
       name: m.name,
@@ -115,7 +113,7 @@ export async function getMaterialsViewModel(filters: ListFilters & { type?: stri
       defaultSupplier: m.defaultSupplier
         ? { id: m.defaultSupplier.id, name: m.defaultSupplier.name }
         : null,
-      imageUrl: signed[idx],
+      imageUrl: m.imageKey ? `/catalog/materials/${m.id}/image?v=${token(m.imageKey)}` : null,
       isActive: m.isActive,
     })),
     counts,
@@ -145,9 +143,8 @@ export async function getComponentsViewModel(filters: ListFilters = {}) {
     return q
   })
   const components = await query
-  const signed = await Promise.all(components.map((c) => signCatalogImageUrl(c.imageKey)))
   return {
-    components: components.map<ComponentRow>((c, idx) => ({
+    components: components.map<ComponentRow>((c) => ({
       id: c.id,
       sku: c.sku,
       name: c.name,
@@ -157,7 +154,7 @@ export async function getComponentsViewModel(filters: ListFilters = {}) {
       defaultSupplier: c.defaultSupplier
         ? { id: c.defaultSupplier.id, name: c.defaultSupplier.name }
         : null,
-      imageUrl: signed[idx],
+      imageUrl: c.imageKey ? `/catalog/components/${c.id}/image?v=${token(c.imageKey)}` : null,
       isActive: c.isActive,
     })),
     counts,
@@ -199,8 +196,7 @@ export async function getProductsViewModel(filters: ListFilters & { categoryId?:
   ])
   const ids = products.map((p) => p.id)
 
-  const [signed, productionRows, soldRows, attachmentRows] = await Promise.all([
-    Promise.all(products.map((p) => signCatalogImageUrl(p.imageKey))),
+  const [productionRows, soldRows, attachmentRows] = await Promise.all([
     ids.length > 0
       ? db
           .from('production_jobs')
@@ -250,7 +246,7 @@ export async function getProductsViewModel(filters: ListFilters & { categoryId?:
   }
 
   return {
-    products: products.map<ProductRow>((p, idx) => ({
+    products: products.map<ProductRow>((p) => ({
       id: p.id,
       sku: p.sku,
       name: p.name,
@@ -258,7 +254,7 @@ export async function getProductsViewModel(filters: ListFilters & { categoryId?:
       category: p.category ? { id: p.category.id, name: p.category.name } : null,
       defaultProfitPct: p.defaultProfitPct,
       taxRatePct: p.taxRatePct,
-      imageUrl: signed[idx],
+      imageUrl: p.imageKey ? `/catalog/products/${p.id}/image?v=${token(p.imageKey)}` : null,
       isActive: p.isActive,
       inProductionQty: inProductionByProduct.get(p.id) ?? 0,
       soldQty: soldByProduct.get(p.id) ?? 0,
@@ -340,44 +336,45 @@ export type ProductShowData = {
 
 export async function getProductShowViewModel(id: number): Promise<ProductShowData> {
   const product = await Product.query().where('id', id).preload('category').firstOrFail()
-  const [imageUrl, attachments, productionRow, soldRow, completedJobs, costBasis] =
-    await Promise.all([
-      signCatalogImageUrl(product.imageKey),
-      db
-        .from('product_attachments')
-        .where('product_id', id)
-        .orderBy('sort_order', 'asc')
-        .orderBy('id', 'asc')
-        .select(
-          'id',
-          'original_name',
-          'size_bytes',
-          'mime_type',
-          'kind',
-          'sort_order',
-          'file_key',
-          'created_at'
-        ),
-      db
-        .from('production_jobs')
-        .where('product_id', id)
-        .where('status', 'in_progress')
-        .sum({ planned: 'planned_qty' })
-        .sum({ produced: 'produced_qty' })
-        .first(),
-      db
-        .from('order_items')
-        .join('orders', 'orders.id', 'order_items.order_id')
-        .where('order_items.product_id', id)
-        .where('orders.status', 'confirmed')
-        .sum({ qty: 'order_items.qty' })
-        .first(),
-      ProductionJob.query()
-        .where('product_id', id)
-        .where('status', 'completed')
-        .orderBy('completed_at', 'desc'),
-      latestProductCost(id),
-    ])
+  const imageUrl = product.imageKey
+    ? `/catalog/products/${id}/image?v=${token(product.imageKey)}`
+    : null
+  const [attachments, productionRow, soldRow, completedJobs, costBasis] = await Promise.all([
+    db
+      .from('product_attachments')
+      .where('product_id', id)
+      .orderBy('sort_order', 'asc')
+      .orderBy('id', 'asc')
+      .select(
+        'id',
+        'original_name',
+        'size_bytes',
+        'mime_type',
+        'kind',
+        'sort_order',
+        'file_key',
+        'created_at'
+      ),
+    db
+      .from('production_jobs')
+      .where('product_id', id)
+      .where('status', 'in_progress')
+      .sum({ planned: 'planned_qty' })
+      .sum({ produced: 'produced_qty' })
+      .first(),
+    db
+      .from('order_items')
+      .join('orders', 'orders.id', 'order_items.order_id')
+      .where('order_items.product_id', id)
+      .where('orders.status', 'confirmed')
+      .sum({ qty: 'order_items.qty' })
+      .first(),
+    ProductionJob.query()
+      .where('product_id', id)
+      .where('status', 'completed')
+      .orderBy('completed_at', 'desc'),
+    latestProductCost(id),
+  ])
   const planned = Number(productionRow?.planned ?? 0)
   const produced = Number(productionRow?.produced ?? 0)
   const inProductionQty = Math.max(0, planned - produced)
@@ -397,15 +394,9 @@ export async function getProductShowViewModel(id: number): Promise<ProductShowDa
   const imageRows = rawAttachments.filter((a) => a.kind === 'image')
   const fileRows = rawAttachments.filter((a) => a.kind !== 'image')
 
-  const signedImageUrls = await Promise.all(
-    imageRows.map((row) =>
-      signProductFileUrl({ fileKey: row.file_key, originalName: row.original_name })
-    )
-  )
-
-  const images = imageRows.map((row, i) => ({
+  const images = imageRows.map((row) => ({
     id: Number(row.id),
-    url: signedImageUrls[i] ?? null,
+    url: `/catalog/products/${id}/gallery/${row.id}`,
     originalName: String(row.original_name),
     sortOrder: Number(row.sort_order),
     isPrimary: row.file_key === product.imageKey,

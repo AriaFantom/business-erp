@@ -15,7 +15,7 @@ import {
   openSession,
   closeSession,
 } from '#services/cash_session_service'
-import { signCatalogImageUrl } from '#services/catalog_image_storage'
+import { token } from '#services/file_streaming'
 import { computeUnitPrice } from '#services/pricing'
 import { latestProductCost } from '#services/job_costing'
 import { withIdempotency } from '#services/idempotency'
@@ -94,15 +94,13 @@ export default class PosController {
     const costByProduct = new Map<number, number>()
     products.forEach((p, idx) => costByProduct.set(p.id, costs[idx] ?? 0))
 
-    const signed = await Promise.all(products.map((p) => signCatalogImageUrl(p.imageKey)))
-
     const [categories, customers] = await Promise.all([
       ProductCategory.query().orderBy('name', 'asc'),
       Customer.query().where('is_active', true).orderBy('name', 'asc'),
     ])
 
     return inertia.render('pos/index', {
-      products: products.map((p, idx) => {
+      products: products.map((p) => {
         const cost = costByProduct.get(p.id) ?? 0
         const breakdown = computeUnitPrice({
           costPrice: cost,
@@ -114,7 +112,7 @@ export default class PosController {
           sku: p.sku,
           name: p.name,
           category: p.category ? { id: p.category.id, name: p.category.name } : null,
-          imageUrl: signed[idx],
+          imageUrl: p.imageKey ? `/catalog/products/${p.id}/image?v=${token(p.imageKey)}` : null,
           unitCost: Math.round(cost * 10000) / 10000,
           profitPct: breakdown.profitPctUsed ?? 0,
           taxRatePct: breakdown.taxRatePct,

@@ -73,10 +73,12 @@ router
     router.post('roles/:id/delete', [RolesController, 'destroy']).as('roles.destroy')
     router.get('profile', [ProfileController, 'show']).as('profile.show')
     router.post('profile', [ProfileController, 'update']).as('profile.update')
+    router.get('profile/avatar', [ProfileController, 'avatar']).as('profile.avatar.show')
     router.post('profile/avatar', [ProfileController, 'updateAvatar']).as('profile.avatar.update')
     router
       .post('profile/avatar/delete', [ProfileController, 'destroyAvatar'])
       .as('profile.avatar.destroy')
+    router.get('users/:id/avatar', [UsersController, 'avatar']).as('users.avatar.show')
 
     // ── Suppliers / Customers ─────────────────────────────────────────
     router.get('suppliers', [SuppliersController, 'index']).as('suppliers.index')
@@ -105,6 +107,9 @@ router
     router
       .post('catalog/materials/:id/image/delete', [MaterialsController, 'destroyImage'])
       .as('materials.image.destroy')
+    router
+      .get('catalog/materials/:id/image', [MaterialsController, 'image'])
+      .as('materials.image.show')
 
     router.get('catalog/components', [ComponentsController, 'index']).as('components.index')
     router.post('catalog/components', [ComponentsController, 'store']).as('components.store')
@@ -121,6 +126,9 @@ router
     router
       .post('catalog/components/:id/image/delete', [ComponentsController, 'destroyImage'])
       .as('components.image.destroy')
+    router
+      .get('catalog/components/:id/image', [ComponentsController, 'image'])
+      .as('components.image.show')
 
     router.get('catalog/products', [ProductsController, 'index']).as('products.index')
     router.post('catalog/products', [ProductsController, 'store']).as('products.store')
@@ -138,6 +146,12 @@ router
     router
       .post('catalog/products/:id/image/delete', [ProductsController, 'destroyImage'])
       .as('products.image.destroy')
+    router
+      .get('catalog/products/:id/image', [ProductsController, 'image'])
+      .as('products.image.show')
+    router
+      .get('catalog/products/:id/gallery/:imageId', [ProductsController, 'galleryImage'])
+      .as('products.gallery.show')
     router
       .get('catalog/products/:id/files', [ProductsController, 'listFiles'])
       .as('products.files.index')
