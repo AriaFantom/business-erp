@@ -1,6 +1,7 @@
 import env from '#start/env'
 import app from '@adonisjs/core/services/app'
 import { defineConfig, stores } from '@adonisjs/session'
+import { appServedOverHttps } from '#config/app'
 
 const sessionConfig = defineConfig({
   /**
@@ -41,9 +42,10 @@ const sessionConfig = defineConfig({
     httpOnly: true,
 
     /**
-     * Send cookies only over HTTPS in production.
+     * Send cookies only over HTTPS — gated on APP_URL actually being https,
+     * so a plain-http LAN deploy still gets a working session cookie.
      */
-    secure: app.inProduction,
+    secure: app.inProduction && appServedOverHttps,
 
     /**
      * Cross-site policy for cookie sending.

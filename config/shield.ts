@@ -1,5 +1,6 @@
 import app from '@adonisjs/core/services/app'
 import { defineConfig } from '@adonisjs/shield'
+import { appServedOverHttps } from '#config/app'
 
 const shieldConfig = defineConfig({
   /**
@@ -30,7 +31,10 @@ const shieldConfig = defineConfig({
       // (e.g. for animations and CSS variable bindings).
       'style-src': [`'self'`, `'unsafe-inline'`],
       'connect-src': [`'self'`, 'https:'],
-      'upgrade-insecure-requests': [],
+      // Only when actually served over HTTPS. On a plain-http deploy (LAN
+      // IP APP_URL) this directive makes browsers rewrite every asset
+      // request to https://, which nothing serves → blank page.
+      ...(appServedOverHttps ? { 'upgrade-insecure-requests': [] } : {}),
     },
 
     reportOnly: false,
@@ -86,7 +90,7 @@ const shieldConfig = defineConfig({
    * to HTTPS by a stale browser cache.
    */
   hsts: {
-    enabled: app.inProduction,
+    enabled: app.inProduction && appServedOverHttps,
     maxAge: '180 days',
     includeSubDomains: true,
   },

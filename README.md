@@ -98,6 +98,7 @@ Key values in `.env`:
 | Variable | Meaning |
 |---|---|
 | `APP_KEY` | Session/encryption secret. `./deploy.sh init` generates it (or `node ace generate:key` / `openssl rand -base64 32`); never rotate |
+| `APP_URL` | Public URL users visit. **No domain required** — `http://192.168.1.50:3333` is fine for a LAN deploy. The scheme matters: `https://` turns on Secure cookies, HSTS, and `upgrade-insecure-requests`; `http://` keeps them off so the app works over plain HTTP |
 | `APP_BIND` | Host `interface:port` the app publishes. Default `127.0.0.1:3333` (loopback only). Set `0.0.0.0:3333` or `SERVER_IP:3333` to expose more widely. **This is the only exposed port in the stack.** |
 | `DB_HOST` / `REDIS_HOST` | Must stay `postgres` / `redis` (compose service names) — `deploy.sh` rejects `127.0.0.1` |
 | `MINIO_ROOT_USER/PASSWORD`, `AWS_*`, `S3_BUCKET` | MinIO credentials; bucket is created automatically on first boot |
