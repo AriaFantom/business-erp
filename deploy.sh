@@ -3,6 +3,7 @@
 #
 # Usage:
 #   ./deploy.sh              # build, up, migrate (full deploy)
+#   ./deploy.sh init         # generate .env: auto-created secrets + prompts
 #   ./deploy.sh update       # git pull + rebuild + up + migrate (redeploy latest)
 #   ./deploy.sh build        # build the image
 #   ./deploy.sh up           # bring up the stack
@@ -13,7 +14,8 @@
 #   ./deploy.sh down         # stop the stack (keeps volumes)
 #   ./deploy.sh nuke         # stop + remove volumes (destroys DB)
 #
-# Env expectations (.env — copy .env.production.example and fill in):
+# Env expectations (.env — run `./deploy.sh init` to generate it, or copy
+# .env.production.example and fill it in by hand):
 #   - The app is the ONLY service that publishes a host port; APP_BIND controls
 #     the interface:port (default 127.0.0.1:3333, loopback only).
 #   - MinIO and InfluxDB are internal-only: no host ports, no public URLs.
@@ -97,8 +99,115 @@ check_port_free() {
 
 require_env() {
   if [[ ! -f "$ENV_FILE" ]]; then
-    echo "✗ ${ENV_FILE} not found. Copy .env.production.example to .env and fill it in." >&2
+    echo "✗ ${ENV_FILE} not found. Run './deploy.sh init' to generate it (or copy" >&2
+    echo "  .env.production.example and fill it in by hand)." >&2
     exit 1
+  fi
+}
+
+# Replace `KEY=<anything>` (including a trailing comment) with `KEY=VALUE` in
+# the env file being generated. `|` is the sed delimiter, so it never collides
+# with base64 (`+ / =`) or URL characters in the value.
+set_env_var() {
+  local key="$1" value="$2"
+  sed -i "s|^${key}=.*|${key}=${value}|" "$ENV_FILE"
+}
+
+# Prompt with a default. Falls back to the default when stdin is not
+# interactive (piped/CI) so init never hangs or aborts under `set -e`.
+prompt_with_default() {
+  local label="$1" def="$2" answer=""
+  read -rp "${label} [${def}]: " answer || true
+  echo "${answer:-$def}"
+}
+
+cmd_init() {
+  if ! command -v openssl >/dev/null 2>&1; then
+    echo "✗ openssl is required to generate secrets but is not on PATH." >&2
+    echo "  Install it (e.g. sudo apt install openssl) and re-run init." >&2
+    exit 1
+  fi
+  if [[ ! -f .env.production.example ]]; then
+    echo "✗ .env.production.example not found — cannot generate ${ENV_FILE}." >&2
+    exit 1
+  fi
+  if [[ -f "$ENV_FILE" ]]; then
+    echo "✗ ${ENV_FILE} already exists — refusing to overwrite it (it holds the" >&2
+    echo "  APP_KEY and INFLUX_TOKEN your running data depends on)." >&2
+    echo "  Move it away first if you really want a fresh one:" >&2
+    echo "    mv ${ENV_FILE} ${ENV_FILE}.backup-\$(date +%s)" >&2
+    exit 1
+  fi
+
+  echo "→ Generating ${ENV_FILE} from .env.production.example"
+  echo "  Secrets are generated with openssl; press Enter to accept defaults."
+  echo
+
+  # -- The only two values worth asking about -----------------------------
+  local app_url app_bind
+  while :; do
+    app_url="$(prompt_with_default 'APP_URL (public URL users will visit)' 'https://panel.layerdreams.com')"
+    [[ "$app_url" =~ ^https?://[^[:space:]|\&\;]+$ ]] && break
+    echo "  ✗ must look like https://host — try again." >&2
+  done
+  while :; do
+    app_bind="$(prompt_with_default 'APP_BIND (host interface:port to publish; 0.0.0.0:3333 = all interfaces)' '127.0.0.1:3333')"
+    [[ "$app_bind" =~ ^[A-Za-z0-9._-]+:[0-9]+$ ]] && break
+    echo "  ✗ must look like interface:port (e.g. 127.0.0.1:3333) — try again." >&2
+  done
+
+  # -- Everything secret is generated, never asked ------------------------
+  local app_key db_password redis_password minio_user minio_password
+  local influx_token influx_init_password
+  app_key="$(openssl rand -base64 32)"
+  db_password="$(openssl rand -hex 24)"
+  redis_password="$(openssl rand -hex 24)"
+  minio_user="layerdreams_$(openssl rand -hex 4)"
+  minio_password="$(openssl rand -hex 24)"
+  influx_token="$(openssl rand -hex 32)"
+  influx_init_password="$(openssl rand -hex 16)"
+
+  cp .env.production.example "$ENV_FILE"
+  chmod 600 "$ENV_FILE"
+
+  set_env_var APP_URL "$app_url"
+  set_env_var APP_BIND "$app_bind"
+  set_env_var APP_KEY "$app_key"
+  set_env_var DB_PASSWORD "$db_password"
+  set_env_var REDIS_PASSWORD "$redis_password"
+  set_env_var MINIO_ROOT_USER "$minio_user"
+  set_env_var MINIO_ROOT_PASSWORD "$minio_password"
+  # Simplest working setup: the app talks to MinIO with the root credentials.
+  # Swap in a scoped MinIO service account later if you want tighter access.
+  set_env_var AWS_ACCESS_KEY_ID "$minio_user"
+  set_env_var AWS_SECRET_ACCESS_KEY "$minio_password"
+  set_env_var INFLUX_TOKEN "$influx_token"
+  set_env_var INFLUX_INIT_PASSWORD "$influx_init_password"
+
+  echo
+  echo "✓ ${ENV_FILE} written (permissions 600)."
+  echo "  Generated: APP_KEY, DB_PASSWORD, REDIS_PASSWORD, MINIO_ROOT_USER/PASSWORD,"
+  echo "             AWS keys (= MinIO creds), INFLUX_TOKEN, INFLUX_INIT_PASSWORD"
+  echo "  Set:       APP_URL=${app_url}  APP_BIND=${app_bind}"
+  echo
+  echo "⚠ Back up ${ENV_FILE} somewhere safe. APP_KEY and INFLUX_TOKEN cannot be"
+  echo "  regenerated later without breaking sessions/metrics."
+  echo "⚠ RESEND_API_KEY is still empty — fill it in if the app should send mail."
+  echo
+  echo "Next: ./deploy.sh"
+}
+
+# Used by the full-deploy path when no env file exists yet: offer to generate
+# one instead of failing. Declining falls through to the normal error.
+offer_init() {
+  [[ -f "$ENV_FILE" ]] && return 0
+  echo "No ${ENV_FILE} found."
+  local ans=""
+  read -rp "Generate it now with './deploy.sh init'? [y/N]: " ans || true
+  if [[ "${ans:-}" =~ ^[Yy]$ ]]; then
+    cmd_init
+  else
+    require_env
   fi
 }
 
@@ -194,14 +303,15 @@ wait_healthy() {
 
 cmd="${1:-deploy}"
 
-# Every real command needs a working docker toolchain. The usage/help fallback
-# (unknown command) must NOT run preflight so `./deploy.sh --help` still works
-# on a machine without docker.
+# Every real command needs a working docker toolchain. `init` only needs
+# openssl (checked inside), and the usage/help fallback (unknown command) must
+# NOT run preflight so `./deploy.sh --help` still works without docker.
 case "$cmd" in
   build|up|migrate|logs|ps|pull|down|nuke|deploy|update) preflight ;;
 esac
 
 case "$cmd" in
+  init)    cmd_init ;;
   build)   cmd_build ;;
   up)      cmd_up ;;
   migrate) cmd_migrate ;;
@@ -211,6 +321,7 @@ case "$cmd" in
   down)    cmd_down ;;
   nuke)    cmd_nuke ;;
   deploy)
+    offer_init
     cmd_build
     cmd_up
     wait_healthy || true

@@ -82,17 +82,21 @@ Images get `private, max-age=1y, immutable` (safe: the `?v=` token changes whene
 ```bash
 git clone <repo-url> layerdreams-panel && cd layerdreams-panel
 
-cp .env.production.example .env
-nano .env        # fill in every "generate a strong password" / empty value
+./deploy.sh init # generate .env: all secrets auto-created (openssl),
+                 # prompts only for APP_URL and APP_BIND
 
 ./deploy.sh      # build image, start stack, wait healthy, run migrations
 ```
+
+`init` auto-generates `APP_KEY`, the Postgres/Redis/MinIO passwords, and the InfluxDB token; it asks only for the two values it can't guess (`APP_URL`, `APP_BIND`) and writes `.env` with `600` permissions. It refuses to overwrite an existing `.env`. Running `./deploy.sh` without a `.env` offers to run `init` for you. Prefer manual control? `cp .env.production.example .env` and fill it in yourself — `init` is optional.
+
+> **Back up the generated `.env`.** `APP_KEY` and `INFLUX_TOKEN` cannot be regenerated later without invalidating sessions/metrics. `RESEND_API_KEY` (outbound mail) is the one value `init` leaves empty.
 
 Key values in `.env`:
 
 | Variable | Meaning |
 |---|---|
-| `APP_KEY` | Generate once with `node ace generate:key`; never rotate |
+| `APP_KEY` | Session/encryption secret. `./deploy.sh init` generates it (or `node ace generate:key` / `openssl rand -base64 32`); never rotate |
 | `APP_BIND` | Host `interface:port` the app publishes. Default `127.0.0.1:3333` (loopback only). Set `0.0.0.0:3333` or `SERVER_IP:3333` to expose more widely. **This is the only exposed port in the stack.** |
 | `DB_HOST` / `REDIS_HOST` | Must stay `postgres` / `redis` (compose service names) — `deploy.sh` rejects `127.0.0.1` |
 | `MINIO_ROOT_USER/PASSWORD`, `AWS_*`, `S3_BUCKET` | MinIO credentials; bucket is created automatically on first boot |
@@ -105,6 +109,7 @@ Key values in `.env`:
 ### Day-to-day commands
 
 ```bash
+./deploy.sh init         # generate .env (secrets auto-created; see above)
 ./deploy.sh              # full deploy: build + up + wait healthy + migrate
 ./deploy.sh update       # git pull --ff-only + rebuild + up + migrate
 ./deploy.sh logs         # tail app logs
