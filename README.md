@@ -74,6 +74,7 @@ Images get `private, max-age=1y, immutable` (safe: the `?v=` token changes whene
 - Linux server with [Docker Engine](https://docs.docker.com/engine/install/) + the Compose v2 plugin
 - Your user able to run docker (`sudo usermod -aG docker $USER`, then re-login)
 - `git` (for the `update` command)
+- `openssl` (for `./deploy.sh init` secret generation — preinstalled on virtually every distro)
 
 `deploy.sh` checks all of this for you and fails with the exact remediation if something is missing.
 
@@ -112,9 +113,12 @@ Key values in `.env`:
 ./deploy.sh init         # generate .env (secrets auto-created; see above)
 ./deploy.sh              # full deploy: build + up + wait healthy + migrate
 ./deploy.sh update       # git pull --ff-only + rebuild + up + migrate
+./deploy.sh build        # build the app image only
+./deploy.sh up           # start the stack only
+./deploy.sh migrate      # run pending migrations only
 ./deploy.sh logs         # tail app logs
 ./deploy.sh ps           # stack status
-./deploy.sh migrate      # run pending migrations only
+./deploy.sh pull         # git fetch + fast-forward only (no rebuild)
 ./deploy.sh down         # stop the stack (volumes/data kept)
 ./deploy.sh nuke         # stop + DELETE all volumes (destroys DB!) — asks for confirmation
 ```
@@ -127,6 +131,7 @@ Key values in `.env`:
 - `.env` exists and every required variable is non-empty
 - `DB_HOST`/`REDIS_HOST` are service names, not localhost
 - warns on: stale public `S3_ENDPOINT` values, < 2 GB free disk, `APP_BIND` port already in use
+- `init` additionally checks `openssl` is available, validates the `APP_URL`/`APP_BIND` you type, and refuses to overwrite an existing `.env`
 
 ### Exposing it to the world
 
