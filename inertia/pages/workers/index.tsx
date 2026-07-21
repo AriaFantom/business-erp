@@ -140,9 +140,7 @@ export default function WorkersIndex({ workers, filters, counts }: PageProps) {
                   <TableRow key={w.id}>
                     <TableCell>
                       <div className="font-medium">{w.name}</div>
-                      {w.phone && (
-                        <div className="text-xs text-muted-foreground">{w.phone}</div>
-                      )}
+                      {w.phone && <div className="text-xs text-muted-foreground">{w.phone}</div>}
                     </TableCell>
                     <TableCell className="capitalize">{w.payType}</TableCell>
                     <TableCell className="text-right">
@@ -164,9 +162,7 @@ export default function WorkersIndex({ workers, filters, counts }: PageProps) {
                         </Link>
                       )}
                     </TableCell>
-                    <TableCell className="text-right">
-                      {formatMinutes(w.minutes30d)}
-                    </TableCell>
+                    <TableCell className="text-right">{formatMinutes(w.minutes30d)}</TableCell>
                     <TableCell className="text-right">{w.labourCost30d}</TableCell>
                     <TableCell className="text-right">{w.paidTotal}</TableCell>
                     <TableCell className="text-right">

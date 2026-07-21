@@ -60,10 +60,7 @@ type InvitationsPageProps = {
   pendingInvitations: PendingInvitation[]
 }
 
-export default function SystemInvitations({
-  roles,
-  pendingInvitations,
-}: InvitationsPageProps) {
+export default function SystemInvitations({ roles, pendingInvitations }: InvitationsPageProps) {
   const { user } = usePage<InertiaProps<InvitationsPageProps>>().props
 
   const assignableRoles = roles.filter((r) => r.assignable)
@@ -118,9 +115,7 @@ export default function SystemInvitations({
                       </SelectTrigger>
                       <SelectContent>
                         {assignableRoles.map((role) => {
-                          const parent = role.parentRoleId
-                            ? rolesById.get(role.parentRoleId)
-                            : null
+                          const parent = role.parentRoleId ? rolesById.get(role.parentRoleId) : null
                           return (
                             <SelectItem key={role.id} value={String(role.id)}>
                               {role.displayName}
@@ -134,9 +129,7 @@ export default function SystemInvitations({
                         })}
                       </SelectContent>
                     </Select>
-                    {errors.roleId && (
-                      <p className="text-sm text-destructive">{errors.roleId}</p>
-                    )}
+                    {errors.roleId && <p className="text-sm text-destructive">{errors.roleId}</p>}
                   </div>
                 </CardContent>
                 <CardFooter className="flex flex-wrap items-center justify-between gap-3">
@@ -211,10 +204,7 @@ export default function SystemInvitations({
                       )}
                       {canResend && canRevoke && <DropdownMenuSeparator />}
                       {canRevoke && (
-                        <RevokeInvitationItem
-                          invitationId={invite.id}
-                          email={invite.email}
-                        />
+                        <RevokeInvitationItem invitationId={invite.id} email={invite.email} />
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -262,6 +252,4 @@ function RevokeInvitationItem({
   )
 }
 
-SystemInvitations.layout = (page: ReactElement) => (
-  <DashboardLayout>{page}</DashboardLayout>
-)
+SystemInvitations.layout = (page: ReactElement) => <DashboardLayout>{page}</DashboardLayout>

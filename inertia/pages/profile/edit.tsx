@@ -40,10 +40,7 @@ export default function ProfileEdit() {
         initials={userInitials(user.firstName, user.lastName, user.email)}
       />
 
-      <ProfileCard
-        initialFirstName={user.firstName ?? ''}
-        initialLastName={user.lastName ?? ''}
-      />
+      <ProfileCard initialFirstName={user.firstName ?? ''} initialLastName={user.lastName ?? ''} />
     </div>
   )
 }
@@ -78,6 +75,7 @@ function ProfileCard({
             <Input
               id="profile-first-name"
               name="firstName"
+              placeholder="Your first name"
               value={data.firstName}
               onChange={(e) => setData('firstName', e.target.value)}
               aria-invalid={errors.firstName ? true : undefined}
@@ -89,6 +87,7 @@ function ProfileCard({
             <Input
               id="profile-last-name"
               name="lastName"
+              placeholder="Your last name"
               value={data.lastName}
               onChange={(e) => setData('lastName', e.target.value)}
               aria-invalid={errors.lastName ? true : undefined}
@@ -148,8 +147,7 @@ function AvatarCard({
 
   const [removeOpen, setRemoveOpen] = useState(false)
   const onRemove = () => setRemoveOpen(true)
-  const confirmRemove = () =>
-    router.post('/profile/avatar/delete', {}, { preserveScroll: true })
+  const confirmRemove = () => router.post('/profile/avatar/delete', {}, { preserveScroll: true })
 
   const displayUrl = previewUrl ?? avatarUrl ?? undefined
 
@@ -213,4 +211,3 @@ function AvatarCard({
 }
 
 ProfileEdit.layout = (page: ReactElement) => <DashboardLayout>{page}</DashboardLayout>
-

@@ -159,6 +159,7 @@ function PaymentDialog({ invoiceId, due }: { invoiceId: number; due: number }) {
             <Input
               type="number"
               step="0.01"
+              placeholder="Amount received"
               value={data.amount}
               onChange={(e) => setData('amount', Number(e.target.value))}
             />
@@ -185,6 +186,7 @@ function PaymentDialog({ invoiceId, due }: { invoiceId: number; due: number }) {
           </Field>
           <Field label="Reference" error={errors.reference}>
             <Input
+              placeholder="Cheque no., UPI ref, txn id…"
               value={data.reference}
               onChange={(e) => setData('reference', e.target.value)}
             />

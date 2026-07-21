@@ -64,6 +64,7 @@ export function DefaultPriceDialog({
               id="default-price-input"
               type="number"
               step="0.01"
+              placeholder="Selling price per unit"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
               autoFocus

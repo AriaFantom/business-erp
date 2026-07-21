@@ -122,7 +122,8 @@ function PostAction({
 function ReturnItemsDialog({ purchaseId, items }: { purchaseId: number; items: Item[] }) {
   const [open, setOpen] = useState(false)
   const returnable = items.filter(
-    (it) => (it.itemKind === 'material' || it.itemKind === 'component') &&
+    (it) =>
+      (it.itemKind === 'material' || it.itemKind === 'component') &&
       Number(it.qty) - it.returnedQty > 0.0005
   )
   const { data, setData, post, processing, transform, reset } = useForm<{
@@ -258,6 +259,7 @@ function RecordPaymentDialog({ purchase }: { purchase: Purchase }) {
               min={0.01}
               max={Number(purchase.balanceDue)}
               step="0.01"
+              placeholder="Amount paid to the supplier"
               value={data.amount}
               onChange={(e) => setData('amount', e.target.value)}
               required

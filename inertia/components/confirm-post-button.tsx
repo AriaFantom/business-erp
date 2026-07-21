@@ -64,10 +64,7 @@ export function ConfirmPostButton({
           title={confirmTitle}
           description={confirmDescription}
           confirmLabel={confirmLabel ?? 'Confirm'}
-          variant={
-            confirmVariant ??
-            (variant === 'destructive' ? 'destructive' : 'default')
-          }
+          variant={confirmVariant ?? (variant === 'destructive' ? 'destructive' : 'default')}
           onConfirm={submit}
         />
       )}

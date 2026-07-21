@@ -34,10 +34,7 @@ import DashboardLayout from '@/layouts/dashboard-layout'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
 import { CheckCircle2, ExternalLink, Truck, XCircle } from 'lucide-react'
-import {
-  ColumnVisibilityMenu,
-  type ColumnDef,
-} from '@/components/data-table/column-visibility'
+import { ColumnVisibilityMenu, type ColumnDef } from '@/components/data-table/column-visibility'
 import { useColumnVisibility } from '@/hooks/use-column-visibility'
 
 type PurchaseRow = {
@@ -80,7 +77,6 @@ type LineDraft = {
   taxRatePct: number
 }
 
-
 function NewPurchaseDialog({
   suppliers,
   materials,
@@ -115,7 +111,10 @@ function NewPurchaseDialog({
   }
 
   const removeLine = (idx: number) =>
-    setData('items', data.items.filter((_, i) => i !== idx))
+    setData(
+      'items',
+      data.items.filter((_, i) => i !== idx)
+    )
 
   const updateLine = (idx: number, patch: Partial<LineDraft>) =>
     setData(
@@ -146,10 +145,7 @@ function NewPurchaseDialog({
         <form className="flex flex-col gap-3" onSubmit={submit}>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Supplier" error={errors.supplierId}>
-              <Select
-                value={data.supplierId}
-                onValueChange={(v) => setData('supplierId', v)}
-              >
+              <Select value={data.supplierId} onValueChange={(v) => setData('supplierId', v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Pick supplier" />
                 </SelectTrigger>
@@ -172,6 +168,7 @@ function NewPurchaseDialog({
           </div>
           <Field label="Note" error={errors.note}>
             <Input
+              placeholder="Reference, delivery notes, anything useful"
               value={data.note}
               onChange={(e) => setData('note', e.target.value)}
             />
@@ -212,86 +209,87 @@ function NewPurchaseDialog({
               <p className="text-sm text-muted-foreground">No lines yet.</p>
             ) : (
               <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Item</TableHead>
-                    <TableHead>Qty</TableHead>
-                    <TableHead>Unit cost</TableHead>
-                    <TableHead>Tax %</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.items.map((ln, i) => {
-                    const pool = ln.itemKind === 'material' ? materials : components
-                    const it = pool.find((p) => p.id === ln.itemId)
-                    return (
-                      <TableRow key={i}>
-                        <TableCell className="text-sm">
-                          [{ln.itemKind}] {it?.name ?? '—'}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Item</TableHead>
+                      <TableHead>Qty</TableHead>
+                      <TableHead>Unit cost</TableHead>
+                      <TableHead>Tax %</TableHead>
+                      <TableHead></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {data.items.map((ln, i) => {
+                      const pool = ln.itemKind === 'material' ? materials : components
+                      const it = pool.find((p) => p.id === ln.itemId)
+                      return (
+                        <TableRow key={i}>
+                          <TableCell className="text-sm">
+                            [{ln.itemKind}] {it?.name ?? '—'}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Input
+                                aria-label={`Line ${i + 1} quantity`}
+                                placeholder="Qty"
+                                type="number"
+                                step="0.001"
+                                value={ln.qty}
+                                onChange={(e) => updateLine(i, { qty: Number(e.target.value) })}
+                                className="w-24"
+                              />
+                              <span className="text-xs text-muted-foreground">
+                                {it?.unit ?? ''}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Input
+                                aria-label={`Line ${i + 1} unit cost`}
+                                placeholder="Cost"
+                                type="number"
+                                step="0.0001"
+                                value={ln.unitCost}
+                                onChange={(e) =>
+                                  updateLine(i, { unitCost: Number(e.target.value) })
+                                }
+                                className="w-28"
+                              />
+                              <span className="text-xs text-muted-foreground">
+                                /{it?.unit ?? ''}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
                             <Input
-                              aria-label={`Line ${i + 1} quantity`}
+                              aria-label={`Line ${i + 1} tax percent`}
+                              placeholder="Tax %"
                               type="number"
-                              step="0.001"
-                              value={ln.qty}
+                              step="0.01"
+                              value={ln.taxRatePct}
                               onChange={(e) =>
-                                updateLine(i, { qty: Number(e.target.value) })
+                                updateLine(i, { taxRatePct: Number(e.target.value) })
                               }
-                              className="w-24"
+                              className="w-20"
                             />
-                            <span className="text-xs text-muted-foreground">
-                              {it?.unit ?? ''}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Input
-                              aria-label={`Line ${i + 1} unit cost`}
-                              type="number"
-                              step="0.0001"
-                              value={ln.unitCost}
-                              onChange={(e) =>
-                                updateLine(i, { unitCost: Number(e.target.value) })
-                              }
-                              className="w-28"
-                            />
-                            <span className="text-xs text-muted-foreground">
-                              /{it?.unit ?? ''}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            aria-label={`Line ${i + 1} tax percent`}
-                            type="number"
-                            step="0.01"
-                            value={ln.taxRatePct}
-                            onChange={(e) =>
-                              updateLine(i, { taxRatePct: Number(e.target.value) })
-                            }
-                            className="w-20"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            type="button"
-                            variant="destructive-soft"
-                            size="sm"
-                            onClick={() => removeLine(i)}
-                          >
-                            Remove
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              type="button"
+                              variant="destructive-soft"
+                              size="sm"
+                              onClick={() => removeLine(i)}
+                            >
+                              Remove
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
               </div>
             )}
           </div>
@@ -354,11 +352,7 @@ export default function PurchasesIndex({
           <h1 className="text-2xl font-semibold">Purchases</h1>
         </div>
         <div className="flex items-center gap-2">
-          <NewPurchaseDialog
-            suppliers={suppliers}
-            materials={materials}
-            components={components}
-          />
+          <NewPurchaseDialog suppliers={suppliers} materials={materials} components={components} />
         </div>
       </div>
 
@@ -432,9 +426,7 @@ export default function PurchasesIndex({
                   {isVisible('supplier') && <TableHead>Supplier</TableHead>}
                   {isVisible('status') && <TableHead>Status</TableHead>}
                   {isVisible('purchasedOn') && <TableHead>Purchased on</TableHead>}
-                  {isVisible('total') && (
-                    <TableHead className="text-right">Total</TableHead>
-                  )}
+                  {isVisible('total') && <TableHead className="text-right">Total</TableHead>}
                   {isVisible('due') && <TableHead className="text-right">Due</TableHead>}
                   {isVisible('actions') && (
                     <TableHead className="w-20 text-right">
@@ -464,9 +456,7 @@ export default function PurchasesIndex({
                     {isVisible('purchasedOn') && (
                       <TableCell>{p.purchasedAt?.slice(0, 10) ?? '—'}</TableCell>
                     )}
-                    {isVisible('total') && (
-                      <TableCell className="text-right">{p.total}</TableCell>
-                    )}
+                    {isVisible('total') && <TableCell className="text-right">{p.total}</TableCell>}
                     {isVisible('due') && (
                       <TableCell className="text-right tabular-nums">
                         {p.status === 'confirmed' && Number(p.balanceDue) > 0.005 ? (
@@ -478,12 +468,7 @@ export default function PurchasesIndex({
                     )}
                     {isVisible('actions') && (
                       <TableCell className="text-right">
-                        <Button
-                          asChild
-                          variant="ghost"
-                          size="icon"
-                          aria-label="Open purchase"
-                        >
+                        <Button asChild variant="ghost" size="icon" aria-label="Open purchase">
                           <Link href={`/purchases/${p.id}`}>
                             <ExternalLink className="size-4" />
                           </Link>

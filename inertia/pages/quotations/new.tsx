@@ -3,13 +3,7 @@ import { Head, useForm } from '@inertiajs/react'
 import { Link } from '@adonisjs/inertia/react'
 import { ChevronLeft, Package, Plus, Trash2, Wrench, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -91,12 +85,7 @@ function computeCustomUnitPrice(cost?: number, profitPct?: number): number {
   return round2((cost ?? 0) * (1 + (profitPct ?? 0) / 100))
 }
 
-export default function QuotationNew({
-  customers,
-  products,
-  materials,
-  components,
-}: PageProps) {
+export default function QuotationNew({ customers, products, materials, components }: PageProps) {
   const { data, setData, post, processing, errors } = useForm({
     customerId: '',
     validUntil: new Date(Date.now() + 14 * 86400_000).toISOString().slice(0, 10),
@@ -418,6 +407,7 @@ export default function QuotationNew({
                                             </Select>
                                             <Input
                                               aria-label={`Line ${i + 1} BOM entry ${bi + 1} quantity`}
+                                              placeholder="Qty"
                                               type="number"
                                               step="0.0001"
                                               value={bom.qty}
@@ -452,6 +442,7 @@ export default function QuotationNew({
                           <TableCell className="align-top">
                             <Input
                               aria-label={`Line ${i + 1} quantity`}
+                              placeholder="Qty"
                               type="number"
                               value={ln.qty}
                               onChange={(e) => updateLine(i, { qty: Number(e.target.value) })}
@@ -474,6 +465,7 @@ export default function QuotationNew({
                             {isCustom ? (
                               <Input
                                 aria-label={`Line ${i + 1} profit percent`}
+                                placeholder="Profit %"
                                 type="number"
                                 step="0.01"
                                 value={ln.profitPctOverride ?? ''}
@@ -509,8 +501,11 @@ export default function QuotationNew({
                             <Input
                               type="number"
                               step="0.01"
+                              placeholder="Tax %"
                               value={ln.taxRatePct}
-                              onChange={(e) => updateLine(i, { taxRatePct: Number(e.target.value) })}
+                              onChange={(e) =>
+                                updateLine(i, { taxRatePct: Number(e.target.value) })
+                              }
                               className="w-20"
                             />
                           </TableCell>

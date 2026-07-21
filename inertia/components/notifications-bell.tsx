@@ -13,12 +13,7 @@ export function NotificationsBell() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative"
-          aria-label="Notifications"
-        >
+        <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
           <Bell className="size-5" />
         </Button>
       </DropdownMenuTrigger>

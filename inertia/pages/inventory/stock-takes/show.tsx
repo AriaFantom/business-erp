@@ -116,9 +116,7 @@ function PostAction({
 
 export default function StockTakeShow({ stockTake, lines, totals }: PageProps) {
   const editable = stockTake.status === 'draft'
-  const [kindFilter, setKindFilter] = useState<'all' | 'material' | 'component' | 'product'>(
-    'all'
-  )
+  const [kindFilter, setKindFilter] = useState<'all' | 'material' | 'component' | 'product'>('all')
 
   const { data, setData, post, processing, transform } = useForm<{
     countsByKey: Record<string, string>
@@ -259,7 +257,8 @@ export default function StockTakeShow({ stockTake, lines, totals }: PageProps) {
                     </TableCell>
                     <TableCell>{l.itemKind}</TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {l.expectedQty} <span className="text-xs text-muted-foreground">{l.unit}</span>
+                      {l.expectedQty}{' '}
+                      <span className="text-xs text-muted-foreground">{l.unit}</span>
                     </TableCell>
                     <TableCell className="text-right">
                       {editable ? (

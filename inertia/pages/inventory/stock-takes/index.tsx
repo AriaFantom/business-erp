@@ -100,10 +100,7 @@ export default function StockTakesIndex({ stockTakes }: PageProps) {
                 {stockTakes.map((st) => (
                   <TableRow key={st.id} className="cursor-pointer">
                     <TableCell className="font-medium">
-                      <Link
-                        href={`/inventory/stock-takes/${st.id}`}
-                        className="hover:underline"
-                      >
+                      <Link href={`/inventory/stock-takes/${st.id}`} className="hover:underline">
                         {st.number}
                       </Link>
                     </TableCell>

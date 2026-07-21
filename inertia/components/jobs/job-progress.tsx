@@ -94,15 +94,10 @@ export function JobProgress({
     estimatedDurationMin != null
       ? estimatedDurationMin * 60
       : autoCompleteAt && startedAt
-        ? Math.max(
-            0,
-            (new Date(autoCompleteAt).getTime() - new Date(startedAt).getTime()) / 1000
-          )
+        ? Math.max(0, (new Date(autoCompleteAt).getTime() - new Date(startedAt).getTime()) / 1000)
         : 0
 
-  const realElapsed = startedAt
-    ? Math.max(0, (now - new Date(startedAt).getTime()) / 1000)
-    : 0
+  const realElapsed = startedAt ? Math.max(0, (now - new Date(startedAt).getTime()) / 1000) : 0
 
   let remainingTotal = 0
   let overdue = false
@@ -136,15 +131,9 @@ export function JobProgress({
     <Layout
       leftLabel={paused ? 'Paused' : 'Elapsed'}
       leftValue={fmt(elapsedTotal)}
-      rightLabel={
-        totalSeconds > 0 ? (overdue ? 'Over by' : 'Remaining') : 'Estimate'
-      }
+      rightLabel={totalSeconds > 0 ? (overdue ? 'Over by' : 'Remaining') : 'Estimate'}
       rightValue={
-        totalSeconds > 0
-          ? overdue
-            ? fmt(realElapsed - totalSeconds)
-            : fmt(remainingTotal)
-          : '—'
+        totalSeconds > 0 ? (overdue ? fmt(realElapsed - totalSeconds) : fmt(remainingTotal)) : '—'
       }
       percent={percent}
       footerLeft={label}

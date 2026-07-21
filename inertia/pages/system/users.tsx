@@ -7,13 +7,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { EmptyState } from '@/components/empty-state'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
@@ -88,10 +82,7 @@ function EditRolesDialog({
   assignableRoles: AssignableRole[]
   onClose: () => void
 }) {
-  const initialIds = useMemo(
-    () => target.roles.map((r) => r.id).sort((a, b) => a - b),
-    [target]
-  )
+  const initialIds = useMemo(() => target.roles.map((r) => r.id).sort((a, b) => a - b), [target])
 
   const { data, setData, post, processing, errors, reset } = useForm({
     roleIds: initialIds,
@@ -105,7 +96,10 @@ function EditRolesDialog({
     const set = new Set(data.roleIds)
     if (checked) set.add(roleId)
     else set.delete(roleId)
-    setData('roleIds', [...set].sort((a, b) => a - b))
+    setData(
+      'roleIds',
+      [...set].sort((a, b) => a - b)
+    )
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -120,8 +114,7 @@ function EditRolesDialog({
   }
 
   const noChange =
-    data.roleIds.length === initialIds.length &&
-    data.roleIds.every((id, i) => id === initialIds[i])
+    data.roleIds.length === initialIds.length && data.roleIds.every((id, i) => id === initialIds[i])
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -136,9 +129,7 @@ function EditRolesDialog({
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2 rounded-md border border-border p-3 max-h-72 overflow-y-auto">
             {assignableRoles.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No roles in your subtree to assign.
-              </p>
+              <p className="text-sm text-muted-foreground">No roles in your subtree to assign.</p>
             ) : (
               assignableRoles.map((role) => {
                 const checked = data.roleIds.includes(role.id)
@@ -154,9 +145,7 @@ function EditRolesDialog({
                     />
                     <span className="flex flex-col">
                       <span className="text-sm font-medium">{role.displayName}</span>
-                      <span className="font-mono text-xs text-muted-foreground">
-                        {role.name}
-                      </span>
+                      <span className="font-mono text-xs text-muted-foreground">{role.name}</span>
                     </span>
                   </label>
                 )
@@ -175,10 +164,7 @@ function EditRolesDialog({
             <Button
               type="submit"
               disabled={
-                processing ||
-                data.roleIds.length === 0 ||
-                assignableRoles.length === 0 ||
-                noChange
+                processing || data.roleIds.length === 0 || assignableRoles.length === 0 || noChange
               }
             >
               {processing ? 'Saving…' : 'Save changes'}
@@ -190,11 +176,7 @@ function EditRolesDialog({
   )
 }
 
-export default function SystemUsers({
-  users,
-  assignableRoles,
-  currentUserId,
-}: UsersPageProps) {
+export default function SystemUsers({ users, assignableRoles, currentUserId }: UsersPageProps) {
   const { user: actor } = usePage<InertiaProps<UsersPageProps>>().props
   const [editing, setEditing] = useState<UserRow | null>(null)
 
@@ -261,9 +243,7 @@ export default function SystemUsers({
                             <span className="truncate text-sm font-medium">
                               {fullNameOf(row)}
                               {isSelf && (
-                                <span className="ml-2 text-xs text-muted-foreground">
-                                  (you)
-                                </span>
+                                <span className="ml-2 text-xs text-muted-foreground">(you)</span>
                               )}
                             </span>
                             <span className="truncate text-xs text-muted-foreground">

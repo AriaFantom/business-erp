@@ -13,13 +13,7 @@ type Props = {
   maxMb?: number
 }
 
-export function AvatarUploader({
-  uploadPath,
-  imageUrl,
-  alt,
-  size = 40,
-  maxMb = 15,
-}: Props) {
+export function AvatarUploader({ uploadPath, imageUrl, alt, size = 40, maxMb = 15 }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -75,30 +69,29 @@ export function AvatarUploader({
         onChange={onFileChange}
       />
       {imageUrl ? (
-        <img
-          src={imageUrl}
-          alt={alt}
-          className="h-full w-full object-cover"
-          loading="lazy"
-        />
+        <img src={imageUrl} alt={alt} className="h-full w-full object-cover" loading="lazy" />
       ) : null}
       <span
         className={
           'absolute inset-0 flex items-center justify-center ' +
-          (imageUrl
-            ? 'bg-foreground/40 opacity-0 transition group-hover:opacity-100'
-            : '')
+          (imageUrl ? 'bg-foreground/40 opacity-0 transition group-hover:opacity-100' : '')
         }
       >
         {busy ? (
           <Loader2
             className="animate-spin text-foreground"
-            style={{ width: Math.max(16, Math.floor(size * 0.3)), height: Math.max(16, Math.floor(size * 0.3)) }}
+            style={{
+              width: Math.max(16, Math.floor(size * 0.3)),
+              height: Math.max(16, Math.floor(size * 0.3)),
+            }}
           />
         ) : (
           <Plus
             className={imageUrl ? 'text-background' : ''}
-            style={{ width: Math.max(16, Math.floor(size * 0.3)), height: Math.max(16, Math.floor(size * 0.3)) }}
+            style={{
+              width: Math.max(16, Math.floor(size * 0.3)),
+              height: Math.max(16, Math.floor(size * 0.3)),
+            }}
           />
         )}
       </span>

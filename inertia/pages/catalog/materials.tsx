@@ -36,10 +36,7 @@ import { StatCard } from '@/components/catalog/stat-card'
 import { UnitPicker } from '@/components/catalog/unit-picker'
 import { InlineImagePicker } from '@/components/catalog/inline-image-picker'
 import { Boxes, CheckCircle2, XCircle } from 'lucide-react'
-import {
-  ColumnVisibilityMenu,
-  type ColumnDef,
-} from '@/components/data-table/column-visibility'
+import { ColumnVisibilityMenu, type ColumnDef } from '@/components/data-table/column-visibility'
 import { useColumnVisibility } from '@/hooks/use-column-visibility'
 import { EmptyState } from '@/components/empty-state'
 import { SkuField } from '@/components/catalog/sku-field'
@@ -110,13 +107,9 @@ function NewMaterialDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
                 name: d.name,
                 type: d.type,
                 unit: d.unit || 'g',
-                defaultSupplierId: d.defaultSupplierId
-                  ? Number(d.defaultSupplierId)
-                  : undefined,
+                defaultSupplierId: d.defaultSupplierId ? Number(d.defaultSupplierId) : undefined,
                 defaultUnitCost: d.defaultUnitCost,
-                reorderThresholdG: d.reorderThresholdG
-                  ? Number(d.reorderThresholdG)
-                  : undefined,
+                reorderThresholdG: d.reorderThresholdG ? Number(d.reorderThresholdG) : undefined,
               }
               if (imageFile) out.image = imageFile
               return out as never
@@ -142,7 +135,11 @@ function NewMaterialDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
               error={errors.sku}
             />
             <Field label="Name" error={errors.name}>
-              <Input value={data.name} onChange={(e) => setData('name', e.target.value)} />
+              <Input
+                placeholder="e.g. Cotton Yarn Blue"
+                value={data.name}
+                onChange={(e) => setData('name', e.target.value)}
+              />
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -187,6 +184,7 @@ function NewMaterialDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
               <Input
                 type="number"
                 step="0.0001"
+                placeholder="Cost per unit, e.g. 12.50"
                 value={data.defaultUnitCost}
                 onChange={(e) => setData('defaultUnitCost', Number(e.target.value))}
               />
@@ -198,6 +196,7 @@ function NewMaterialDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
               <Input
                 type="number"
                 step="0.001"
+                placeholder="Alert when stock drops below this"
                 value={data.reorderThresholdG}
                 onChange={(e) => setData('reorderThresholdG', e.target.value)}
               />
@@ -237,12 +236,7 @@ function ArchiveAction({ path, name }: { path: string; name: string }) {
   const [open, setOpen] = useState(false)
   return (
     <>
-      <Button
-        variant="destructive"
-        size="sm"
-        disabled={processing}
-        onClick={() => setOpen(true)}
-      >
+      <Button variant="destructive" size="sm" disabled={processing} onClick={() => setOpen(true)}>
         Archive
       </Button>
       <ConfirmDialog
@@ -296,9 +290,7 @@ export default function MaterialsPage({ materials, suppliers, filters, counts }:
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Materials</h1>
-          <p className="text-sm text-muted-foreground">
-            {materials.length} materials in catalog.
-          </p>
+          <p className="text-sm text-muted-foreground">{materials.length} materials in catalog.</p>
         </div>
         <NewMaterialDialog suppliers={suppliers} />
       </div>
@@ -410,9 +402,7 @@ export default function MaterialsPage({ materials, suppliers, filters, counts }:
                     {isVisible('sku') && (
                       <TableCell className="font-mono text-xs">{m.sku}</TableCell>
                     )}
-                    {isVisible('name') && (
-                      <TableCell className="font-medium">{m.name}</TableCell>
-                    )}
+                    {isVisible('name') && <TableCell className="font-medium">{m.name}</TableCell>}
                     {isVisible('type') && <TableCell>{m.type}</TableCell>}
                     {isVisible('unit') && <TableCell>{m.unit}</TableCell>}
                     {isVisible('cost') && <TableCell>{m.defaultUnitCost}</TableCell>}

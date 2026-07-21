@@ -8,12 +8,7 @@ import {
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core'
-import {
-  SortableContext,
-  arrayMove,
-  rectSortingStrategy,
-  useSortable,
-} from '@dnd-kit/sortable'
+import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Star, StarOff, Trash2, Upload } from 'lucide-react'
 import { Button } from '~/components/ui/button'
@@ -173,14 +168,7 @@ export function ProductImageGallery({ productId, images, canEdit }: Props) {
           </div>
         </SortableContext>
       </DndContext>
-      <input
-        ref={fileInput}
-        type="file"
-        accept="image/*"
-        multiple
-        hidden
-        onChange={onPickFiles}
-      />
+      <input ref={fileInput} type="file" accept="image/*" multiple hidden onChange={onPickFiles} />
     </div>
   )
 }

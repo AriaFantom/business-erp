@@ -1,13 +1,7 @@
 import { type ReactElement, useState } from 'react'
 import { useForm } from '@inertiajs/react'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -89,18 +83,45 @@ function NewCustomerDialog() {
             })
           }}
         >
-          <Field label="Name" value={data.name} error={errors.name} onChange={(v) => setData('name', v)} />
-          <Field label="GSTIN" value={data.gstin} error={errors.gstin} onChange={(v) => setData('gstin', v)} />
-          <Field label="Email" type="email" value={data.email} error={errors.email} onChange={(v) => setData('email', v)} />
-          <Field label="Phone" value={data.phone} error={errors.phone} onChange={(v) => setData('phone', v)} />
+          <Field
+            label="Name"
+            placeholder="e.g. Anita Sharma or Acme Retail Pvt Ltd"
+            value={data.name}
+            error={errors.name}
+            onChange={(v) => setData('name', v)}
+          />
+          <Field
+            label="GSTIN"
+            placeholder="15-character GST number"
+            value={data.gstin}
+            error={errors.gstin}
+            onChange={(v) => setData('gstin', v)}
+          />
+          <Field
+            label="Email"
+            type="email"
+            placeholder="name@example.com"
+            value={data.email}
+            error={errors.email}
+            onChange={(v) => setData('email', v)}
+          />
+          <Field
+            label="Phone"
+            placeholder="10-digit mobile number"
+            value={data.phone}
+            error={errors.phone}
+            onChange={(v) => setData('phone', v)}
+          />
           <Field
             label="Billing address"
+            placeholder="Street, city, state, PIN"
             value={data.billingAddress}
             error={errors.billingAddress}
             onChange={(v) => setData('billingAddress', v)}
           />
           <Field
             label="Shipping address"
+            placeholder="Leave empty to use the billing address"
             value={data.shippingAddress}
             error={errors.shippingAddress}
             onChange={(v) => setData('shippingAddress', v)}
@@ -139,17 +160,24 @@ function Field({
   error,
   onChange,
   type = 'text',
+  placeholder,
 }: {
   label: string
   value: string
   error?: string
   onChange: (v: string) => void
   type?: string
+  placeholder?: string
 }) {
   return (
     <div className="flex flex-col gap-1">
       <Label>{label}</Label>
-      <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} />
+      <Input
+        type={type}
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+      />
       {error && <span className="text-xs text-destructive">{error}</span>}
     </div>
   )
@@ -330,7 +358,11 @@ export default function CustomersIndex({ customers, filters, counts }: PageProps
                       <CreditLimitDialog customer={c} />
                     </TableCell>
                     <TableCell>
-                      {c.isActive ? <Badge variant="outline">Active</Badge> : <Badge variant="secondary">Archived</Badge>}
+                      {c.isActive ? (
+                        <Badge variant="outline">Active</Badge>
+                      ) : (
+                        <Badge variant="secondary">Archived</Badge>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       {c.isActive && (

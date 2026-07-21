@@ -66,7 +66,7 @@ export function ProductFilesDialog({ productId, productName, initialCount }: Pro
 
   useEffect(() => {
     if (open) refresh()
-  }, [open])  
+  }, [open])
 
   function pick() {
     if (busy) return
@@ -163,9 +163,7 @@ export function ProductFilesDialog({ productId, productName, initialCount }: Pro
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
                       <Button asChild variant="ghost" size="icon" aria-label="Download">
-                        <a
-                          href={`/catalog/products/${productId}/files/${f.id}/download`}
-                        >
+                        <a href={`/catalog/products/${productId}/files/${f.id}/download`}>
                           <Download className="size-4" />
                         </a>
                       </Button>

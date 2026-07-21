@@ -31,8 +31,7 @@ export function NavUser() {
 
   if (!user) return null
 
-  const fullName =
-    [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || user.email
+  const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || user.email
   const initials = userInitials(user.firstName, user.lastName, user.email)
 
   return (

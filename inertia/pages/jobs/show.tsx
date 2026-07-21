@@ -14,6 +14,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -281,6 +282,7 @@ function ConsumeDialog({ jobId, items }: { jobId: number; items: InventoryItem[]
             <Input
               type="number"
               step="0.001"
+              placeholder="How much was used"
               value={data.qtyConsumed}
               onChange={(e) => setData('qtyConsumed', Number(e.target.value))}
             />
@@ -296,6 +298,7 @@ function ConsumeDialog({ jobId, items }: { jobId: number; items: InventoryItem[]
             <Input
               type="number"
               step="0.001"
+              placeholder="0 if nothing was scrapped"
               value={data.qtyWasted}
               onChange={(e) => setData('qtyWasted', Number(e.target.value))}
             />
@@ -368,7 +371,10 @@ function ExpenseDialog({ jobId }: { jobId: number }) {
             </Select>
           </Field>
           <Field label="Description" error={errors.description}>
-            <Input
+            <Textarea
+              rows={3}
+              className="resize-none"
+              placeholder="What was this expense for?"
               value={data.description}
               onChange={(e) => setData('description', e.target.value)}
             />
@@ -377,6 +383,7 @@ function ExpenseDialog({ jobId }: { jobId: number }) {
             <Input
               type="number"
               step="0.01"
+              placeholder="How much was spent"
               value={data.amount}
               onChange={(e) => setData('amount', Number(e.target.value))}
             />
@@ -428,7 +435,11 @@ function FailDialog({ jobId }: { jobId: number }) {
           }}
         >
           <Field label="Reason" error={errors.reason}>
-            <Input value={data.reason} onChange={(e) => setData('reason', e.target.value)} />
+            <Input
+              placeholder="Why did this job fail?"
+              value={data.reason}
+              onChange={(e) => setData('reason', e.target.value)}
+            />
           </Field>
           <label className="flex items-center gap-2 text-sm">
             <Checkbox
@@ -470,6 +481,7 @@ function ConfirmJobCard({ jobId, plannedQty }: { jobId: number; plannedQty: numb
             type="number"
             min={0}
             max={plannedQty}
+            placeholder="Units actually produced"
             value={producedQty}
             onChange={(e) => setProducedQty(Math.min(plannedQty, Number(e.target.value)))}
           />
@@ -688,10 +700,9 @@ function StartForm({
                     type="number"
                     step="0.001"
                     min={0}
+                    placeholder="Qty"
                     value={row.qtyConsumed}
-                    onChange={(e) =>
-                      updateDraft(row.key, { qtyConsumed: Number(e.target.value) })
-                    }
+                    onChange={(e) => updateDraft(row.key, { qtyConsumed: Number(e.target.value) })}
                   />
                 </Field>
                 <Button
@@ -711,10 +722,7 @@ function StartForm({
           </div>
 
           <div className="flex flex-col gap-1">
-            <Button
-              type="submit"
-              disabled={submitting || (!machineId && workerIds.length === 0)}
-            >
+            <Button type="submit" disabled={submitting || (!machineId && workerIds.length === 0)}>
               {submitting ? 'Starting…' : 'Start'}
             </Button>
             {!machineId && workerIds.length === 0 && (
@@ -990,9 +998,7 @@ export default function JobShow({
                     </TableCell>
                     <TableCell className="capitalize">{w.payType}</TableCell>
                     <TableCell className="text-right">{w.hourlyRateAtAssign}</TableCell>
-                    <TableCell className="text-right">
-                      {formatMinutes(w.minutesWorked)}
-                    </TableCell>
+                    <TableCell className="text-right">{formatMinutes(w.minutesWorked)}</TableCell>
                     <TableCell className="text-right">{w.lineCost}</TableCell>
                     <TableCell>{w.releasedAt ? 'released' : 'on the job'}</TableCell>
                   </TableRow>

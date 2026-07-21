@@ -85,7 +85,6 @@ function AgingStrip({ aging }: { aging: Aging }) {
   )
 }
 
-
 export default function InvoicesIndex({ invoices, customers, filters, aging }: PageProps) {
   const outstanding = invoices
     .filter((i: InvoiceRow) => i.status === 'unpaid' || i.status === 'partial')
@@ -106,11 +105,7 @@ export default function InvoicesIndex({ invoices, customers, filters, aging }: P
           icon={Receipt}
         />
         <StatCard label="Paid" value={paid} icon={CheckCircle2} />
-        <StatCard
-          label="Outstanding"
-          value={`₹${outstanding.toFixed(2)}`}
-          icon={Wallet}
-        />
+        <StatCard label="Outstanding" value={`₹${outstanding.toFixed(2)}`} icon={Wallet} />
       </div>
 
       <AgingStrip aging={aging} />

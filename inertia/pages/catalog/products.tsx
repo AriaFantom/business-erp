@@ -12,6 +12,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -37,10 +38,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog'
 import { ProductFilesDialog } from '@/components/catalog/product-files-dialog'
 import { ProductQrDialog } from '@/components/catalog/product-qr-dialog'
 import { Package, CheckCircle2, XCircle } from 'lucide-react'
-import {
-  ColumnVisibilityMenu,
-  type ColumnDef,
-} from '@/components/data-table/column-visibility'
+import { ColumnVisibilityMenu, type ColumnDef } from '@/components/data-table/column-visibility'
 import { useColumnVisibility } from '@/hooks/use-column-visibility'
 import { EmptyState } from '@/components/empty-state'
 import { SkuField } from '@/components/catalog/sku-field'
@@ -107,9 +105,7 @@ function NewProductDialog({ categories }: { categories: CategoryOpt[] }) {
               name: d.name,
               description: d.description || undefined,
               categoryId: d.categoryId ? Number(d.categoryId) : undefined,
-              defaultProfitPct: d.defaultProfitPct
-                ? Number(d.defaultProfitPct)
-                : undefined,
+              defaultProfitPct: d.defaultProfitPct ? Number(d.defaultProfitPct) : undefined,
               taxRatePct: d.taxRatePct ? Number(d.taxRatePct) : undefined,
             }))
             post('/catalog/products', {
@@ -130,11 +126,18 @@ function NewProductDialog({ categories }: { categories: CategoryOpt[] }) {
               error={errors.sku}
             />
             <Field label="Name" error={errors.name}>
-              <Input value={data.name} onChange={(e) => setData('name', e.target.value)} />
+              <Input
+                placeholder="e.g. Crochet Tote Bag"
+                value={data.name}
+                onChange={(e) => setData('name', e.target.value)}
+              />
             </Field>
           </div>
           <Field label="Description" error={errors.description}>
-            <Input
+            <Textarea
+              rows={3}
+              className="resize-none"
+              placeholder="What is this product? Materials, size, finish…"
               value={data.description}
               onChange={(e) => setData('description', e.target.value)}
             />
@@ -151,10 +154,7 @@ function NewProductDialog({ categories }: { categories: CategoryOpt[] }) {
                       'defaultProfitPct',
                       cat.defaultProfitPct !== null ? String(cat.defaultProfitPct) : ''
                     )
-                    setData(
-                      'taxRatePct',
-                      cat.taxRatePct !== null ? String(cat.taxRatePct) : ''
-                    )
+                    setData('taxRatePct', cat.taxRatePct !== null ? String(cat.taxRatePct) : '')
                   }
                 }}
               >
@@ -174,6 +174,7 @@ function NewProductDialog({ categories }: { categories: CategoryOpt[] }) {
               <Input
                 type="number"
                 step="0.01"
+                placeholder="e.g. 30"
                 value={data.defaultProfitPct}
                 onChange={(e) => setData('defaultProfitPct', e.target.value)}
               />
@@ -183,6 +184,7 @@ function NewProductDialog({ categories }: { categories: CategoryOpt[] }) {
             <Input
               type="number"
               step="0.01"
+              placeholder="e.g. 18"
               value={data.taxRatePct}
               onChange={(e) => setData('taxRatePct', e.target.value)}
             />
@@ -221,12 +223,7 @@ function ArchiveAction({ path, name }: { path: string; name: string }) {
   const [open, setOpen] = useState(false)
   return (
     <>
-      <Button
-        variant="destructive"
-        size="sm"
-        disabled={processing}
-        onClick={() => setOpen(true)}
-      >
+      <Button variant="destructive" size="sm" disabled={processing} onClick={() => setOpen(true)}>
         Archive
       </Button>
       <ConfirmDialog
@@ -283,9 +280,7 @@ export default function ProductsPage({ products, categories, filters, counts }: 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Products</h1>
-          <p className="text-sm text-muted-foreground">
-            {products.length} products in catalog.
-          </p>
+          <p className="text-sm text-muted-foreground">{products.length} products in catalog.</p>
         </div>
         <div className="flex items-center gap-2">
           <NewProductDialog categories={categories} />
@@ -364,12 +359,8 @@ export default function ProductsPage({ products, categories, filters, counts }: 
                   {isVisible('inProduction') && (
                     <TableHead className="text-right">In production</TableHead>
                   )}
-                  {isVisible('sold') && (
-                    <TableHead className="text-right">Sold</TableHead>
-                  )}
-                  {isVisible('files') && (
-                    <TableHead className="text-right">Files</TableHead>
-                  )}
+                  {isVisible('sold') && <TableHead className="text-right">Sold</TableHead>}
+                  {isVisible('files') && <TableHead className="text-right">Files</TableHead>}
                   {isVisible('profit') && <TableHead>Profit %</TableHead>}
                   {isVisible('tax') && <TableHead>Tax %</TableHead>}
                   {isVisible('status') && <TableHead>Status</TableHead>}
@@ -408,13 +399,13 @@ export default function ProductsPage({ products, categories, filters, counts }: 
                       <TableCell className="font-medium">
                         {p.name}
                         {p.category?.name === 'Custom Orders' && (
-                          <Badge variant="secondary" className="ml-2 text-[10px]">Custom</Badge>
+                          <Badge variant="secondary" className="ml-2 text-[10px]">
+                            Custom
+                          </Badge>
                         )}
                       </TableCell>
                     )}
-                    {isVisible('category') && (
-                      <TableCell>{p.category?.name ?? '—'}</TableCell>
-                    )}
+                    {isVisible('category') && <TableCell>{p.category?.name ?? '—'}</TableCell>}
                     {isVisible('inProduction') && (
                       <TableCell className="text-right tabular-nums">
                         {p.inProductionQty > 0 ? p.inProductionQty : '—'}
@@ -430,12 +421,8 @@ export default function ProductsPage({ products, categories, filters, counts }: 
                         {p.attachmentCount > 0 ? p.attachmentCount : '—'}
                       </TableCell>
                     )}
-                    {isVisible('profit') && (
-                      <TableCell>{p.defaultProfitPct ?? '—'}</TableCell>
-                    )}
-                    {isVisible('tax') && (
-                      <TableCell>{p.taxRatePct ?? '—'}</TableCell>
-                    )}
+                    {isVisible('profit') && <TableCell>{p.defaultProfitPct ?? '—'}</TableCell>}
+                    {isVisible('tax') && <TableCell>{p.taxRatePct ?? '—'}</TableCell>}
                     {isVisible('status') && (
                       <TableCell>
                         {p.isActive ? (

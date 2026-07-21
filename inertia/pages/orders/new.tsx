@@ -3,13 +3,7 @@ import { Head, useForm } from '@inertiajs/react'
 import { Link } from '@adonisjs/inertia/react'
 import { ChevronLeft, Package, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -92,9 +86,13 @@ export default function OrderNew({ customers, products }: PageProps) {
     )
 
   // Client-side estimate; the server recomputes and is the source of truth.
-  const subtotal = data.items.reduce((sum, l) => sum + Number(l.qty || 0) * Number(l.unitPrice || 0), 0)
+  const subtotal = data.items.reduce(
+    (sum, l) => sum + Number(l.qty || 0) * Number(l.unitPrice || 0),
+    0
+  )
   const tax = data.items.reduce(
-    (sum, l) => sum + (Number(l.qty || 0) * Number(l.unitPrice || 0) * Number(l.taxRatePct || 0)) / 100,
+    (sum, l) =>
+      sum + (Number(l.qty || 0) * Number(l.unitPrice || 0) * Number(l.taxRatePct || 0)) / 100,
     0
   )
   const total = subtotal + tax
@@ -215,6 +213,7 @@ export default function OrderNew({ customers, products }: PageProps) {
                     <TableCell>
                       <Input
                         aria-label={`Line ${i + 1} quantity`}
+                        placeholder="Qty"
                         type="number"
                         value={ln.qty}
                         onChange={(e) => updateLine(i, { qty: Number(e.target.value) })}
@@ -224,6 +223,7 @@ export default function OrderNew({ customers, products }: PageProps) {
                     <TableCell>
                       <Input
                         aria-label={`Line ${i + 1} unit price`}
+                        placeholder="Price"
                         type="number"
                         step="0.0001"
                         value={ln.unitPrice}
@@ -234,6 +234,7 @@ export default function OrderNew({ customers, products }: PageProps) {
                     <TableCell>
                       <Input
                         aria-label={`Line ${i + 1} tax percent`}
+                        placeholder="Tax %"
                         type="number"
                         step="0.01"
                         value={ln.taxRatePct}

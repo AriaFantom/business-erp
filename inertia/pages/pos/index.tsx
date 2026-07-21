@@ -100,9 +100,7 @@ export default function PosPage({
   const { user } = usePage<InertiaProps<PageProps>>().props
   const canOverridePrice = hasPermission(user, 'orders.overridePrice')
   const [cart, setCart] = useState<CartLine[]>([])
-  const [customerId, setCustomerId] = useState<string>(
-    customers[0] ? String(customers[0].id) : ''
-  )
+  const [customerId, setCustomerId] = useState<string>(customers[0] ? String(customers[0].id) : '')
   const [paymentMethod, setPaymentMethod] = useState<string>(cashSession ? 'cash' : 'bank')
   const [paymentReference, setPaymentReference] = useState<string>('')
 
@@ -138,9 +136,7 @@ export default function PosPage({
       const existing = prev.find((l) => l.productId === p.id)
       if (existing) {
         const nextQty = Math.min(existing.qty + 1, p.stockQty)
-        return prev.map((l) =>
-          l.productId === p.id ? { ...l, qty: nextQty } : l
-        )
+        return prev.map((l) => (l.productId === p.id ? { ...l, qty: nextQty } : l))
       }
       return [
         ...prev,
@@ -160,9 +156,7 @@ export default function PosPage({
   }
 
   function patchLine(productId: number, patch: Partial<CartLine>) {
-    setCart((prev) =>
-      prev.map((l) => (l.productId === productId ? { ...l, ...patch } : l))
-    )
+    setCart((prev) => prev.map((l) => (l.productId === productId ? { ...l, ...patch } : l)))
   }
 
   function changeQty(productId: number, qty: number) {
@@ -226,262 +220,266 @@ export default function PosPage({
         <div className="flex flex-1 flex-col overflow-hidden">
           <div className="shrink-0 border-b p-3">
             <ListToolbar
-            basePath="/pos"
-            q={filters.q}
-            searchPlaceholder="Search by name or SKU…"
-            selects={[
-              {
-                name: 'categoryId',
-                value: filters.categoryId,
-                options: [
-                  { value: 'all', label: 'All categories' },
-                  ...categories.map((c) => ({ value: String(c.id), label: c.name })),
-                ],
-              },
-            ]}
-          />
-        </div>
-        <div className="flex-1 overflow-y-auto p-4">
-          {products.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No products are in stock — complete a production job to add inventory.
-            </p>
-          ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
-              {products.map((p) => {
-                const inCart = cart.find((l) => l.productId === p.id)?.qty ?? 0
-                const remaining = p.stockQty - inCart
-                const disabled = remaining <= 0
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => addToCart(p)}
-                    disabled={disabled}
-                    className="group flex flex-col items-stretch gap-2 rounded border border-border bg-card p-3 text-left transition hover:border-primary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border"
-                  >
-                    {p.imageUrl ? (
-                      <img
-                        src={p.imageUrl}
-                        alt={p.name}
-                        className="h-24 w-full rounded object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="flex h-24 w-full items-center justify-center rounded bg-muted text-xs text-muted-foreground">
-                        No image
-                      </div>
-                    )}
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-start justify-between gap-1">
-                        <span className="line-clamp-2 text-sm font-medium">{p.name}</span>
-                        <Badge
-                          variant={disabled ? 'destructive' : 'secondary'}
-                          className="shrink-0 text-[10px]"
-                        >
-                          {remaining} left
-                        </Badge>
-                      </div>
-                      <span className="font-mono text-[10px] text-muted-foreground">{p.sku}</span>
-                      {p.category && (
-                        <Badge variant="outline" className="w-fit text-[10px]">
-                          {p.category.name}
-                        </Badge>
+              basePath="/pos"
+              q={filters.q}
+              searchPlaceholder="Search by name or SKU…"
+              selects={[
+                {
+                  name: 'categoryId',
+                  value: filters.categoryId,
+                  options: [
+                    { value: 'all', label: 'All categories' },
+                    ...categories.map((c) => ({ value: String(c.id), label: c.name })),
+                  ],
+                },
+              ]}
+            />
+          </div>
+          <div className="flex-1 overflow-y-auto p-4">
+            {products.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No products are in stock — complete a production job to add inventory.
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+                {products.map((p) => {
+                  const inCart = cart.find((l) => l.productId === p.id)?.qty ?? 0
+                  const remaining = p.stockQty - inCart
+                  const disabled = remaining <= 0
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => addToCart(p)}
+                      disabled={disabled}
+                      className="group flex flex-col items-stretch gap-2 rounded border border-border bg-card p-3 text-left transition hover:border-primary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border"
+                    >
+                      {p.imageUrl ? (
+                        <img
+                          src={p.imageUrl}
+                          alt={p.name}
+                          className="h-24 w-full rounded object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="flex h-24 w-full items-center justify-center rounded bg-muted text-xs text-muted-foreground">
+                          No image
+                        </div>
                       )}
-                      <div className="mt-1 flex items-center justify-between text-[11px]">
-                        <span className="text-muted-foreground">
-                          Cost ₹{p.unitCost.toFixed(2)}
-                        </span>
-                        <span className="font-semibold">₹{p.suggestedUnitPrice.toFixed(2)}</span>
-                      </div>
-                      <div className="text-[10px] text-muted-foreground">
-                        {p.taxRatePct.toFixed(1)}% tax
-                      </div>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Right — cart / checkout */}
-      <aside className="flex w-[420px] shrink-0 flex-col overflow-hidden border-l bg-card">
-        <div className="shrink-0 border-b p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Cart</h2>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={clearCart}
-              disabled={cart.length === 0}
-            >
-              Clear
-            </Button>
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label>Customer</Label>
-            <Select value={customerId} onValueChange={setCustomerId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Pick customer" />
-              </SelectTrigger>
-              <SelectContent>
-                {customers.map((c) => (
-                  <SelectItem key={c.id} value={String(c.id)}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {customerError && <span className="text-xs text-destructive">{customerError}</span>}
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4">
-          {cart.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Tap a product to add it.</p>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {cart.map((l) => {
-                const lineSubtotal = round2(l.qty * l.unitPrice)
-                const lineTax = round2((lineSubtotal * l.taxRatePct) / 100)
-                const lineTotal = round2(lineSubtotal + lineTax)
-                return (
-                  <div
-                    key={l.productId}
-                    className="flex flex-col gap-2 rounded border border-border p-2"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex flex-col">
-                        <span className="line-clamp-1 text-sm font-medium">{l.name}</span>
-                        <span className="font-mono text-[10px] text-muted-foreground">
-                          cost ₹{l.unitCost.toFixed(2)} · stock {l.stockQty}
-                        </span>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        aria-label="Remove line"
-                        onClick={() => removeLine(l.productId)}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </div>
-                    <div className="grid grid-cols-3 gap-1">
                       <div className="flex flex-col gap-1">
-                        <span className="text-[10px] text-muted-foreground">Qty</span>
-                        <Input
-                          type="number"
-                          step="1"
-                          min="1"
-                          max={l.stockQty}
-                          value={l.qty}
-                          onChange={(e) => changeQty(l.productId, Number(e.target.value))}
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[10px] text-muted-foreground">Unit price</span>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={l.unitPrice}
-                          disabled={!canOverridePrice}
-                          title={
-                            canOverridePrice
-                              ? undefined
-                              : 'You need the price-override permission to edit line prices.'
-                          }
-                          onChange={(e) => changePrice(l.productId, Number(e.target.value))}
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[10px] text-muted-foreground">Tax %</span>
-                        <div className="flex h-9 items-center rounded-md border border-input bg-muted/40 px-3 text-sm text-muted-foreground">
-                          {l.taxRatePct.toFixed(2)}
+                        <div className="flex items-start justify-between gap-1">
+                          <span className="line-clamp-2 text-sm font-medium">{p.name}</span>
+                          <Badge
+                            variant={disabled ? 'destructive' : 'secondary'}
+                            className="shrink-0 text-[10px]"
+                          >
+                            {remaining} left
+                          </Badge>
+                        </div>
+                        <span className="font-mono text-[10px] text-muted-foreground">{p.sku}</span>
+                        {p.category && (
+                          <Badge variant="outline" className="w-fit text-[10px]">
+                            {p.category.name}
+                          </Badge>
+                        )}
+                        <div className="mt-1 flex items-center justify-between text-[11px]">
+                          <span className="text-muted-foreground">
+                            Cost ₹{p.unitCost.toFixed(2)}
+                          </span>
+                          <span className="font-semibold">₹{p.suggestedUnitPrice.toFixed(2)}</span>
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">
+                          {p.taxRatePct.toFixed(1)}% tax
                         </div>
                       </div>
-                    </div>
-                    <div className="flex justify-between text-[11px] text-muted-foreground">
-                      <span>
-                        ₹{lineSubtotal.toFixed(2)} + tax ₹{lineTax.toFixed(2)}
-                      </span>
-                      <span className="font-semibold text-foreground">₹{lineTotal.toFixed(2)}</span>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="flex shrink-0 flex-col gap-3 border-t p-4">
-          <div className="grid grid-cols-2 gap-3">
+        {/* Right — cart / checkout */}
+        <aside className="flex w-[420px] shrink-0 flex-col overflow-hidden border-l bg-card">
+          <div className="shrink-0 border-b p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Cart</h2>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={clearCart}
+                disabled={cart.length === 0}
+              >
+                Clear
+              </Button>
+            </div>
             <div className="flex flex-col gap-1">
-              <Label>Payment method</Label>
-              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+              <Label>Customer</Label>
+              <Select value={customerId} onValueChange={setCustomerId}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Pick customer" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cash" disabled={!cashSession}>
-                    Cash
-                  </SelectItem>
-                  <SelectItem value="bank">Bank</SelectItem>
-                  <SelectItem value="upi">UPI</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                  {customers.map((c) => (
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-              {!cashSession && (
-                <span className="text-[10px] text-muted-foreground">
-                  Open a cash session to accept cash payments.
-                </span>
-              )}
-            </div>
-            <div className="flex flex-col gap-1">
-              <Label>Reference</Label>
-              <Input
-                value={paymentReference}
-                onChange={(e) => setPaymentReference(e.target.value)}
-                placeholder="Optional"
-              />
+              {customerError && <span className="text-xs text-destructive">{customerError}</span>}
             </div>
           </div>
 
-          <div className="flex flex-col gap-1 rounded bg-muted/40 p-3 text-sm">
-            <div className="flex justify-between">
-              <span>Subtotal</span>
-              <span>₹{totals.subtotal.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Tax</span>
-              <span>₹{totals.tax.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-base font-semibold">
-              <span>Total</span>
-              <span>₹{totals.total.toFixed(2)}</span>
-            </div>
+          <div className="flex-1 overflow-y-auto p-4">
+            {cart.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Tap a product to add it.</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {cart.map((l) => {
+                  const lineSubtotal = round2(l.qty * l.unitPrice)
+                  const lineTax = round2((lineSubtotal * l.taxRatePct) / 100)
+                  const lineTotal = round2(lineSubtotal + lineTax)
+                  return (
+                    <div
+                      key={l.productId}
+                      className="flex flex-col gap-2 rounded border border-border p-2"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex flex-col">
+                          <span className="line-clamp-1 text-sm font-medium">{l.name}</span>
+                          <span className="font-mono text-[10px] text-muted-foreground">
+                            cost ₹{l.unitCost.toFixed(2)} · stock {l.stockQty}
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Remove line"
+                          onClick={() => removeLine(l.productId)}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[10px] text-muted-foreground">Qty</span>
+                          <Input
+                            type="number"
+                            step="1"
+                            min="1"
+                            max={l.stockQty}
+                            placeholder="Qty"
+                            value={l.qty}
+                            onChange={(e) => changeQty(l.productId, Number(e.target.value))}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[10px] text-muted-foreground">Unit price</span>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="Price"
+                            value={l.unitPrice}
+                            disabled={!canOverridePrice}
+                            title={
+                              canOverridePrice
+                                ? undefined
+                                : 'You need the price-override permission to edit line prices.'
+                            }
+                            onChange={(e) => changePrice(l.productId, Number(e.target.value))}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[10px] text-muted-foreground">Tax %</span>
+                          <div className="flex h-9 items-center rounded-md border border-input bg-muted/40 px-3 text-sm text-muted-foreground">
+                            {l.taxRatePct.toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex justify-between text-[11px] text-muted-foreground">
+                        <span>
+                          ₹{lineSubtotal.toFixed(2)} + tax ₹{lineTax.toFixed(2)}
+                        </span>
+                        <span className="font-semibold text-foreground">
+                          ₹{lineTotal.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
-          <Button
-            type="submit"
-            variant="success"
-            className="h-12 text-base"
-            disabled={
-              processing ||
-              cart.length === 0 ||
-              !customerId ||
-              totals.total <= 0 ||
-              (paymentMethod === 'cash' && !cashSession)
-            }
-          >
-            {processing ? 'Processing…' : `Pay ₹${totals.total.toFixed(2)}`}
-          </Button>
-        </div>
-      </aside>
+          <div className="flex shrink-0 flex-col gap-3 border-t p-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1">
+                <Label>Payment method</Label>
+                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash" disabled={!cashSession}>
+                      Cash
+                    </SelectItem>
+                    <SelectItem value="bank">Bank</SelectItem>
+                    <SelectItem value="upi">UPI</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+                {!cashSession && (
+                  <span className="text-[10px] text-muted-foreground">
+                    Open a cash session to accept cash payments.
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label>Reference</Label>
+                <Input
+                  value={paymentReference}
+                  onChange={(e) => setPaymentReference(e.target.value)}
+                  placeholder="Optional"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1 rounded bg-muted/40 p-3 text-sm">
+              <div className="flex justify-between">
+                <span>Subtotal</span>
+                <span>₹{totals.subtotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Tax</span>
+                <span>₹{totals.tax.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-base font-semibold">
+                <span>Total</span>
+                <span>₹{totals.total.toFixed(2)}</span>
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              variant="success"
+              className="h-12 text-base"
+              disabled={
+                processing ||
+                cart.length === 0 ||
+                !customerId ||
+                totals.total <= 0 ||
+                (paymentMethod === 'cash' && !cashSession)
+              }
+            >
+              {processing ? 'Processing…' : `Pay ₹${totals.total.toFixed(2)}`}
+            </Button>
+          </div>
+        </aside>
       </form>
     </div>
   )
@@ -502,9 +500,7 @@ function CashSessionStrip({
             <span className="font-medium">Session {cashSession.number}</span>
             <span className="text-muted-foreground">
               Opened{' '}
-              {cashSession.openedAt
-                ? new Date(cashSession.openedAt).toLocaleTimeString()
-                : '—'}
+              {cashSession.openedAt ? new Date(cashSession.openedAt).toLocaleTimeString() : '—'}
             </span>
             <span className="text-muted-foreground">
               Expected cash ₹{cashSession.summary.expectedCash.toFixed(2)}
@@ -560,6 +556,7 @@ function OpenSessionDialog() {
               type="number"
               step="0.01"
               min="0"
+              placeholder="Cash in the drawer at open"
               value={data.openingFloat}
               onChange={(e) => setData('openingFloat', Number(e.target.value))}
             />
@@ -630,6 +627,7 @@ function CloseSessionDialog({ cashSession }: { cashSession: CashSession }) {
               type="number"
               step="0.01"
               min="0"
+              placeholder="Cash counted at close"
               value={data.countedCash}
               onChange={(e) => setData('countedCash', Number(e.target.value))}
             />
@@ -647,8 +645,7 @@ function CloseSessionDialog({ cashSession }: { cashSession: CashSession }) {
                   : 'bg-destructive/10 text-destructive')
             }
           >
-            Variance: {variance > 0 ? '+' : ''}
-            ₹{variance.toFixed(2)}
+            Variance: {variance > 0 ? '+' : ''}₹{variance.toFixed(2)}
           </div>
           <div className="flex flex-col gap-1">
             <Label>Note</Label>

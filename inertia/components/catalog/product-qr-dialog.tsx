@@ -35,9 +35,7 @@ export function ProductQrDialog({ productId, productName }: Props) {
               className="h-64 w-64 rounded border bg-white object-contain p-2"
             />
           ) : null}
-          <p className="text-xs text-muted-foreground">
-            Scan to open this product's detail page.
-          </p>
+          <p className="text-xs text-muted-foreground">Scan to open this product's detail page.</p>
           <Button asChild>
             <a href={`/catalog/products/${productId}/qr/download`}>
               <Download className="size-4" />

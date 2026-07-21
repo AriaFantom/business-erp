@@ -90,9 +90,7 @@ export function AnimatedBeam({
       const endY = rectB.top - containerRect.top + rectB.height / 2 + endYOffset
 
       const controlY = startY - curvature
-      setPathD(
-        `M ${startX},${startY} Q ${(startX + endX) / 2},${controlY} ${endX},${endY}`
-      )
+      setPathD(`M ${startX},${startY} Q ${(startX + endX) / 2},${controlY} ${endX},${endY}`)
     }
 
     const resizeObserver = new ResizeObserver(() => updatePath())
@@ -100,16 +98,7 @@ export function AnimatedBeam({
     updatePath()
 
     return () => resizeObserver.disconnect()
-  }, [
-    containerRef,
-    fromRef,
-    toRef,
-    curvature,
-    startXOffset,
-    startYOffset,
-    endXOffset,
-    endYOffset,
-  ])
+  }, [containerRef, fromRef, toRef, curvature, startXOffset, startYOffset, endXOffset, endYOffset])
 
   return (
     <svg
@@ -117,10 +106,7 @@ export function AnimatedBeam({
       width={svgDimensions.width}
       height={svgDimensions.height}
       xmlns="http://www.w3.org/2000/svg"
-      className={cn(
-        'pointer-events-none absolute left-0 top-0 transform-gpu stroke-2',
-        className
-      )}
+      className={cn('pointer-events-none absolute left-0 top-0 transform-gpu stroke-2', className)}
       viewBox={`0 0 ${svgDimensions.width} ${svgDimensions.height}`}
     >
       <path

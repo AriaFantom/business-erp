@@ -26,10 +26,7 @@ import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Tag, CheckCircle2, XCircle } from 'lucide-react'
-import {
-  ColumnVisibilityMenu,
-  type ColumnDef,
-} from '@/components/data-table/column-visibility'
+import { ColumnVisibilityMenu, type ColumnDef } from '@/components/data-table/column-visibility'
 import { useColumnVisibility } from '@/hooks/use-column-visibility'
 import { EmptyState } from '@/components/empty-state'
 
@@ -73,9 +70,7 @@ function NewCategoryDialog() {
             e.preventDefault()
             transform((d) => ({
               name: d.name,
-              defaultProfitPct: d.defaultProfitPct
-                ? Number(d.defaultProfitPct)
-                : undefined,
+              defaultProfitPct: d.defaultProfitPct ? Number(d.defaultProfitPct) : undefined,
               taxRatePct: d.taxRatePct ? Number(d.taxRatePct) : undefined,
             }))
             post('/catalog/categories', {
@@ -88,12 +83,17 @@ function NewCategoryDialog() {
           }}
         >
           <Field label="Name" error={errors.name}>
-            <Input value={data.name} onChange={(e) => setData('name', e.target.value)} />
+            <Input
+              placeholder="e.g. Bags, Home decor"
+              value={data.name}
+              onChange={(e) => setData('name', e.target.value)}
+            />
           </Field>
           <Field label="Default profit %" error={errors.defaultProfitPct}>
             <Input
               type="number"
               step="0.01"
+              placeholder="e.g. 30"
               value={data.defaultProfitPct}
               onChange={(e) => setData('defaultProfitPct', e.target.value)}
             />
@@ -102,6 +102,7 @@ function NewCategoryDialog() {
             <Input
               type="number"
               step="0.01"
+              placeholder="e.g. 18"
               value={data.taxRatePct}
               onChange={(e) => setData('taxRatePct', e.target.value)}
             />
@@ -140,12 +141,7 @@ function ArchiveAction({ path, name }: { path: string; name: string }) {
   const [open, setOpen] = useState(false)
   return (
     <>
-      <Button
-        variant="destructive"
-        size="sm"
-        disabled={processing}
-        onClick={() => setOpen(true)}
-      >
+      <Button variant="destructive" size="sm" disabled={processing} onClick={() => setOpen(true)}>
         Archive
       </Button>
       <ConfirmDialog
@@ -197,9 +193,7 @@ export default function CategoriesPage({ categories, filters, counts }: PageProp
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Product categories</h1>
-          <p className="text-sm text-muted-foreground">
-            {categories.length} categories.
-          </p>
+          <p className="text-sm text-muted-foreground">{categories.length} categories.</p>
         </div>
         <NewCategoryDialog />
       </div>
@@ -264,12 +258,8 @@ export default function CategoriesPage({ categories, filters, counts }: PageProp
                   {isVisible('name') && <TableHead>Name</TableHead>}
                   {isVisible('profit') && <TableHead>Default profit %</TableHead>}
                   {isVisible('tax') && <TableHead>Tax %</TableHead>}
-                  {isVisible('products') && (
-                    <TableHead className="text-right">Products</TableHead>
-                  )}
-                  {isVisible('sales') && (
-                    <TableHead className="text-right">Total sales</TableHead>
-                  )}
+                  {isVisible('products') && <TableHead className="text-right">Products</TableHead>}
+                  {isVisible('sales') && <TableHead className="text-right">Total sales</TableHead>}
                   {isVisible('status') && <TableHead>Status</TableHead>}
                   {isVisible('actions') && (
                     <TableHead className="w-40 text-right">
@@ -290,17 +280,11 @@ export default function CategoriesPage({ categories, filters, counts }: PageProp
               <TableBody>
                 {categories.map((c) => (
                   <TableRow key={c.id}>
-                    {isVisible('name') && (
-                      <TableCell className="font-medium">{c.name}</TableCell>
-                    )}
-                    {isVisible('profit') && (
-                      <TableCell>{c.defaultProfitPct ?? '—'}</TableCell>
-                    )}
+                    {isVisible('name') && <TableCell className="font-medium">{c.name}</TableCell>}
+                    {isVisible('profit') && <TableCell>{c.defaultProfitPct ?? '—'}</TableCell>}
                     {isVisible('tax') && <TableCell>{c.taxRatePct ?? '—'}</TableCell>}
                     {isVisible('products') && (
-                      <TableCell className="text-right tabular-nums">
-                        {c.productCount}
-                      </TableCell>
+                      <TableCell className="text-right tabular-nums">{c.productCount}</TableCell>
                     )}
                     {isVisible('sales') && (
                       <TableCell className="text-right tabular-nums">

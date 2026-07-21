@@ -2,13 +2,7 @@ import { type ReactElement, useState } from 'react'
 import { Head, useForm } from '@inertiajs/react'
 import { Link } from '@adonisjs/inertia/react'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -106,18 +100,21 @@ function NewMachineDialog() {
         >
           <Field
             label="Name"
+            placeholder="e.g. Sewing Machine 1"
             value={data.name}
             error={errors.name}
             onChange={(v) => setData('name', v)}
           />
           <Field
             label="Model"
+            placeholder="e.g. Juki DDL-8700"
             value={data.model}
             error={errors.model}
             onChange={(v) => setData('model', v)}
           />
           <Field
             label="Serial number"
+            placeholder="Manufacturer serial, if any"
             value={data.serialNumber}
             error={errors.serialNumber}
             onChange={(v) => setData('serialNumber', v)}
@@ -137,6 +134,7 @@ function NewMachineDialog() {
               type="number"
               step="0.01"
               min={0}
+              placeholder="Cost per machine-hour"
               value={data.hourlyRate}
               onChange={(e) => setData('hourlyRate', e.target.value)}
             />
@@ -171,16 +169,18 @@ function Field({
   value,
   error,
   onChange,
+  placeholder,
 }: {
   label: string
   value: string
   error?: string
   onChange: (v: string) => void
+  placeholder?: string
 }) {
   return (
     <div className="flex flex-col gap-1">
       <Label>{label}</Label>
-      <Input value={value} onChange={(e) => onChange(e.target.value)} />
+      <Input value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
       {error && <span className="text-xs text-destructive">{error}</span>}
     </div>
   )
@@ -262,8 +262,8 @@ export default function MachinesIndex({ machines, filters, counts }: PageProps) 
         <CardHeader>
           <CardTitle>All machines</CardTitle>
           <CardDescription>
-            One row per physical machine. Jobs lock the machine they run on; a machine can
-            only have one active job at a time.
+            One row per physical machine. Jobs lock the machine they run on; a machine can only have
+            one active job at a time.
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -22,9 +22,7 @@ export function StatCard({ label, value, hint, icon: Icon, href, active }: Props
       )}
     >
       <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {label}
-        </CardTitle>
+        <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
         {Icon ? <Icon className="size-4 text-muted-foreground" /> : null}
       </CardHeader>
       <CardContent>

@@ -29,6 +29,7 @@ export default function Login() {
                     id="email"
                     name="email"
                     type="email"
+                    placeholder="name@example.com"
                     autoComplete="username"
                     aria-invalid={errors.email ? true : undefined}
                     required
@@ -42,6 +43,7 @@ export default function Login() {
                     id="password"
                     name="password"
                     type="password"
+                    placeholder="Your password"
                     autoComplete="current-password"
                     aria-invalid={errors.password ? true : undefined}
                     required

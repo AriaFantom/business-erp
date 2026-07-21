@@ -30,10 +30,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
-import {
-  ColumnVisibilityMenu,
-  type ColumnDef,
-} from '@/components/data-table/column-visibility'
+import { ColumnVisibilityMenu, type ColumnDef } from '@/components/data-table/column-visibility'
 import { useColumnVisibility } from '@/hooks/use-column-visibility'
 import { EmptyState } from '@/components/empty-state'
 import { Link } from '@adonisjs/inertia/react'
@@ -142,9 +139,7 @@ function AdjustDialog({ items }: { items: AdjustableItem[] }) {
             label={
               target
                 ? `Qty delta (${
-                    items.find(
-                      (it) => `${it.itemKind}:${it.itemId}` === target
-                    )?.unit ?? ''
+                    items.find((it) => `${it.itemKind}:${it.itemId}` === target)?.unit ?? ''
                   }) — positive = add, negative = remove`
                 : 'Qty delta (positive = add, negative = remove)'
             }
@@ -153,12 +148,17 @@ function AdjustDialog({ items }: { items: AdjustableItem[] }) {
             <Input
               type="number"
               step="0.001"
+              placeholder="+10 to add, -10 to remove"
               value={data.qtyDelta}
               onChange={(e) => setData('qtyDelta', Number(e.target.value))}
             />
           </Field>
           <Field label="Note (required)" error={errors.note}>
-            <Input value={data.note} onChange={(e) => setData('note', e.target.value)} />
+            <Input
+              placeholder="Why is this adjustment needed?"
+              value={data.note}
+              onChange={(e) => setData('note', e.target.value)}
+            />
           </Field>
           <DialogFooter>
             <Button type="submit" variant="success" disabled={processing || !target}>
@@ -284,9 +284,7 @@ export default function InventoryPage({
                   {stockCols.isVisible('kind') && <TableHead>Kind</TableHead>}
                   {stockCols.isVisible('sku') && <TableHead>SKU</TableHead>}
                   {stockCols.isVisible('name') && <TableHead>Name</TableHead>}
-                  {stockCols.isVisible('qty') && (
-                    <TableHead className="text-right">Qty</TableHead>
-                  )}
+                  {stockCols.isVisible('qty') && <TableHead className="text-right">Qty</TableHead>}
                   {stockCols.isVisible('unit') && <TableHead>Unit</TableHead>}
                   {stockCols.isVisible('cost') && (
                     <TableHead className="text-right">Avg cost</TableHead>
@@ -354,9 +352,7 @@ export default function InventoryPage({
                   {moveCols.isVisible('when') && <TableHead>When</TableHead>}
                   {moveCols.isVisible('reason') && <TableHead>Reason</TableHead>}
                   {moveCols.isVisible('kind') && <TableHead>Kind</TableHead>}
-                  {moveCols.isVisible('qty') && (
-                    <TableHead className="text-right">Qty</TableHead>
-                  )}
+                  {moveCols.isVisible('qty') && <TableHead className="text-right">Qty</TableHead>}
                   {moveCols.isVisible('unitCost') && (
                     <TableHead className="text-right">Unit cost</TableHead>
                   )}

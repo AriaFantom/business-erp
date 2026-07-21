@@ -18,9 +18,7 @@ function fmt(seconds: number) {
 }
 
 export function JobCountdown({ autoCompleteAt, remainingSeconds, paused, serverNow }: Props) {
-  const [skewMs] = useState(() =>
-    serverNow ? new Date(serverNow).getTime() - Date.now() : 0
-  )
+  const [skewMs] = useState(() => (serverNow ? new Date(serverNow).getTime() - Date.now() : 0))
   const [clientNow, setClientNow] = useState(() => Date.now())
   const now = clientNow + skewMs
 

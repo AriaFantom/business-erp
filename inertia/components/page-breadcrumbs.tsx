@@ -43,28 +43,28 @@ export function PageBreadcrumbs() {
     <>
       {documentTitle ? <Head title={documentTitle} /> : null}
       <Breadcrumb>
-      <BreadcrumbList>
-        {crumbs.map((crumb, i) => {
-          const isLast = i === crumbs.length - 1
-          return (
-            <Fragment key={`${crumb.title}-${i}`}>
-              <BreadcrumbItem>
-                {crumb.url && !isLast ? (
-                  <BreadcrumbLink asChild>
-                    <Link href={crumb.url}>{crumb.title}</Link>
-                  </BreadcrumbLink>
-                ) : isLast ? (
-                  <BreadcrumbPage>{crumb.title}</BreadcrumbPage>
-                ) : (
-                  <span>{crumb.title}</span>
-                )}
-              </BreadcrumbItem>
-              {!isLast && <BreadcrumbSeparator />}
-            </Fragment>
-          )
-        })}
-      </BreadcrumbList>
-    </Breadcrumb>
+        <BreadcrumbList>
+          {crumbs.map((crumb, i) => {
+            const isLast = i === crumbs.length - 1
+            return (
+              <Fragment key={`${crumb.title}-${i}`}>
+                <BreadcrumbItem>
+                  {crumb.url && !isLast ? (
+                    <BreadcrumbLink asChild>
+                      <Link href={crumb.url}>{crumb.title}</Link>
+                    </BreadcrumbLink>
+                  ) : isLast ? (
+                    <BreadcrumbPage>{crumb.title}</BreadcrumbPage>
+                  ) : (
+                    <span>{crumb.title}</span>
+                  )}
+                </BreadcrumbItem>
+                {!isLast && <BreadcrumbSeparator />}
+              </Fragment>
+            )
+          })}
+        </BreadcrumbList>
+      </Breadcrumb>
     </>
   )
 }

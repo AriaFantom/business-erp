@@ -255,10 +255,7 @@ function ReturnDialog({
             <Label>
               Refund method{estRefund > 0 ? ' (required)' : ' (only if a refund is owed)'}
             </Label>
-            <Select
-              value={data.refundMethod}
-              onValueChange={(v) => setData('refundMethod', v)}
-            >
+            <Select value={data.refundMethod} onValueChange={(v) => setData('refundMethod', v)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select method" />
               </SelectTrigger>
@@ -393,9 +390,7 @@ export default function OrderShow({ order, items, invoice, returns }: PageProps)
             <dt className="font-medium">Total</dt>
             <dd className="text-right font-medium">{order.total}</dd>
           </dl>
-          {order.note && (
-            <p className="mt-3 text-sm text-muted-foreground">{order.note}</p>
-          )}
+          {order.note && <p className="mt-3 text-sm text-muted-foreground">{order.note}</p>}
         </CardContent>
       </Card>
 

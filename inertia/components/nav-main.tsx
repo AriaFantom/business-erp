@@ -2,11 +2,7 @@ import { ChevronRight } from 'lucide-react'
 import { usePage } from '@inertiajs/react'
 import { Link } from '@adonisjs/inertia/react'
 
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
   SidebarGroup,
   SidebarGroupLabel,

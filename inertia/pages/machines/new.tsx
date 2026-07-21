@@ -3,13 +3,7 @@ import { Head, useForm } from '@inertiajs/react'
 import { Link } from '@adonisjs/inertia/react'
 import { ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -49,6 +43,7 @@ export default function MachineNew() {
           >
             <Field
               label="Name"
+              placeholder="e.g. Sewing Machine 1"
               required
               value={form.data.name}
               error={form.errors.name}
@@ -56,12 +51,14 @@ export default function MachineNew() {
             />
             <Field
               label="Model"
+              placeholder="e.g. Juki DDL-8700"
               value={form.data.model}
               error={form.errors.model}
               onChange={(v) => form.setData('model', v)}
             />
             <Field
               label="Serial number"
+              placeholder="Manufacturer serial, if any"
               value={form.data.serialNumber}
               error={form.errors.serialNumber}
               onChange={(v) => form.setData('serialNumber', v)}
@@ -83,6 +80,7 @@ export default function MachineNew() {
                 type="number"
                 step="0.01"
                 min={0}
+                placeholder="Cost per machine-hour, e.g. 40"
                 value={form.data.hourlyRate}
                 onChange={(e) => form.setData('hourlyRate', e.target.value)}
               />
@@ -117,12 +115,14 @@ function Field({
   error,
   onChange,
   required,
+  placeholder,
 }: {
   label: string
   value: string
   error?: string
   onChange: (v: string) => void
   required?: boolean
+  placeholder?: string
 }) {
   return (
     <div className="flex flex-col gap-1">
@@ -130,7 +130,12 @@ function Field({
         {label}
         {required && <span className="ml-0.5 text-destructive">*</span>}
       </Label>
-      <Input value={value} onChange={(e) => onChange(e.target.value)} required={required} />
+      <Input
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        required={required}
+      />
       {error && <span className="text-xs text-destructive">{error}</span>}
     </div>
   )

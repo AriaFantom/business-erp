@@ -34,10 +34,7 @@ import { EmptyState } from '@/components/empty-state'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
-import {
-  ColumnVisibilityMenu,
-  type ColumnDef,
-} from '@/components/data-table/column-visibility'
+import { ColumnVisibilityMenu, type ColumnDef } from '@/components/data-table/column-visibility'
 import { useColumnVisibility } from '@/hooks/use-column-visibility'
 
 type JobRow = {
@@ -117,6 +114,7 @@ function NewJobDialog({ products }: { products: ProductOpt[] }) {
           <Field label="Planned qty" error={errors.plannedQty}>
             <Input
               type="number"
+              placeholder="How many units to make"
               value={data.plannedQty}
               onChange={(e) => setData('plannedQty', Number(e.target.value))}
             />
@@ -124,19 +122,20 @@ function NewJobDialog({ products }: { products: ProductOpt[] }) {
           <Field label="Parent job ID (for reprints)" error={errors.parentJobId}>
             <Input
               type="number"
+              placeholder="Leave empty unless this is a reprint"
               value={data.parentJobId}
               onChange={(e) => setData('parentJobId', e.target.value)}
             />
           </Field>
           <Field label="Note" error={errors.note}>
-            <Input value={data.note} onChange={(e) => setData('note', e.target.value)} />
+            <Input
+              placeholder="Anything the operator should know"
+              value={data.note}
+              onChange={(e) => setData('note', e.target.value)}
+            />
           </Field>
           <DialogFooter>
-            <Button
-              type="submit"
-              variant="success"
-              disabled={processing || !data.productId}
-            >
+            <Button type="submit" variant="success" disabled={processing || !data.productId}>
               {processing ? 'Saving…' : 'Create'}
             </Button>
           </DialogFooter>
@@ -163,7 +162,6 @@ function Field({
     </div>
   )
 }
-
 
 const JOB_COLUMNS: ColumnDef[] = [
   { key: 'number', label: 'Number', required: true },
@@ -244,18 +242,12 @@ export default function JobsIndex({ jobs, products, filters }: PageProps) {
                   {isVisible('number') && <TableHead>Number</TableHead>}
                   {isVisible('product') && <TableHead>Product</TableHead>}
                   {isVisible('status') && <TableHead>Status</TableHead>}
-                  {isVisible('planned') && (
-                    <TableHead className="text-right">Planned</TableHead>
-                  )}
-                  {isVisible('produced') && (
-                    <TableHead className="text-right">Produced</TableHead>
-                  )}
+                  {isVisible('planned') && <TableHead className="text-right">Planned</TableHead>}
+                  {isVisible('produced') && <TableHead className="text-right">Produced</TableHead>}
                   {isVisible('totalCost') && (
                     <TableHead className="text-right">Total cost</TableHead>
                   )}
-                  {isVisible('unitCost') && (
-                    <TableHead className="text-right">Unit cost</TableHead>
-                  )}
+                  {isVisible('unitCost') && <TableHead className="text-right">Unit cost</TableHead>}
                   {isVisible('actions') && (
                     <TableHead className="w-20 text-right">
                       <ColumnVisibilityMenu
@@ -295,12 +287,7 @@ export default function JobsIndex({ jobs, products, filters }: PageProps) {
                     )}
                     {isVisible('actions') && (
                       <TableCell className="text-right">
-                        <Button
-                          asChild
-                          variant="ghost"
-                          size="icon"
-                          aria-label="Open job"
-                        >
+                        <Button asChild variant="ghost" size="icon" aria-label="Open job">
                           <Link href={`/jobs/${j.id}`}>
                             <ExternalLink className="size-4" />
                           </Link>

@@ -71,12 +71,8 @@ export function InlineImagePicker({ file, onChange, label = 'Add image' }: Props
         </button>
       )}
       <div className="flex flex-col">
-        <span className="text-xs text-muted-foreground">
-          {file ? file.name : label}
-        </span>
-        <span className="text-[10px] text-muted-foreground">
-          PNG, JPEG, WebP — up to 4 MB
-        </span>
+        <span className="text-xs text-muted-foreground">{file ? file.name : label}</span>
+        <span className="text-[10px] text-muted-foreground">PNG, JPEG, WebP — up to 4 MB</span>
       </div>
     </div>
   )

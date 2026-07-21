@@ -4,13 +4,7 @@ import { Link } from '@adonisjs/inertia/react'
 import { ChevronLeft } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import {
   Dialog,
@@ -21,6 +15,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -121,17 +116,27 @@ function EditMachineDialog({ machine }: { machine: MachineDetail }) {
         >
           <div className="flex flex-col gap-1">
             <Label>Name</Label>
-            <Input value={data.name} onChange={(e) => setData('name', e.target.value)} required />
+            <Input
+              placeholder="e.g. Sewing Machine 1"
+              value={data.name}
+              onChange={(e) => setData('name', e.target.value)}
+              required
+            />
             {errors.name && <span className="text-xs text-destructive">{errors.name}</span>}
           </div>
           <div className="flex flex-col gap-1">
             <Label>Model</Label>
-            <Input value={data.model} onChange={(e) => setData('model', e.target.value)} />
+            <Input
+              placeholder="e.g. Juki DDL-8700"
+              value={data.model}
+              onChange={(e) => setData('model', e.target.value)}
+            />
             {errors.model && <span className="text-xs text-destructive">{errors.model}</span>}
           </div>
           <div className="flex flex-col gap-1">
             <Label>Serial number</Label>
             <Input
+              placeholder="Manufacturer serial, if any"
               value={data.serialNumber}
               onChange={(e) => setData('serialNumber', e.target.value)}
             />
@@ -145,6 +150,7 @@ function EditMachineDialog({ machine }: { machine: MachineDetail }) {
               type="number"
               step="0.01"
               min={0}
+              placeholder="Cost per machine-hour"
               value={data.hourlyRate}
               onChange={(e) => setData('hourlyRate', e.target.value)}
             />
@@ -214,7 +220,10 @@ function AddExpenseDialog({ machineId }: { machineId: number }) {
           </div>
           <div className="flex flex-col gap-1">
             <Label>Description</Label>
-            <Input
+            <Textarea
+              rows={3}
+              className="resize-none"
+              placeholder="What was this expense for?"
               value={data.description}
               onChange={(e) => setData('description', e.target.value)}
               required
@@ -229,6 +238,7 @@ function AddExpenseDialog({ machineId }: { machineId: number }) {
               type="number"
               step="0.01"
               min={0.01}
+              placeholder="How much was spent"
               value={data.amount}
               onChange={(e) => setData('amount', Number(e.target.value))}
               required
@@ -360,9 +370,7 @@ export default function MachineShow() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total spent
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total spent</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-semibold tabular-nums">{machine.totalSpent}</p>
@@ -374,9 +382,7 @@ export default function MachineShow() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Hourly rate
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Hourly rate</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-semibold tabular-nums">{machine.hourlyRate}</p>

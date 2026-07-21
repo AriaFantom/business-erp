@@ -96,7 +96,7 @@ function formatMinutes(totalMinutes: number): string {
 function PaymentDialog({ workerId, payType }: { workerId: number; payType: string }) {
   const [open, setOpen] = useState(false)
   const { data, setData, post, processing, errors, reset } = useForm({
-    amount: '0',
+    amount: '',
     kind: payType === 'monthly' ? 'salary' : 'wages',
     periodStart: '',
     periodEnd: '',
@@ -130,6 +130,7 @@ function PaymentDialog({ workerId, payType }: { workerId: number; payType: strin
             <Label htmlFor="payment-amount">Amount</Label>
             <Input
               id="payment-amount"
+              placeholder="How much was paid"
               type="number"
               step="0.01"
               min={0.01}
@@ -137,9 +138,7 @@ function PaymentDialog({ workerId, payType }: { workerId: number; payType: strin
               onChange={(e) => setData('amount', e.target.value)}
               required
             />
-            {errors.amount && (
-              <span className="text-xs text-destructive">{errors.amount}</span>
-            )}
+            {errors.amount && <span className="text-xs text-destructive">{errors.amount}</span>}
           </div>
 
           <div className="flex flex-col gap-1">
@@ -194,15 +193,14 @@ function PaymentDialog({ workerId, payType }: { workerId: number; payType: strin
               value={data.paidAt}
               onChange={(e) => setData('paidAt', e.target.value)}
             />
-            {errors.paidAt && (
-              <span className="text-xs text-destructive">{errors.paidAt}</span>
-            )}
+            {errors.paidAt && <span className="text-xs text-destructive">{errors.paidAt}</span>}
           </div>
 
           <div className="flex flex-col gap-1">
             <Label htmlFor="payment-note">Note</Label>
             <Input
               id="payment-note"
+              placeholder="What is this payment for?"
               value={data.note}
               onChange={(e) => setData('note', e.target.value)}
             />
@@ -257,6 +255,7 @@ function EditDialog({ worker }: { worker: Worker }) {
             <Label htmlFor="edit-name">Name</Label>
             <Input
               id="edit-name"
+              placeholder="e.g. Meera Nair"
               value={data.name}
               onChange={(e) => setData('name', e.target.value)}
             />
@@ -267,6 +266,7 @@ function EditDialog({ worker }: { worker: Worker }) {
             <Label htmlFor="edit-phone">Phone</Label>
             <Input
               id="edit-phone"
+              placeholder="10-digit mobile number"
               value={data.phone}
               onChange={(e) => setData('phone', e.target.value)}
             />
@@ -292,6 +292,7 @@ function EditDialog({ worker }: { worker: Worker }) {
                 <Label htmlFor="edit-monthly-salary">Monthly salary</Label>
                 <Input
                   id="edit-monthly-salary"
+                  placeholder="e.g. 20800"
                   type="number"
                   step="0.01"
                   min={0}
@@ -306,15 +307,14 @@ function EditDialog({ worker }: { worker: Worker }) {
                 <Label htmlFor="edit-standard-hours">Standard hours / month</Label>
                 <Input
                   id="edit-standard-hours"
+                  placeholder="e.g. 208"
                   type="number"
                   min={1}
                   value={data.standardMonthlyHours}
                   onChange={(e) => setData('standardMonthlyHours', e.target.value)}
                 />
                 {errors.standardMonthlyHours && (
-                  <span className="text-xs text-destructive">
-                    {errors.standardMonthlyHours}
-                  </span>
+                  <span className="text-xs text-destructive">{errors.standardMonthlyHours}</span>
                 )}
               </div>
             </div>
@@ -323,6 +323,7 @@ function EditDialog({ worker }: { worker: Worker }) {
               <Label htmlFor="edit-hourly-rate">Hourly rate</Label>
               <Input
                 id="edit-hourly-rate"
+                placeholder="e.g. 120"
                 type="number"
                 step="0.01"
                 min={0}
@@ -339,6 +340,7 @@ function EditDialog({ worker }: { worker: Worker }) {
             <Label htmlFor="edit-notes">Notes</Label>
             <Textarea
               id="edit-notes"
+              placeholder="Skills, availability, anything worth remembering"
               rows={3}
               value={data.notes}
               onChange={(e) => setData('notes', e.target.value)}
@@ -372,8 +374,8 @@ export default function WorkerShow({ worker, assignments, payments }: PageProps)
           <div>
             <h1 className="text-2xl font-semibold">{worker.name}</h1>
             <p className="text-sm text-muted-foreground">
-              <span className="capitalize">{worker.payType}</span> ·{' '}
-              {worker.effectiveHourlyRate} / hour
+              <span className="capitalize">{worker.payType}</span> · {worker.effectiveHourlyRate} /
+              hour
               {worker.phone ? ` · ${worker.phone}` : ''}
               {worker.currentJobId && (
                 <>
@@ -517,9 +519,7 @@ export default function WorkerShow({ worker, assignments, payments }: PageProps)
                     <TableCell className="font-mono text-xs">
                       {a.releasedAt?.slice(0, 16).replace('T', ' ') ?? '—'}
                     </TableCell>
-                    <TableCell className="text-right">
-                      {formatMinutes(a.minutesWorked)}
-                    </TableCell>
+                    <TableCell className="text-right">{formatMinutes(a.minutesWorked)}</TableCell>
                     <TableCell className="text-right">{a.hourlyRateAtAssign}</TableCell>
                     <TableCell className="text-right">{a.lineCost}</TableCell>
                   </TableRow>

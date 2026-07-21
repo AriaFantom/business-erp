@@ -16,10 +16,7 @@ import { EmptyState } from '@/components/empty-state'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
-import {
-  ColumnVisibilityMenu,
-  type ColumnDef,
-} from '@/components/data-table/column-visibility'
+import { ColumnVisibilityMenu, type ColumnDef } from '@/components/data-table/column-visibility'
 import { useColumnVisibility } from '@/hooks/use-column-visibility'
 
 type OrderRow = {
@@ -163,9 +160,7 @@ export default function OrdersIndex({ orders, customers, filters }: PageProps) {
                         <StatusBadge kind="order" status={o.status} />
                       </TableCell>
                     )}
-                    {isVisible('total') && (
-                      <TableCell className="text-right">{o.total}</TableCell>
-                    )}
+                    {isVisible('total') && <TableCell className="text-right">{o.total}</TableCell>}
                     {isVisible('confirmed') && (
                       <TableCell>{o.confirmedAt?.slice(0, 10) ?? '—'}</TableCell>
                     )}

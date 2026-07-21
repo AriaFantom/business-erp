@@ -114,9 +114,7 @@ function NodeCard({
       </div>
       <div className="min-w-0">
         <div className="truncate text-sm font-medium">{title}</div>
-        {subtitle && (
-          <div className="truncate text-xs text-muted-foreground">{subtitle}</div>
-        )}
+        {subtitle && <div className="truncate text-xs text-muted-foreground">{subtitle}</div>}
       </div>
     </div>
   )
@@ -133,9 +131,7 @@ function JobPipeline({ job, serverNow }: { job: RunningJob; serverNow: string })
   // null and the beam would never draw.
   const workerRefs = useRef<React.RefObject<HTMLDivElement | null>[]>([])
   if (workerRefs.current.length !== job.workers.length) {
-    workerRefs.current = job.workers.map(
-      (_, i) => workerRefs.current[i] ?? { current: null }
-    )
+    workerRefs.current = job.workers.map((_, i) => workerRefs.current[i] ?? { current: null })
   }
 
   const paused = job.status === 'paused'
@@ -186,9 +182,7 @@ function JobPipeline({ job, serverNow }: { job: RunningJob; serverNow: string })
             />
           </div>
           {job.currentStageName && (
-            <div className="mt-1 text-xs text-muted-foreground">
-              Stage: {job.currentStageName}
-            </div>
+            <div className="mt-1 text-xs text-muted-foreground">Stage: {job.currentStageName}</div>
           )}
         </div>
       </div>

@@ -1,13 +1,7 @@
 import { type ReactElement, useState } from 'react'
 import { useForm } from '@inertiajs/react'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -84,12 +78,14 @@ function NewSupplierDialog() {
         >
           <Field
             label="Name"
+            placeholder="e.g. Gupta Yarn Traders"
             value={data.name}
             error={errors.name}
             onChange={(v) => setData('name', v)}
           />
           <Field
             label="GSTIN"
+            placeholder="15-character GST number"
             value={data.gstin}
             error={errors.gstin}
             onChange={(v) => setData('gstin', v)}
@@ -97,18 +93,21 @@ function NewSupplierDialog() {
           <Field
             label="Email"
             type="email"
+            placeholder="name@example.com"
             value={data.email}
             error={errors.email}
             onChange={(v) => setData('email', v)}
           />
           <Field
             label="Phone"
+            placeholder="10-digit mobile number"
             value={data.phone}
             error={errors.phone}
             onChange={(v) => setData('phone', v)}
           />
           <Field
             label="Address"
+            placeholder="Street, city, state, PIN"
             value={data.address}
             error={errors.address}
             onChange={(v) => setData('address', v)}
@@ -130,17 +129,24 @@ function Field({
   error,
   onChange,
   type = 'text',
+  placeholder,
 }: {
   label: string
   value: string
   error?: string
   onChange: (v: string) => void
   type?: string
+  placeholder?: string
 }) {
   return (
     <div className="flex flex-col gap-1">
       <Label>{label}</Label>
-      <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} />
+      <Input
+        type={type}
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+      />
       {error && <span className="text-xs text-destructive">{error}</span>}
     </div>
   )
@@ -263,13 +269,7 @@ export default function SuppliersIndex({ suppliers, filters, counts }: PageProps
   )
 }
 
-function ArchiveAction({
-  path,
-  confirmText,
-}: {
-  path: string
-  confirmText: string
-}) {
+function ArchiveAction({ path, confirmText }: { path: string; confirmText: string }) {
   const { post, processing } = useForm()
   const [open, setOpen] = useState(false)
   return (

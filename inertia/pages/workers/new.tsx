@@ -3,13 +3,7 @@ import { Head, useForm } from '@inertiajs/react'
 import { Link } from '@adonisjs/inertia/react'
 import { ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -27,8 +21,9 @@ export default function WorkerNew() {
     name: '',
     phone: '',
     payType: 'hourly',
-    hourlyRate: '0',
-    monthlySalary: '0',
+    // Left blank so the placeholder shows; the transform below coerces '' to 0.
+    hourlyRate: '',
+    monthlySalary: '',
     standardMonthlyHours: '208',
     joinedAt: new Date().toISOString().slice(0, 10),
     notes: '',
@@ -37,9 +32,7 @@ export default function WorkerNew() {
   const isMonthly = form.data.payType === 'monthly'
   const derivedRate =
     isMonthly && Number(form.data.standardMonthlyHours) > 0
-      ? (
-          Number(form.data.monthlySalary) / Number(form.data.standardMonthlyHours)
-        ).toFixed(2)
+      ? (Number(form.data.monthlySalary) / Number(form.data.standardMonthlyHours)).toFixed(2)
       : null
 
   return (
@@ -87,6 +80,7 @@ export default function WorkerNew() {
               </Label>
               <Input
                 id="worker-name"
+                placeholder="e.g. Meera Nair"
                 value={form.data.name}
                 onChange={(e) => form.setData('name', e.target.value)}
                 required
@@ -100,6 +94,7 @@ export default function WorkerNew() {
               <Label htmlFor="worker-phone">Phone</Label>
               <Input
                 id="worker-phone"
+                placeholder="10-digit mobile number"
                 value={form.data.phone}
                 onChange={(e) => form.setData('phone', e.target.value)}
               />
@@ -112,10 +107,7 @@ export default function WorkerNew() {
               <Label htmlFor="worker-pay-type">
                 Pay type<span className="ml-0.5 text-destructive">*</span>
               </Label>
-              <Select
-                value={form.data.payType}
-                onValueChange={(v) => form.setData('payType', v)}
-              >
+              <Select value={form.data.payType} onValueChange={(v) => form.setData('payType', v)}>
                 <SelectTrigger id="worker-pay-type">
                   <SelectValue />
                 </SelectTrigger>
@@ -135,6 +127,7 @@ export default function WorkerNew() {
                   <Label htmlFor="worker-monthly-salary">Monthly salary</Label>
                   <Input
                     id="worker-monthly-salary"
+                    placeholder="e.g. 20800"
                     type="number"
                     step="0.01"
                     min={0}
@@ -142,15 +135,14 @@ export default function WorkerNew() {
                     onChange={(e) => form.setData('monthlySalary', e.target.value)}
                   />
                   {form.errors.monthlySalary && (
-                    <span className="text-xs text-destructive">
-                      {form.errors.monthlySalary}
-                    </span>
+                    <span className="text-xs text-destructive">{form.errors.monthlySalary}</span>
                   )}
                 </div>
                 <div className="flex flex-col gap-1">
                   <Label htmlFor="worker-standard-hours">Standard hours / month</Label>
                   <Input
                     id="worker-standard-hours"
+                    placeholder="e.g. 208"
                     type="number"
                     min={1}
                     value={form.data.standardMonthlyHours}
@@ -172,6 +164,7 @@ export default function WorkerNew() {
                 <Label htmlFor="worker-hourly-rate">Hourly rate</Label>
                 <Input
                   id="worker-hourly-rate"
+                  placeholder="e.g. 120"
                   type="number"
                   step="0.01"
                   min={0}
@@ -204,6 +197,7 @@ export default function WorkerNew() {
               <Label htmlFor="worker-notes">Notes</Label>
               <Textarea
                 id="worker-notes"
+                placeholder="Skills, availability, anything worth remembering"
                 value={form.data.notes}
                 onChange={(e) => form.setData('notes', e.target.value)}
                 rows={4}

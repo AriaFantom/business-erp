@@ -3,13 +3,7 @@ import { router, usePage } from '@inertiajs/react'
 import { RotateCcw, SlidersHorizontal } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import DashboardLayout from '@/layouts/dashboard-layout'
@@ -96,8 +90,7 @@ export default function ModulesSettings() {
   }
 
   const enabledSet = useMemo(() => new Set(enabled), [enabled])
-  const dirty =
-    selected.size !== enabledSet.size || [...selected].some((k) => !enabledSet.has(k))
+  const dirty = selected.size !== enabledSet.size || [...selected].some((k) => !enabledSet.has(k))
 
   const turningOff = enabled.filter((k) => !selected.has(k))
   const turningOn = [...selected].filter((k) => !enabledSet.has(k))

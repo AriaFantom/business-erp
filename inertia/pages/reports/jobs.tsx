@@ -54,19 +54,11 @@ export default function JobsReport({ rows, from, to }: PageProps) {
           <div className="flex flex-wrap items-end gap-3">
             <div className="flex flex-col gap-1">
               <Label>From</Label>
-              <Input
-                type="date"
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-              />
+              <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
             </div>
             <div className="flex flex-col gap-1">
               <Label>To</Label>
-              <Input
-                type="date"
-                value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-              />
+              <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
             </div>
             <Button onClick={apply}>Apply</Button>
           </div>
@@ -79,9 +71,7 @@ export default function JobsReport({ rows, from, to }: PageProps) {
         </CardHeader>
         <CardContent>
           {rows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No completed jobs in this window.
-            </p>
+            <p className="text-sm text-muted-foreground">No completed jobs in this window.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -99,12 +89,8 @@ export default function JobsReport({ rows, from, to }: PageProps) {
                     <TableCell className="font-medium">{r.productName}</TableCell>
                     <TableCell className="text-right">{r.jobsCompleted}</TableCell>
                     <TableCell className="text-right">{r.totalProduced}</TableCell>
-                    <TableCell className="text-right">
-                      ₹{r.totalCost.toFixed(2)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      ₹{r.avgUnitCost.toFixed(4)}
-                    </TableCell>
+                    <TableCell className="text-right">₹{r.totalCost.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">₹{r.avgUnitCost.toFixed(4)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

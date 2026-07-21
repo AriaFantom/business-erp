@@ -19,13 +19,7 @@ type InvitationProps = {
   role: string
 }
 
-export default function Invitation({
-  token,
-  email,
-  emailLocked,
-  type,
-  role,
-}: InvitationProps) {
+export default function Invitation({ token, email, emailLocked, type, role }: InvitationProps) {
   const heading = type === 'setup' ? 'Create the owner account' : 'Accept your invitation'
   const description =
     type === 'setup'
@@ -49,6 +43,7 @@ export default function Invitation({
                     id="email"
                     name="email"
                     type="email"
+                    placeholder="name@example.com"
                     autoComplete="email"
                     defaultValue={email ?? ''}
                     readOnly={emailLocked}
@@ -60,14 +55,26 @@ export default function Invitation({
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="flex flex-col gap-2">
                     <Label htmlFor="firstName">First name</Label>
-                    <Input id="firstName" name="firstName" autoComplete="given-name" required />
+                    <Input
+                      id="firstName"
+                      name="firstName"
+                      placeholder="Your first name"
+                      autoComplete="given-name"
+                      required
+                    />
                     {errors.firstName && (
                       <p className="text-sm text-destructive">{errors.firstName}</p>
                     )}
                   </div>
                   <div className="flex flex-col gap-2">
                     <Label htmlFor="lastName">Last name</Label>
-                    <Input id="lastName" name="lastName" autoComplete="family-name" required />
+                    <Input
+                      id="lastName"
+                      name="lastName"
+                      placeholder="Your last name"
+                      autoComplete="family-name"
+                      required
+                    />
                     {errors.lastName && (
                       <p className="text-sm text-destructive">{errors.lastName}</p>
                     )}
@@ -80,13 +87,12 @@ export default function Invitation({
                     id="password"
                     name="password"
                     type="password"
+                    placeholder="At least 8 characters"
                     autoComplete="new-password"
                     minLength={8}
                     required
                   />
-                  {errors.password && (
-                    <p className="text-sm text-destructive">{errors.password}</p>
-                  )}
+                  {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
                 </div>
 
                 <div className="flex flex-col gap-2">
@@ -95,6 +101,7 @@ export default function Invitation({
                     id="password_confirmation"
                     name="password_confirmation"
                     type="password"
+                    placeholder="Re-enter your password"
                     autoComplete="new-password"
                     minLength={8}
                     required

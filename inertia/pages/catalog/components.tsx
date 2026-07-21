@@ -36,10 +36,7 @@ import { StatCard } from '@/components/catalog/stat-card'
 import { UnitPicker } from '@/components/catalog/unit-picker'
 import { InlineImagePicker } from '@/components/catalog/inline-image-picker'
 import { Puzzle, CheckCircle2, XCircle } from 'lucide-react'
-import {
-  ColumnVisibilityMenu,
-  type ColumnDef,
-} from '@/components/data-table/column-visibility'
+import { ColumnVisibilityMenu, type ColumnDef } from '@/components/data-table/column-visibility'
 import { useColumnVisibility } from '@/hooks/use-column-visibility'
 import { EmptyState } from '@/components/empty-state'
 import { SkuField } from '@/components/catalog/sku-field'
@@ -105,9 +102,7 @@ function NewComponentDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
                 sku: d.sku,
                 name: d.name,
                 unit: d.unit || 'pcs',
-                defaultSupplierId: d.defaultSupplierId
-                  ? Number(d.defaultSupplierId)
-                  : undefined,
+                defaultSupplierId: d.defaultSupplierId ? Number(d.defaultSupplierId) : undefined,
                 defaultUnitCost: d.defaultUnitCost,
                 reorderThresholdQty: d.reorderThresholdQty
                   ? Number(d.reorderThresholdQty)
@@ -137,7 +132,11 @@ function NewComponentDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
               error={errors.sku}
             />
             <Field label="Name" error={errors.name}>
-              <Input value={data.name} onChange={(e) => setData('name', e.target.value)} />
+              <Input
+                placeholder="e.g. Zipper 8 inch"
+                value={data.name}
+                onChange={(e) => setData('name', e.target.value)}
+              />
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -170,6 +169,7 @@ function NewComponentDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
               <Input
                 type="number"
                 step="0.0001"
+                placeholder="Cost per unit, e.g. 12.50"
                 value={data.defaultUnitCost}
                 onChange={(e) => setData('defaultUnitCost', Number(e.target.value))}
               />
@@ -180,6 +180,7 @@ function NewComponentDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
             >
               <Input
                 type="number"
+                placeholder="Alert when stock drops below this"
                 value={data.reorderThresholdQty}
                 onChange={(e) => setData('reorderThresholdQty', e.target.value)}
               />
@@ -219,12 +220,7 @@ function ArchiveAction({ path, name }: { path: string; name: string }) {
   const [open, setOpen] = useState(false)
   return (
     <>
-      <Button
-        variant="destructive"
-        size="sm"
-        disabled={processing}
-        onClick={() => setOpen(true)}
-      >
+      <Button variant="destructive" size="sm" disabled={processing} onClick={() => setOpen(true)}>
         Archive
       </Button>
       <ConfirmDialog
@@ -375,9 +371,7 @@ export default function ComponentsPage({ components, suppliers, filters, counts 
                     {isVisible('sku') && (
                       <TableCell className="font-mono text-xs">{c.sku}</TableCell>
                     )}
-                    {isVisible('name') && (
-                      <TableCell className="font-medium">{c.name}</TableCell>
-                    )}
+                    {isVisible('name') && <TableCell className="font-medium">{c.name}</TableCell>}
                     {isVisible('unit') && <TableCell>{c.unit}</TableCell>}
                     {isVisible('cost') && <TableCell>{c.defaultUnitCost}</TableCell>}
                     {isVisible('reorder') && (

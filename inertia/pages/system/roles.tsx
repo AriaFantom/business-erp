@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -181,9 +182,11 @@ function CreateRoleCard({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
               <Label htmlFor="role-description">Description</Label>
-              <Input
+              <Textarea
                 id="role-description"
                 name="description"
+                rows={3}
+                className="resize-none"
                 value={data.description}
                 onChange={(e) => setData('description', e.target.value)}
                 placeholder="What does this role do?"
@@ -254,9 +257,7 @@ function CreateRoleCard({
                           >
                             <Checkbox
                               checked={checked}
-                              onCheckedChange={(value) =>
-                                togglePermission(p.key, value === true)
-                              }
+                              onCheckedChange={(value) => togglePermission(p.key, value === true)}
                               className="mt-0.5"
                             />
                             <span className="flex flex-col">
@@ -273,9 +274,7 @@ function CreateRoleCard({
                 )
               })}
             </div>
-            {errors.permissions && (
-              <p className="text-sm text-destructive">{errors.permissions}</p>
-            )}
+            {errors.permissions && <p className="text-sm text-destructive">{errors.permissions}</p>}
           </div>
         </CardContent>
         <CardFooter className="flex justify-end">
@@ -321,10 +320,7 @@ export default function SystemRoles({ roles, permissionCatalog }: RolesPageProps
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {canCreateRole && (
           <div className="lg:col-span-2">
-            <CreateRoleCard
-              permissionCatalog={permissionCatalog}
-              parentChoices={parentChoices}
-            />
+            <CreateRoleCard permissionCatalog={permissionCatalog} parentChoices={parentChoices} />
           </div>
         )}
 
@@ -332,8 +328,8 @@ export default function SystemRoles({ roles, permissionCatalog }: RolesPageProps
           <CardHeader>
             <CardTitle>Role tree</CardTitle>
             <CardDescription>
-              {roles.length} role{roles.length === 1 ? '' : 's'} configured. Each row's
-              indent shows its place in the hierarchy.
+              {roles.length} role{roles.length === 1 ? '' : 's'} configured. Each row's indent shows
+              its place in the hierarchy.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-2">
@@ -346,10 +342,9 @@ export default function SystemRoles({ roles, permissionCatalog }: RolesPageProps
                 <div className="flex min-w-0 flex-col gap-1">
                   <div className="flex flex-wrap items-center gap-2">
                     {role.depth > 0 && (
-                      <span
-                        aria-hidden
-                        className="text-muted-foreground"
-                      >{'└'.padStart(role.depth, ' ')}</span>
+                      <span aria-hidden className="text-muted-foreground">
+                        {'└'.padStart(role.depth, ' ')}
+                      </span>
                     )}
                     <span className="text-sm font-medium">{role.displayName}</span>
                     <span className="font-mono text-xs text-muted-foreground">{role.name}</span>
@@ -373,10 +368,7 @@ export default function SystemRoles({ roles, permissionCatalog }: RolesPageProps
                   </span>
                 </div>
                 {canDeleteRole && !role.isSystem && role.assignable && (
-                  <DeleteRoleButton
-                    roleId={role.id}
-                    roleName={role.displayName}
-                  />
+                  <DeleteRoleButton roleId={role.id} roleName={role.displayName} />
                 )}
               </div>
             ))}
@@ -391,12 +383,7 @@ function DeleteRoleButton({ roleId, roleName }: { roleId: number; roleName: stri
   const [open, setOpen] = useState(false)
   return (
     <>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        onClick={() => setOpen(true)}
-      >
+      <Button type="button" variant="ghost" size="icon-sm" onClick={() => setOpen(true)}>
         <Trash2 />
       </Button>
       <ConfirmDialog
@@ -406,9 +393,7 @@ function DeleteRoleButton({ roleId, roleName }: { roleId: number; roleName: stri
         description="The role will be removed and any users assigned to it will lose those permissions."
         confirmLabel="Delete"
         variant="destructive"
-        onConfirm={() =>
-          router.post(`/roles/${roleId}/delete`, {}, { preserveScroll: true })
-        }
+        onConfirm={() => router.post(`/roles/${roleId}/delete`, {}, { preserveScroll: true })}
       />
     </>
   )
