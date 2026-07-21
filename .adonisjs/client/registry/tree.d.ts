@@ -34,8 +34,14 @@ export interface ApiDefinition {
     show: typeof routes['profile.show']
     update: typeof routes['profile.update']
     avatar: {
+      show: typeof routes['profile.avatar.show']
       update: typeof routes['profile.avatar.update']
       destroy: typeof routes['profile.avatar.destroy']
+    }
+  }
+  users: {
+    avatar: {
+      show: typeof routes['users.avatar.show']
     }
   }
   suppliers: {
@@ -59,6 +65,7 @@ export interface ApiDefinition {
     image: {
       update: typeof routes['materials.image.update']
       destroy: typeof routes['materials.image.destroy']
+      show: typeof routes['materials.image.show']
     }
   }
   components: {
@@ -70,6 +77,7 @@ export interface ApiDefinition {
     image: {
       update: typeof routes['components.image.update']
       destroy: typeof routes['components.image.destroy']
+      show: typeof routes['components.image.show']
     }
   }
   products: {
@@ -82,6 +90,10 @@ export interface ApiDefinition {
     image: {
       update: typeof routes['products.image.update']
       destroy: typeof routes['products.image.destroy']
+      show: typeof routes['products.image.show']
+    }
+    gallery: {
+      show: typeof routes['products.gallery.show']
     }
     files: {
       index: typeof routes['products.files.index']

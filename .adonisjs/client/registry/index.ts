@@ -120,6 +120,12 @@ const routes = {
     tokens: [{"old":"/profile","type":0,"val":"profile","end":""}],
     types: placeholder as Registry['profile.update']['types'],
   },
+  'profile.avatar.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/profile/avatar',
+    tokens: [{"old":"/profile/avatar","type":0,"val":"profile","end":""},{"old":"/profile/avatar","type":0,"val":"avatar","end":""}],
+    types: placeholder as Registry['profile.avatar.show']['types'],
+  },
   'profile.avatar.update': {
     methods: ["POST"],
     pattern: '/profile/avatar',
@@ -131,6 +137,12 @@ const routes = {
     pattern: '/profile/avatar/delete',
     tokens: [{"old":"/profile/avatar/delete","type":0,"val":"profile","end":""},{"old":"/profile/avatar/delete","type":0,"val":"avatar","end":""},{"old":"/profile/avatar/delete","type":0,"val":"delete","end":""}],
     types: placeholder as Registry['profile.avatar.destroy']['types'],
+  },
+  'users.avatar.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/users/:id/avatar',
+    tokens: [{"old":"/users/:id/avatar","type":0,"val":"users","end":""},{"old":"/users/:id/avatar","type":1,"val":"id","end":""},{"old":"/users/:id/avatar","type":0,"val":"avatar","end":""}],
+    types: placeholder as Registry['users.avatar.show']['types'],
   },
   'suppliers.index': {
     methods: ["GET","HEAD"],
@@ -222,6 +234,12 @@ const routes = {
     tokens: [{"old":"/catalog/materials/:id/image/delete","type":0,"val":"catalog","end":""},{"old":"/catalog/materials/:id/image/delete","type":0,"val":"materials","end":""},{"old":"/catalog/materials/:id/image/delete","type":1,"val":"id","end":""},{"old":"/catalog/materials/:id/image/delete","type":0,"val":"image","end":""},{"old":"/catalog/materials/:id/image/delete","type":0,"val":"delete","end":""}],
     types: placeholder as Registry['materials.image.destroy']['types'],
   },
+  'materials.image.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/catalog/materials/:id/image',
+    tokens: [{"old":"/catalog/materials/:id/image","type":0,"val":"catalog","end":""},{"old":"/catalog/materials/:id/image","type":0,"val":"materials","end":""},{"old":"/catalog/materials/:id/image","type":1,"val":"id","end":""},{"old":"/catalog/materials/:id/image","type":0,"val":"image","end":""}],
+    types: placeholder as Registry['materials.image.show']['types'],
+  },
   'components.index': {
     methods: ["GET","HEAD"],
     pattern: '/catalog/components',
@@ -263,6 +281,12 @@ const routes = {
     pattern: '/catalog/components/:id/image/delete',
     tokens: [{"old":"/catalog/components/:id/image/delete","type":0,"val":"catalog","end":""},{"old":"/catalog/components/:id/image/delete","type":0,"val":"components","end":""},{"old":"/catalog/components/:id/image/delete","type":1,"val":"id","end":""},{"old":"/catalog/components/:id/image/delete","type":0,"val":"image","end":""},{"old":"/catalog/components/:id/image/delete","type":0,"val":"delete","end":""}],
     types: placeholder as Registry['components.image.destroy']['types'],
+  },
+  'components.image.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/catalog/components/:id/image',
+    tokens: [{"old":"/catalog/components/:id/image","type":0,"val":"catalog","end":""},{"old":"/catalog/components/:id/image","type":0,"val":"components","end":""},{"old":"/catalog/components/:id/image","type":1,"val":"id","end":""},{"old":"/catalog/components/:id/image","type":0,"val":"image","end":""}],
+    types: placeholder as Registry['components.image.show']['types'],
   },
   'products.index': {
     methods: ["GET","HEAD"],
@@ -311,6 +335,18 @@ const routes = {
     pattern: '/catalog/products/:id/image/delete',
     tokens: [{"old":"/catalog/products/:id/image/delete","type":0,"val":"catalog","end":""},{"old":"/catalog/products/:id/image/delete","type":0,"val":"products","end":""},{"old":"/catalog/products/:id/image/delete","type":1,"val":"id","end":""},{"old":"/catalog/products/:id/image/delete","type":0,"val":"image","end":""},{"old":"/catalog/products/:id/image/delete","type":0,"val":"delete","end":""}],
     types: placeholder as Registry['products.image.destroy']['types'],
+  },
+  'products.image.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/catalog/products/:id/image',
+    tokens: [{"old":"/catalog/products/:id/image","type":0,"val":"catalog","end":""},{"old":"/catalog/products/:id/image","type":0,"val":"products","end":""},{"old":"/catalog/products/:id/image","type":1,"val":"id","end":""},{"old":"/catalog/products/:id/image","type":0,"val":"image","end":""}],
+    types: placeholder as Registry['products.image.show']['types'],
+  },
+  'products.gallery.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/catalog/products/:id/gallery/:imageId',
+    tokens: [{"old":"/catalog/products/:id/gallery/:imageId","type":0,"val":"catalog","end":""},{"old":"/catalog/products/:id/gallery/:imageId","type":0,"val":"products","end":""},{"old":"/catalog/products/:id/gallery/:imageId","type":1,"val":"id","end":""},{"old":"/catalog/products/:id/gallery/:imageId","type":0,"val":"gallery","end":""},{"old":"/catalog/products/:id/gallery/:imageId","type":1,"val":"imageId","end":""}],
+    types: placeholder as Registry['products.gallery.show']['types'],
   },
   'products.files.index': {
     methods: ["GET","HEAD"],

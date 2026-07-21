@@ -235,6 +235,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/profile_controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
+  'profile.avatar.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/profile/avatar'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/profile_controller').default['avatar']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/profile_controller').default['avatar']>>>
+    }
+  }
   'profile.avatar.update': {
     methods: ["POST"]
     pattern: '/profile/avatar'
@@ -257,6 +269,18 @@ export interface Registry {
       query: {}
       response: ExtractResponse<Awaited<ReturnType<import('#controllers/profile_controller').default['destroyAvatar']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/profile_controller').default['destroyAvatar']>>>
+    }
+  }
+  'users.avatar.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/users/:id/avatar'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/users_controller').default['avatar']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/users_controller').default['avatar']>>>
     }
   }
   'suppliers.index': {
@@ -439,6 +463,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/materials_controller').default['destroyImage']>>>
     }
   }
+  'materials.image.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/catalog/materials/:id/image'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/materials_controller').default['image']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/materials_controller').default['image']>>>
+    }
+  }
   'components.index': {
     methods: ["GET","HEAD"]
     pattern: '/catalog/components'
@@ -521,6 +557,18 @@ export interface Registry {
       query: {}
       response: ExtractResponse<Awaited<ReturnType<import('#controllers/components_controller').default['destroyImage']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/components_controller').default['destroyImage']>>>
+    }
+  }
+  'components.image.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/catalog/components/:id/image'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/components_controller').default['image']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/components_controller').default['image']>>>
     }
   }
   'products.index': {
@@ -617,6 +665,30 @@ export interface Registry {
       query: {}
       response: ExtractResponse<Awaited<ReturnType<import('#controllers/products_controller').default['destroyImage']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/products_controller').default['destroyImage']>>>
+    }
+  }
+  'products.image.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/catalog/products/:id/image'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/products_controller').default['image']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/products_controller').default['image']>>>
+    }
+  }
+  'products.gallery.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/catalog/products/:id/gallery/:imageId'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; imageId: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/products_controller').default['galleryImage']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/products_controller').default['galleryImage']>>>
     }
   }
   'products.files.index': {
