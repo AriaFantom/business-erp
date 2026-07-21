@@ -11,6 +11,15 @@ import proxyAddr from 'proxy-addr'
 export const appUrl = env.get('APP_URL')
 
 /**
+ * Whether the app is reached over HTTPS, derived from APP_URL. Gates every
+ * https-only protection (Secure cookies, HSTS, upgrade-insecure-requests):
+ * a production deploy on a plain-http LAN IP must not send them, or browsers
+ * drop the session cookie and upgrade asset requests to a TLS port nothing
+ * listens on (blank page).
+ */
+export const appServedOverHttps = appUrl.startsWith('https://')
+
+/**
  * The configuration settings used by the HTTP server
  */
 export const http = defineConfig({
@@ -83,9 +92,10 @@ export const http = defineConfig({
     httpOnly: true,
 
     /**
-     * Send cookies only over HTTPS in production.
+     * Send cookies only over HTTPS — but only when the app is actually
+     * served over HTTPS (see appServedOverHttps above).
      */
-    secure: app.inProduction,
+    secure: app.inProduction && appServedOverHttps,
 
     /**
      * Cross-site policy for cookie sending.

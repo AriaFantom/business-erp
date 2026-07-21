@@ -1,6 +1,8 @@
 import { type ReactElement, useMemo, useState } from 'react'
 import { useForm, router, usePage } from '@inertiajs/react'
+import type { FormDataConvertible } from '@inertiajs/core'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -31,7 +33,7 @@ import {
 import { Link } from '@adonisjs/inertia/react'
 import { StatusBadge } from '@/components/status-badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
-import { JobStagesList, type StageView } from '@/components/jobs/job-stages-list'
+import { JobStagesList } from '@/components/jobs/job-stages-list'
 import { JobStagesRepeater, type StageDraft } from '@/components/jobs/job-stages-repeater'
 import { JobProgress } from '@/components/jobs/job-progress'
 
@@ -58,6 +60,8 @@ type Job = {
   totalMaterialCost: string
   totalComponentCost: string
   totalExpense: string
+  machineMinutes: number
+  totalMachineCost: string
   totalCost: string
   unitCost: string
   chainCost: string
@@ -80,6 +84,7 @@ type Consumption = {
   itemSku: string
   qtyConsumed: string
   qtyWasted: string
+  qtyReturned: string
   unitCostAtConsume: string
   lineCost: string
   reason: string
@@ -114,15 +119,36 @@ type RecipeItem = {
   qtyPerUnit: string
 }
 
+// Structural twin of StageView (an interface, which lacks the implicit index
+// signature Inertia's page-prop typing requires) plus the extra timestamps
+// the view model sends.
+type StageItem = {
+  id: number
+  sequence: number
+  name: string
+  estimatedDurationMin: number
+  status: 'pending' | 'in_progress' | 'completed' | 'skipped'
+  startedAt: string | null
+  completedAt: string | null
+  autoCompleteAt: string | null
+}
+
 type PageProps = {
   job: Job
   consumptions: Consumption[]
   expenses: Expense[]
   inventoryItems: InventoryItem[]
-  stages: StageView[]
+  stages: StageItem[]
   idleMachines: IdleMachine[]
   productRecipe: RecipeItem[]
   serverNow: string
+}
+
+function formatMinutes(totalMinutes: number): string {
+  const h = Math.floor(totalMinutes / 60)
+  const m = totalMinutes % 60
+  if (h === 0) return `${m}m`
+  return `${h}h ${m}m`
 }
 
 function PostAction({
@@ -355,6 +381,7 @@ function FailDialog({ jobId }: { jobId: number }) {
   const [open, setOpen] = useState(false)
   const { data, setData, post, processing, errors, reset } = useForm({
     reason: '',
+    returnMaterials: true,
   })
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -381,6 +408,13 @@ function FailDialog({ jobId }: { jobId: number }) {
           <Field label="Reason" error={errors.reason}>
             <Input value={data.reason} onChange={(e) => setData('reason', e.target.value)} />
           </Field>
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox
+              checked={data.returnMaterials}
+              onCheckedChange={(value) => setData('returnMaterials', value === true)}
+            />
+            Return unused materials to stock
+          </label>
           <DialogFooter>
             <Button type="submit" variant="destructive" disabled={processing}>
               {processing ? 'Saving…' : 'Mark failed'}
@@ -406,14 +440,16 @@ function ConfirmJobCard({ jobId, plannedQty }: { jobId: number; plannedQty: numb
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <p className="text-sm text-muted-foreground">
-          The print has finished. Confirm the produced quantity to complete the job.
+          The print has finished. Confirm the produced quantity to complete the job (capped at the
+          planned quantity of {plannedQty}).
         </p>
-        <Field label="Produced qty">
+        <Field label={`Produced qty (max ${plannedQty})`}>
           <Input
             type="number"
             min={0}
+            max={plannedQty}
             value={producedQty}
-            onChange={(e) => setProducedQty(Number(e.target.value))}
+            onChange={(e) => setProducedQty(Math.min(plannedQty, Number(e.target.value)))}
           />
         </Field>
         <div className="flex gap-2">
@@ -489,7 +525,11 @@ function StartForm({
     setSubmitting(true)
     router.post(
       `/jobs/${jobId}/start`,
-      { machineId: machineId ? Number(machineId) : null, stages, consumptions },
+      {
+        machineId: machineId ? Number(machineId) : null,
+        stages: stages as unknown as FormDataConvertible,
+        consumptions,
+      },
       {
         preserveScroll: true,
         onFinish: () => setSubmitting(false),
@@ -684,12 +724,16 @@ export default function JobShow({
               <ExpenseDialog jobId={job.id} />
             </>
           )}
-          {(job.status === 'draft' || job.status === 'in_progress') && (
+          {(job.status === 'draft' || isActive) && (
             <PostAction
               path={`/jobs/${job.id}/cancel`}
               label="Cancel"
               variant="destructive"
-              confirmText="Cancel this job?"
+              confirmText={
+                job.status === 'draft'
+                  ? 'Cancel this job?'
+                  : 'Cancel this job? Unused materials will be returned to stock.'
+              }
             />
           )}
         </div>
@@ -767,6 +811,10 @@ export default function JobShow({
               <dd className="text-right">{job.totalComponentCost}</dd>
               <dt className="text-muted-foreground">Expenses</dt>
               <dd className="text-right">{job.totalExpense}</dd>
+              <dt className="text-muted-foreground">Machine time</dt>
+              <dd className="text-right">
+                {formatMinutes(job.machineMinutes)} · {job.totalMachineCost}
+              </dd>
               <dt className="font-medium">Total</dt>
               <dd className="text-right font-medium">{job.totalCost}</dd>
               <dt className="text-muted-foreground">Unit cost</dt>
@@ -840,6 +888,7 @@ export default function JobShow({
                   <TableHead>Item</TableHead>
                   <TableHead className="text-right">Qty</TableHead>
                   <TableHead className="text-right">Wasted</TableHead>
+                  <TableHead className="text-right">Returned</TableHead>
                   <TableHead className="text-right">Unit cost</TableHead>
                   <TableHead className="text-right">Line cost</TableHead>
                   <TableHead>Reason</TableHead>
@@ -855,6 +904,7 @@ export default function JobShow({
                     <TableCell>{c.itemName}</TableCell>
                     <TableCell className="text-right">{c.qtyConsumed}</TableCell>
                     <TableCell className="text-right">{c.qtyWasted}</TableCell>
+                    <TableCell className="text-right">{c.qtyReturned}</TableCell>
                     <TableCell className="text-right">{c.unitCostAtConsume}</TableCell>
                     <TableCell className="text-right">{c.lineCost}</TableCell>
                     <TableCell>{c.reason}</TableCell>

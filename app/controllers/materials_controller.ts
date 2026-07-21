@@ -8,6 +8,7 @@ import {
 import { getMaterialsViewModel } from '#services/catalog_view_models'
 import { audit } from '#services/audit'
 import { storeCatalogImage, removeCatalogImage } from '#services/catalog_image_storage'
+import { streamStoredObject, IMMUTABLE_PRIVATE } from '#services/file_streaming'
 
 export default class MaterialsController {
   async index({ request, inertia, bouncer }: HttpContext) {
@@ -26,6 +27,13 @@ export default class MaterialsController {
         type: typeof qs.type === 'string' ? qs.type : 'all',
       },
     })
+  }
+
+  async image({ params, response, bouncer }: HttpContext) {
+    await bouncer.authorize('materials.view' as never)
+    const material = await Material.findOrFail(params.id)
+    if (!material.imageKey) return response.notFound({ error: 'File not found' })
+    return streamStoredObject({ response }, material.imageKey, { cacheControl: IMMUTABLE_PRIVATE })
   }
 
   async updateImage({ params, request, auth, bouncer, response, session }: HttpContext) {

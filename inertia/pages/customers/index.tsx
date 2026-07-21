@@ -41,6 +41,8 @@ type Row = {
   email: string | null
   phone: string | null
   isActive: boolean
+  creditLimit: string | null
+  openBalance: string
 }
 
 type Filters = { q: string; status: string }
@@ -51,14 +53,19 @@ type PageProps = { customers: Row[]; filters: Filters; counts: Counts }
 
 function NewCustomerDialog() {
   const [open, setOpen] = useState(false)
-  const { data, setData, post, processing, errors, reset } = useForm({
+  const { data, setData, post, processing, errors, reset, transform } = useForm({
     name: '',
     gstin: '',
     email: '',
     phone: '',
     billingAddress: '',
     shippingAddress: '',
+    creditLimit: '',
   })
+  transform((d) => ({
+    ...d,
+    creditLimit: d.creditLimit === '' ? null : Number(d.creditLimit),
+  }))
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -98,6 +105,23 @@ function NewCustomerDialog() {
             error={errors.shippingAddress}
             onChange={(v) => setData('shippingAddress', v)}
           />
+          <div className="flex flex-col gap-1">
+            <Label>Credit limit</Label>
+            <Input
+              type="number"
+              min={0}
+              step="0.01"
+              value={data.creditLimit}
+              placeholder="No limit"
+              onChange={(e) => setData('creditLimit', e.target.value)}
+            />
+            <span className="text-xs text-muted-foreground">
+              Blocks new credit sales when unpaid invoices exceed this. Leave empty for no limit.
+            </span>
+            {errors.creditLimit && (
+              <span className="text-xs text-destructive">{errors.creditLimit}</span>
+            )}
+          </div>
           <DialogFooter>
             <Button type="submit" disabled={processing}>
               {processing ? 'Saving…' : 'Create'}
@@ -128,6 +152,58 @@ function Field({
       <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} />
       {error && <span className="text-xs text-destructive">{error}</span>}
     </div>
+  )
+}
+
+function CreditLimitDialog({ customer }: { customer: Row }) {
+  const [open, setOpen] = useState(false)
+  const { data, setData, post, processing, transform } = useForm({
+    creditLimit: customer.creditLimit ?? '',
+  })
+  transform((d) => ({ creditLimit: d.creditLimit === '' ? null : Number(d.creditLimit) }))
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="sm" title="Set credit limit">
+          {customer.creditLimit ? Number(customer.creditLimit).toFixed(2) : 'No limit'}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Credit limit — {customer.name}</DialogTitle>
+        </DialogHeader>
+        <form
+          className="flex flex-col gap-3"
+          onSubmit={(e) => {
+            e.preventDefault()
+            post(`/customers/${customer.id}`, {
+              preserveScroll: true,
+              onSuccess: () => setOpen(false),
+            })
+          }}
+        >
+          <div className="flex flex-col gap-1">
+            <Label>Credit limit</Label>
+            <Input
+              type="number"
+              min={0}
+              step="0.01"
+              value={data.creditLimit}
+              placeholder="No limit"
+              onChange={(e) => setData('creditLimit', e.target.value)}
+            />
+            <span className="text-xs text-muted-foreground">
+              Current open balance: {customer.openBalance}. Leave empty for no limit.
+            </span>
+          </div>
+          <DialogFooter>
+            <Button type="submit" disabled={processing}>
+              {processing ? 'Saving…' : 'Save'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -230,6 +306,8 @@ export default function CustomersIndex({ customers, filters, counts }: PageProps
                   <TableHead>GSTIN</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Phone</TableHead>
+                  <TableHead className="text-right">Open balance</TableHead>
+                  <TableHead className="text-right">Credit limit</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-32 text-right">Actions</TableHead>
                 </TableRow>
@@ -241,6 +319,16 @@ export default function CustomersIndex({ customers, filters, counts }: PageProps
                     <TableCell className="font-mono text-xs">{c.gstin ?? '—'}</TableCell>
                     <TableCell>{c.email ?? '—'}</TableCell>
                     <TableCell>{c.phone ?? '—'}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {Number(c.openBalance) > 0 ? (
+                        <span className="font-medium">{c.openBalance}</span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <CreditLimitDialog customer={c} />
+                    </TableCell>
                     <TableCell>
                       {c.isActive ? <Badge variant="outline">Active</Badge> : <Badge variant="secondary">Archived</Badge>}
                     </TableCell>

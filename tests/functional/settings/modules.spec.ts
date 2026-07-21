@@ -63,7 +63,7 @@ test.group('Module settings', (group) => {
     // The security guarantee: the stored configuration is untouched.
     await invalidateEnabledModulesCache()
     const after = await getEnabledModules()
-    assert.includeMembers(after, ['purchase', 'sales'])
+    assert.includeMembers(after, ['purchase', 'orders'])
   })
 
   test('disabling a module blocks its routes (GET redirects, POST 404s)', async ({
@@ -83,7 +83,7 @@ test.group('Module settings', (group) => {
         'inventory',
         'manufacturing',
         'machines',
-        'sales',
+        'orders',
         'invoices',
         'quotations',
         'pos',
@@ -109,13 +109,13 @@ test.group('Module settings', (group) => {
     const manager = await makeManager(`invalid+${Date.now()}@test.com`)
     const before = await getEnabledModules()
 
-    // sales requires inventory + invoices — omitting them must be refused.
+    // orders requires inventory + invoices — omitting them must be refused.
     const res = await client
       .post('/system/modules')
       .loginAs(manager)
       .withCsrfToken()
       .redirects(0)
-      .json({ enabledModules: ['sales'] })
+      .json({ enabledModules: ['orders'] })
     res.assertStatus(302) // redirected back with a flash error
 
     await invalidateEnabledModulesCache()
@@ -130,12 +130,12 @@ test.group('Module settings', (group) => {
       .loginAs(manager)
       .withCsrfToken()
       .redirects(0)
-      .json({ enabledModules: ['inventory', 'sales', 'invoices', 'pos', 'reports'] })
+      .json({ enabledModules: ['inventory', 'orders', 'invoices', 'pos', 'reports'] })
     res.assertStatus(302)
 
     const row = await AppSetting.findBy('key', ENABLED_MODULES_KEY)
     assert.isNotNull(row)
     assert.notInclude(row!.value as string[], 'purchase')
-    assert.includeMembers(row!.value as string[], ['inventory', 'sales', 'invoices'])
+    assert.includeMembers(row!.value as string[], ['inventory', 'orders', 'invoices'])
   })
 })

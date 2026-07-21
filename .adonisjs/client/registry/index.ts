@@ -132,6 +132,12 @@ const routes = {
     tokens: [{"old":"/profile","type":0,"val":"profile","end":""}],
     types: placeholder as Registry['profile.update']['types'],
   },
+  'profile.avatar.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/profile/avatar',
+    tokens: [{"old":"/profile/avatar","type":0,"val":"profile","end":""},{"old":"/profile/avatar","type":0,"val":"avatar","end":""}],
+    types: placeholder as Registry['profile.avatar.show']['types'],
+  },
   'profile.avatar.update': {
     methods: ["POST"],
     pattern: '/profile/avatar',
@@ -143,6 +149,12 @@ const routes = {
     pattern: '/profile/avatar/delete',
     tokens: [{"old":"/profile/avatar/delete","type":0,"val":"profile","end":""},{"old":"/profile/avatar/delete","type":0,"val":"avatar","end":""},{"old":"/profile/avatar/delete","type":0,"val":"delete","end":""}],
     types: placeholder as Registry['profile.avatar.destroy']['types'],
+  },
+  'users.avatar.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/users/:id/avatar',
+    tokens: [{"old":"/users/:id/avatar","type":0,"val":"users","end":""},{"old":"/users/:id/avatar","type":1,"val":"id","end":""},{"old":"/users/:id/avatar","type":0,"val":"avatar","end":""}],
+    types: placeholder as Registry['users.avatar.show']['types'],
   },
   'suppliers.index': {
     methods: ["GET","HEAD"],
@@ -234,6 +246,12 @@ const routes = {
     tokens: [{"old":"/catalog/materials/:id/image/delete","type":0,"val":"catalog","end":""},{"old":"/catalog/materials/:id/image/delete","type":0,"val":"materials","end":""},{"old":"/catalog/materials/:id/image/delete","type":1,"val":"id","end":""},{"old":"/catalog/materials/:id/image/delete","type":0,"val":"image","end":""},{"old":"/catalog/materials/:id/image/delete","type":0,"val":"delete","end":""}],
     types: placeholder as Registry['materials.image.destroy']['types'],
   },
+  'materials.image.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/catalog/materials/:id/image',
+    tokens: [{"old":"/catalog/materials/:id/image","type":0,"val":"catalog","end":""},{"old":"/catalog/materials/:id/image","type":0,"val":"materials","end":""},{"old":"/catalog/materials/:id/image","type":1,"val":"id","end":""},{"old":"/catalog/materials/:id/image","type":0,"val":"image","end":""}],
+    types: placeholder as Registry['materials.image.show']['types'],
+  },
   'components.index': {
     methods: ["GET","HEAD"],
     pattern: '/catalog/components',
@@ -275,6 +293,12 @@ const routes = {
     pattern: '/catalog/components/:id/image/delete',
     tokens: [{"old":"/catalog/components/:id/image/delete","type":0,"val":"catalog","end":""},{"old":"/catalog/components/:id/image/delete","type":0,"val":"components","end":""},{"old":"/catalog/components/:id/image/delete","type":1,"val":"id","end":""},{"old":"/catalog/components/:id/image/delete","type":0,"val":"image","end":""},{"old":"/catalog/components/:id/image/delete","type":0,"val":"delete","end":""}],
     types: placeholder as Registry['components.image.destroy']['types'],
+  },
+  'components.image.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/catalog/components/:id/image',
+    tokens: [{"old":"/catalog/components/:id/image","type":0,"val":"catalog","end":""},{"old":"/catalog/components/:id/image","type":0,"val":"components","end":""},{"old":"/catalog/components/:id/image","type":1,"val":"id","end":""},{"old":"/catalog/components/:id/image","type":0,"val":"image","end":""}],
+    types: placeholder as Registry['components.image.show']['types'],
   },
   'products.index': {
     methods: ["GET","HEAD"],
@@ -323,6 +347,18 @@ const routes = {
     pattern: '/catalog/products/:id/image/delete',
     tokens: [{"old":"/catalog/products/:id/image/delete","type":0,"val":"catalog","end":""},{"old":"/catalog/products/:id/image/delete","type":0,"val":"products","end":""},{"old":"/catalog/products/:id/image/delete","type":1,"val":"id","end":""},{"old":"/catalog/products/:id/image/delete","type":0,"val":"image","end":""},{"old":"/catalog/products/:id/image/delete","type":0,"val":"delete","end":""}],
     types: placeholder as Registry['products.image.destroy']['types'],
+  },
+  'products.image.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/catalog/products/:id/image',
+    tokens: [{"old":"/catalog/products/:id/image","type":0,"val":"catalog","end":""},{"old":"/catalog/products/:id/image","type":0,"val":"products","end":""},{"old":"/catalog/products/:id/image","type":1,"val":"id","end":""},{"old":"/catalog/products/:id/image","type":0,"val":"image","end":""}],
+    types: placeholder as Registry['products.image.show']['types'],
+  },
+  'products.gallery.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/catalog/products/:id/gallery/:imageId',
+    tokens: [{"old":"/catalog/products/:id/gallery/:imageId","type":0,"val":"catalog","end":""},{"old":"/catalog/products/:id/gallery/:imageId","type":0,"val":"products","end":""},{"old":"/catalog/products/:id/gallery/:imageId","type":1,"val":"id","end":""},{"old":"/catalog/products/:id/gallery/:imageId","type":0,"val":"gallery","end":""},{"old":"/catalog/products/:id/gallery/:imageId","type":1,"val":"imageId","end":""}],
+    types: placeholder as Registry['products.gallery.show']['types'],
   },
   'products.files.index': {
     methods: ["GET","HEAD"],
@@ -432,6 +468,48 @@ const routes = {
     tokens: [{"old":"/inventory/adjustments","type":0,"val":"inventory","end":""},{"old":"/inventory/adjustments","type":0,"val":"adjustments","end":""}],
     types: placeholder as Registry['inventory.adjust']['types'],
   },
+  'stockTakes.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/inventory/stock-takes',
+    tokens: [{"old":"/inventory/stock-takes","type":0,"val":"inventory","end":""},{"old":"/inventory/stock-takes","type":0,"val":"stock-takes","end":""}],
+    types: placeholder as Registry['stockTakes.index']['types'],
+  },
+  'stockTakes.store': {
+    methods: ["POST"],
+    pattern: '/inventory/stock-takes',
+    tokens: [{"old":"/inventory/stock-takes","type":0,"val":"inventory","end":""},{"old":"/inventory/stock-takes","type":0,"val":"stock-takes","end":""}],
+    types: placeholder as Registry['stockTakes.store']['types'],
+  },
+  'stockTakes.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/inventory/stock-takes/:id',
+    tokens: [{"old":"/inventory/stock-takes/:id","type":0,"val":"inventory","end":""},{"old":"/inventory/stock-takes/:id","type":0,"val":"stock-takes","end":""},{"old":"/inventory/stock-takes/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['stockTakes.show']['types'],
+  },
+  'stockTakes.saveCounts': {
+    methods: ["POST"],
+    pattern: '/inventory/stock-takes/:id/counts',
+    tokens: [{"old":"/inventory/stock-takes/:id/counts","type":0,"val":"inventory","end":""},{"old":"/inventory/stock-takes/:id/counts","type":0,"val":"stock-takes","end":""},{"old":"/inventory/stock-takes/:id/counts","type":1,"val":"id","end":""},{"old":"/inventory/stock-takes/:id/counts","type":0,"val":"counts","end":""}],
+    types: placeholder as Registry['stockTakes.saveCounts']['types'],
+  },
+  'stockTakes.refresh': {
+    methods: ["POST"],
+    pattern: '/inventory/stock-takes/:id/refresh',
+    tokens: [{"old":"/inventory/stock-takes/:id/refresh","type":0,"val":"inventory","end":""},{"old":"/inventory/stock-takes/:id/refresh","type":0,"val":"stock-takes","end":""},{"old":"/inventory/stock-takes/:id/refresh","type":1,"val":"id","end":""},{"old":"/inventory/stock-takes/:id/refresh","type":0,"val":"refresh","end":""}],
+    types: placeholder as Registry['stockTakes.refresh']['types'],
+  },
+  'stockTakes.complete': {
+    methods: ["POST"],
+    pattern: '/inventory/stock-takes/:id/complete',
+    tokens: [{"old":"/inventory/stock-takes/:id/complete","type":0,"val":"inventory","end":""},{"old":"/inventory/stock-takes/:id/complete","type":0,"val":"stock-takes","end":""},{"old":"/inventory/stock-takes/:id/complete","type":1,"val":"id","end":""},{"old":"/inventory/stock-takes/:id/complete","type":0,"val":"complete","end":""}],
+    types: placeholder as Registry['stockTakes.complete']['types'],
+  },
+  'stockTakes.cancel': {
+    methods: ["POST"],
+    pattern: '/inventory/stock-takes/:id/cancel',
+    tokens: [{"old":"/inventory/stock-takes/:id/cancel","type":0,"val":"inventory","end":""},{"old":"/inventory/stock-takes/:id/cancel","type":0,"val":"stock-takes","end":""},{"old":"/inventory/stock-takes/:id/cancel","type":1,"val":"id","end":""},{"old":"/inventory/stock-takes/:id/cancel","type":0,"val":"cancel","end":""}],
+    types: placeholder as Registry['stockTakes.cancel']['types'],
+  },
   'purchases.index': {
     methods: ["GET","HEAD"],
     pattern: '/purchases',
@@ -461,6 +539,18 @@ const routes = {
     pattern: '/purchases/:id/cancel',
     tokens: [{"old":"/purchases/:id/cancel","type":0,"val":"purchases","end":""},{"old":"/purchases/:id/cancel","type":1,"val":"id","end":""},{"old":"/purchases/:id/cancel","type":0,"val":"cancel","end":""}],
     types: placeholder as Registry['purchases.cancel']['types'],
+  },
+  'purchases.returns.store': {
+    methods: ["POST"],
+    pattern: '/purchases/:id/returns',
+    tokens: [{"old":"/purchases/:id/returns","type":0,"val":"purchases","end":""},{"old":"/purchases/:id/returns","type":1,"val":"id","end":""},{"old":"/purchases/:id/returns","type":0,"val":"returns","end":""}],
+    types: placeholder as Registry['purchases.returns.store']['types'],
+  },
+  'purchases.payments.store': {
+    methods: ["POST"],
+    pattern: '/purchases/:id/payments',
+    tokens: [{"old":"/purchases/:id/payments","type":0,"val":"purchases","end":""},{"old":"/purchases/:id/payments","type":1,"val":"id","end":""},{"old":"/purchases/:id/payments","type":0,"val":"payments","end":""}],
+    types: placeholder as Registry['purchases.payments.store']['types'],
   },
   'jobs.index': {
     methods: ["GET","HEAD"],
@@ -588,6 +678,12 @@ const routes = {
     tokens: [{"old":"/quotations","type":0,"val":"quotations","end":""}],
     types: placeholder as Registry['quotations.index']['types'],
   },
+  'quotations.new': {
+    methods: ["GET","HEAD"],
+    pattern: '/quotations/new',
+    tokens: [{"old":"/quotations/new","type":0,"val":"quotations","end":""},{"old":"/quotations/new","type":0,"val":"new","end":""}],
+    types: placeholder as Registry['quotations.new']['types'],
+  },
   'quotations.show': {
     methods: ["GET","HEAD"],
     pattern: '/quotations/:id',
@@ -636,35 +732,47 @@ const routes = {
     tokens: [{"old":"/quotations/:id/download","type":0,"val":"quotations","end":""},{"old":"/quotations/:id/download","type":1,"val":"id","end":""},{"old":"/quotations/:id/download","type":0,"val":"download","end":""}],
     types: placeholder as Registry['quotations.download']['types'],
   },
-  'sales.index': {
+  'orders.index': {
     methods: ["GET","HEAD"],
-    pattern: '/sales',
-    tokens: [{"old":"/sales","type":0,"val":"sales","end":""}],
-    types: placeholder as Registry['sales.index']['types'],
+    pattern: '/orders',
+    tokens: [{"old":"/orders","type":0,"val":"orders","end":""}],
+    types: placeholder as Registry['orders.index']['types'],
   },
-  'sales.show': {
+  'orders.new': {
     methods: ["GET","HEAD"],
-    pattern: '/sales/:id',
-    tokens: [{"old":"/sales/:id","type":0,"val":"sales","end":""},{"old":"/sales/:id","type":1,"val":"id","end":""}],
-    types: placeholder as Registry['sales.show']['types'],
+    pattern: '/orders/new',
+    tokens: [{"old":"/orders/new","type":0,"val":"orders","end":""},{"old":"/orders/new","type":0,"val":"new","end":""}],
+    types: placeholder as Registry['orders.new']['types'],
   },
-  'sales.store': {
-    methods: ["POST"],
-    pattern: '/sales',
-    tokens: [{"old":"/sales","type":0,"val":"sales","end":""}],
-    types: placeholder as Registry['sales.store']['types'],
+  'orders.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/orders/:id',
+    tokens: [{"old":"/orders/:id","type":0,"val":"orders","end":""},{"old":"/orders/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['orders.show']['types'],
   },
-  'sales.confirm': {
+  'orders.store': {
     methods: ["POST"],
-    pattern: '/sales/:id/confirm',
-    tokens: [{"old":"/sales/:id/confirm","type":0,"val":"sales","end":""},{"old":"/sales/:id/confirm","type":1,"val":"id","end":""},{"old":"/sales/:id/confirm","type":0,"val":"confirm","end":""}],
-    types: placeholder as Registry['sales.confirm']['types'],
+    pattern: '/orders',
+    tokens: [{"old":"/orders","type":0,"val":"orders","end":""}],
+    types: placeholder as Registry['orders.store']['types'],
   },
-  'sales.cancel': {
+  'orders.confirm': {
     methods: ["POST"],
-    pattern: '/sales/:id/cancel',
-    tokens: [{"old":"/sales/:id/cancel","type":0,"val":"sales","end":""},{"old":"/sales/:id/cancel","type":1,"val":"id","end":""},{"old":"/sales/:id/cancel","type":0,"val":"cancel","end":""}],
-    types: placeholder as Registry['sales.cancel']['types'],
+    pattern: '/orders/:id/confirm',
+    tokens: [{"old":"/orders/:id/confirm","type":0,"val":"orders","end":""},{"old":"/orders/:id/confirm","type":1,"val":"id","end":""},{"old":"/orders/:id/confirm","type":0,"val":"confirm","end":""}],
+    types: placeholder as Registry['orders.confirm']['types'],
+  },
+  'orders.cancel': {
+    methods: ["POST"],
+    pattern: '/orders/:id/cancel',
+    tokens: [{"old":"/orders/:id/cancel","type":0,"val":"orders","end":""},{"old":"/orders/:id/cancel","type":1,"val":"id","end":""},{"old":"/orders/:id/cancel","type":0,"val":"cancel","end":""}],
+    types: placeholder as Registry['orders.cancel']['types'],
+  },
+  'orders.returns.store': {
+    methods: ["POST"],
+    pattern: '/orders/:id/returns',
+    tokens: [{"old":"/orders/:id/returns","type":0,"val":"orders","end":""},{"old":"/orders/:id/returns","type":1,"val":"id","end":""},{"old":"/orders/:id/returns","type":0,"val":"returns","end":""}],
+    types: placeholder as Registry['orders.returns.store']['types'],
   },
   'invoices.index': {
     methods: ["GET","HEAD"],
@@ -707,6 +815,18 @@ const routes = {
     pattern: '/pos/sell',
     tokens: [{"old":"/pos/sell","type":0,"val":"pos","end":""},{"old":"/pos/sell","type":0,"val":"sell","end":""}],
     types: placeholder as Registry['pos.sell']['types'],
+  },
+  'pos.session.open': {
+    methods: ["POST"],
+    pattern: '/pos/session/open',
+    tokens: [{"old":"/pos/session/open","type":0,"val":"pos","end":""},{"old":"/pos/session/open","type":0,"val":"session","end":""},{"old":"/pos/session/open","type":0,"val":"open","end":""}],
+    types: placeholder as Registry['pos.session.open']['types'],
+  },
+  'pos.session.close': {
+    methods: ["POST"],
+    pattern: '/pos/session/close',
+    tokens: [{"old":"/pos/session/close","type":0,"val":"pos","end":""},{"old":"/pos/session/close","type":0,"val":"session","end":""},{"old":"/pos/session/close","type":0,"val":"close","end":""}],
+    types: placeholder as Registry['pos.session.close']['types'],
   },
   'reports.profit': {
     methods: ["GET","HEAD"],

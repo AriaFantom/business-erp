@@ -1,7 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
 import type User from '#models/user'
-import drive from '@adonisjs/drive/services/main'
+import { token } from '#services/file_streaming'
 import BaseInertiaMiddleware from '@adonisjs/inertia/inertia_middleware'
 import { getEnabledModules } from '#services/modules/module_service'
 
@@ -10,11 +10,9 @@ async function serializeUser(user: User) {
   // the union of permissions across their assigned roles.
   const userPermissions = user.isOwner ? ['*'] : await user.getPermissions()
   const roles = user.isOwner ? [] : await user.getRoles()
-  // Bucket is private, so a signed URL is required for the browser to load
-  // the avatar. One hour is plenty for a single page render.
-  const avatarUrl = user.avatarKey
-    ? await drive.use().getSignedUrl(user.avatarKey, { expiresIn: '1 hour' })
-    : null
+  // The avatar streams through the app (auth-gated), so the browser hits an
+  // app route; the `?v=` token busts the cache when the avatar is replaced.
+  const avatarUrl = user.avatarKey ? `/profile/avatar?v=${token(user.avatarKey)}` : null
   return {
     id: user.id,
     email: user.email,

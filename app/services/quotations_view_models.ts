@@ -8,21 +8,17 @@ import Material from '#models/material'
 import Component from '#models/component'
 import { computeUnitPrice } from '#services/pricing'
 
-export async function getQuotationsIndexViewModel(
-  filters: { q?: string; status?: string; customerId?: number } = {}
-) {
-  const query = Quotation.query().orderBy('created_at', 'desc').limit(500)
-  if (filters.status && filters.status !== 'all') query.where('status', filters.status)
-  if (filters.customerId) query.where('customer_id', filters.customerId)
-  if (filters.q) query.whereILike('number', `%${filters.q.trim()}%`)
-  const [quotations, customers, products, materials, components] = await Promise.all([
-    query,
+/**
+ * Builds the option lists needed by the quotation create form: active customers,
+ * products (with computed suggested pricing), materials, and components.
+ */
+async function getQuotationOptionLists() {
+  const [customers, products, materials, components] = await Promise.all([
     Customer.query().where('is_active', true).orderBy('name', 'asc'),
     Product.query().where('is_active', true).orderBy('name', 'asc'),
     Material.query().where('is_active', true).orderBy('name', 'asc'),
     Component.query().where('is_active', true).orderBy('name', 'asc'),
   ])
-  const customerById = new Map(customers.map((c) => [c.id, c]))
 
   const categoryIds = [
     ...new Set(products.map((p) => p.categoryId).filter((id): id is number => !!id)),
@@ -53,16 +49,6 @@ export async function getQuotationsIndexViewModel(
   }
 
   return {
-    quotations: quotations.map((q) => ({
-      id: q.id,
-      number: q.number,
-      customerId: q.customerId,
-      customerName: customerById.get(q.customerId)?.name ?? '—',
-      status: q.status,
-      issuedAt: q.issuedAt.toISO(),
-      validUntil: q.validUntil.toISO(),
-      total: q.total,
-    })),
     customers: customers.map((c) => ({ id: c.id, name: c.name })),
     materials: materials.map((m) => ({
       id: m.id,
@@ -92,6 +78,38 @@ export async function getQuotationsIndexViewModel(
       }
     }),
   }
+}
+
+export async function getQuotationsIndexViewModel(
+  filters: { q?: string; status?: string; customerId?: number } = {}
+) {
+  const query = Quotation.query().orderBy('created_at', 'desc').limit(500)
+  if (filters.status && filters.status !== 'all') query.where('status', filters.status)
+  if (filters.customerId) query.where('customer_id', filters.customerId)
+  if (filters.q) query.whereILike('number', `%${filters.q.trim()}%`)
+  const [quotations, customers] = await Promise.all([
+    query,
+    Customer.query().where('is_active', true).orderBy('name', 'asc'),
+  ])
+  const customerById = new Map(customers.map((c) => [c.id, c]))
+
+  return {
+    quotations: quotations.map((q) => ({
+      id: q.id,
+      number: q.number,
+      customerId: q.customerId,
+      customerName: customerById.get(q.customerId)?.name ?? '—',
+      status: q.status,
+      issuedAt: q.issuedAt.toISO(),
+      validUntil: q.validUntil.toISO(),
+      total: q.total,
+    })),
+    customers: customers.map((c) => ({ id: c.id, name: c.name })),
+  }
+}
+
+export async function getQuotationCreateViewModel() {
+  return getQuotationOptionLists()
 }
 
 export async function getQuotationShowViewModel(id: number) {
@@ -142,7 +160,7 @@ export async function getQuotationShowViewModel(id: number) {
       sentAt: q.sentAt?.toISO() ?? null,
       acceptedAt: q.acceptedAt?.toISO() ?? null,
       rejectedAt: q.rejectedAt?.toISO() ?? null,
-      convertedToSaleId: q.convertedToSaleId,
+      convertedToOrderId: q.convertedToOrderId,
     },
     items: items.map((it) => ({
       id: it.id,

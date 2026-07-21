@@ -16,7 +16,7 @@ import { Textarea } from '@/components/ui/textarea'
 import DashboardLayout from '@/layouts/dashboard-layout'
 
 export default function MachineNew() {
-  const form = useForm({ name: '', model: '', serialNumber: '', notes: '' })
+  const form = useForm({ name: '', model: '', serialNumber: '', notes: '', hourlyRate: '0' })
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-6 py-8">
@@ -75,6 +75,23 @@ export default function MachineNew() {
               />
               {form.errors.notes && (
                 <span className="text-xs text-destructive">{form.errors.notes}</span>
+              )}
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label>Hourly rate</Label>
+              <Input
+                type="number"
+                step="0.01"
+                min={0}
+                value={form.data.hourlyRate}
+                onChange={(e) => form.setData('hourlyRate', e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Cost per machine-hour (electricity + depreciation + upkeep) — folded into job cost
+                from actual run time.
+              </p>
+              {form.errors.hourlyRate && (
+                <span className="text-xs text-destructive">{form.errors.hourlyRate}</span>
               )}
             </div>
             <div className="flex gap-2">

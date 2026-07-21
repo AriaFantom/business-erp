@@ -27,18 +27,18 @@ frontend (Settings page + nav) so the client never re-declares it.
 | `purchase` | Purchase | purchase | `inventory` | `/purchases`, `/suppliers` |
 | `manufacturing` | Manufacturing | manufacturing | `inventory` | `/jobs` |
 | `machines` | Machines | (chip of manufacturing) | `manufacturing` | `/machines` |
-| `sales` | Sales | sales | `inventory`, `invoices` | `/sales`, `/customers` |
-| `invoices` | Invoices | (chip of sales) | — | `/invoices` |
-| `quotations` | Quotations | (chip of sales) | `sales` | `/quotations` |
-| `pos` | POS | (chip of sales) | `sales`, `inventory`, `invoices` | `/pos` |
+| `orders` | Orders | sales | `inventory`, `invoices` | `/orders`, `/customers` |
+| `invoices` | Invoices | (chip of orders) | — | `/invoices` |
+| `quotations` | Quotations | (chip of orders) | `orders` | `/quotations` |
+| `pos` | POS | (chip of orders) | `orders`, `inventory`, `invoices` | `/pos` |
 | `reports` | Reports | overview | — | `/reports` |
 
 **Always-on core (never toggleable):** Dashboard, Catalog (`/catalog/*`), System
 (`/system/*`, incl. this page), Profile. A business with zero modules can still log
 in, manage catalog, and configure the system.
 
-**Presets** (match the workflow sketches): Wholesale (`purchase, inventory, sales,
-invoices, quotations, reports`), Manufacturer (all), Retail (`inventory, sales,
+**Presets** (match the workflow sketches): Wholesale (`purchase, inventory, orders,
+invoices, quotations, reports`), Manufacturer (all), Retail (`inventory, orders,
 invoices, pos, reports`).
 
 **Dependency rules** — a module may be enabled only if all its `dependsOn` are

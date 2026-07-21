@@ -21,10 +21,16 @@ export type ProfitReport = {
   from: string
   to: string
   revenue: number
-  cost: number
+  /** Cost of goods sold: what the sold units actually cost (from the stock ledger). */
+  cogs: number
+  grossProfit: number
+  /** Net profit: grossProfit minus operating (non-job) expenses. */
   profit: number
   invoiceCount: number
   productionCost: number
+  /** Expenses not tied to a job (machine electricity/maintenance, overheads). */
+  operatingExpenses: number
+  /** All expenses booked in the window, including job-linked ones (already inside COGS). */
   expenses: number
   grossMarginPct: number
   topProfitProducts: TopProfitProduct[]
@@ -32,17 +38,16 @@ export type ProfitReport = {
 }
 
 /**
- * Profit report: revenue from non-void invoices issued in [from, to] minus
- * production cost incurred for completed jobs in the same window.
- *
- * On top of the headline numbers it now surfaces:
- *  - total expenses booked in the window and the gross margin %,
- *  - per-product profit attribution ("highest making profit"): per-product
- *    sale_items revenue minus per-product completed-job production cost. This
- *    is an approximation (sale revenue vs production cost are tracked on
- *    different documents), so it won't reconcile to the invoice-based headline
- *    revenue exactly — it ranks which products contribute most profit.
- *  - a monthly profit trend read from the InfluxDB metrics store.
+ * Profit report over [from, to]:
+ *  - revenue: non-void invoices issued in the window,
+ *  - COGS: outbound 'order' stock movements (net of 'order_return'), valued at
+ *    the weighted-average cost captured on each movement — i.e. the cost of
+ *    the units actually sold, regardless of when they were produced,
+ *  - net profit: revenue − COGS − operating expenses (expenses NOT linked to
+ *    a job; job-linked expenses are already inside job cost → unit cost → COGS,
+ *    so subtracting them again would double-count),
+ *  - productionCost of jobs completed in the window is informational only,
+ *  - per-product attribution and the monthly Influx trend as before.
  */
 export async function buildProfitReport(from: DateTime, to: DateTime): Promise<ProfitReport> {
   const fromSql = from.toSQL()!
@@ -61,30 +66,46 @@ export async function buildProfitReport(from: DateTime, to: DateTime): Promise<P
     .where('completed_at', '<=', toSql)
   const productionCost = completedJobs.reduce((s, j) => s + Number(j.totalCost), 0)
 
-  // Total expenses booked in the window.
-  const expenseRows = await db
-    .from('expenses')
-    .whereBetween('incurred_at', [fromSql, toSql])
-    .sum('amount as v')
-  const expenses = Number(expenseRows?.[0]?.v ?? 0)
+  // COGS: order movements are negative qty, returns positive, so -SUM(qty*cost)
+  // nets them in one pass.
+  const cogsRows = await db
+    .from('stock_movements')
+    .whereIn('reason', ['order', 'order_return'])
+    .whereBetween('created_at', [fromSql, toSql])
+    .select(db.raw('COALESCE(-SUM(qty * unit_cost), 0) as v'))
+  const cogs = Number(cogsRows?.[0]?.v ?? 0)
 
-  // Per-product revenue (confirmed sale_items) and cost (completed jobs).
+  // Expenses booked in the window: all of them (informational) and the
+  // operating slice (not tied to a job) that reduces net profit.
+  const [expenseRows, operatingExpenseRows] = await Promise.all([
+    db.from('expenses').whereBetween('incurred_at', [fromSql, toSql]).sum('amount as v'),
+    db
+      .from('expenses')
+      .whereNull('job_id')
+      .whereBetween('incurred_at', [fromSql, toSql])
+      .sum('amount as v'),
+  ])
+  const expenses = Number(expenseRows?.[0]?.v ?? 0)
+  const operatingExpenses = Number(operatingExpenseRows?.[0]?.v ?? 0)
+
+  // Per-product revenue (confirmed order_items) and COGS (order movements).
   const [revByProduct, costByProduct, products] = await Promise.all([
     db
-      .from('sale_items as si')
-      .join('sales as s', 's.id', 'si.sale_id')
-      .where('s.status', 'confirmed')
-      .whereBetween('s.confirmed_at', [fromSql, toSql])
-      .groupBy('si.product_id')
-      .select('si.product_id as productId')
-      .sum('si.line_total as revenue'),
+      .from('order_items as oi')
+      .join('orders as o', 'o.id', 'oi.order_id')
+      .where('o.status', 'confirmed')
+      .whereBetween('o.confirmed_at', [fromSql, toSql])
+      .groupBy('oi.product_id')
+      .select('oi.product_id as productId')
+      .sum('oi.line_total as revenue'),
     db
-      .from('production_jobs')
-      .where('status', 'completed')
-      .whereBetween('completed_at', [fromSql, toSql])
-      .groupBy('product_id')
-      .select('product_id as productId')
-      .sum('total_cost as cost'),
+      .from('stock_movements')
+      .where('item_kind', 'product')
+      .whereIn('reason', ['order', 'order_return'])
+      .whereBetween('created_at', [fromSql, toSql])
+      .groupBy('item_id')
+      .select('item_id as productId')
+      .select(db.raw('COALESCE(-SUM(qty * unit_cost), 0) as cost')),
     Product.query(),
   ])
 
@@ -126,16 +147,19 @@ export async function buildProfitReport(from: DateTime, to: DateTime): Promise<P
 
   const series = await queryDashboardSeries(from, to)
 
+  const grossProfit = revenue - cogs
   return {
     from: from.toISO()!,
     to: to.toISO()!,
     revenue: round2(revenue),
-    cost: round2(productionCost),
-    profit: round2(revenue - productionCost),
+    cogs: round2(cogs),
+    grossProfit: round2(grossProfit),
+    profit: round2(grossProfit - operatingExpenses),
     invoiceCount: invoices.length,
     productionCost: round2(productionCost),
+    operatingExpenses: round2(operatingExpenses),
     expenses: round2(expenses),
-    grossMarginPct: revenue > 0 ? round2(((revenue - productionCost) / revenue) * 100) : 0,
+    grossMarginPct: revenue > 0 ? round2((grossProfit / revenue) * 100) : 0,
     topProfitProducts,
     profitTrend: series.profitTrend,
   }

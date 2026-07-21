@@ -13,9 +13,9 @@ import { getWriteApi, getBucket, queryRows, isInfluxEnabled } from '#services/in
  * the dashboard and profit report. Everything no-ops when Influx is disabled.
  *
  * Daily totals are bucketed by the business confirmation timestamp:
- *   - sales/purchases → confirmed_at (status = 'confirmed')
+ *   - orders/purchases → confirmed_at (status = 'confirmed')
  *   - invoices        → issued_at   (status != 'void')
- *   - completed jobs  → completed_at (status = 'completed')
+ *   - COGS            → stock_movements.created_at (reason order/order_return)
  *   - expenses        → incurred_at
  */
 
@@ -53,12 +53,13 @@ export async function computeDailyMetrics(day: DateTime): Promise<DailyMetrics> 
     revenueRows,
     costRows,
     expenseRows,
+    operatingExpenseRows,
     customerRows,
     productRows,
     inventoryRows,
   ] = await Promise.all([
     db
-      .from('sales')
+      .from('orders')
       .where('status', 'confirmed')
       .whereBetween('confirmed_at', [start, end])
       .sum('total as v'),
@@ -73,10 +74,10 @@ export async function computeDailyMetrics(day: DateTime): Promise<DailyMetrics> 
       .whereBetween('issued_at', [start, end])
       .sum('total as v'),
     db
-      .from('production_jobs')
-      .where('status', 'completed')
-      .whereBetween('completed_at', [start, end])
-      .sum('total_cost as v'),
+      .from('stock_movements')
+      .whereIn('reason', ['order', 'order_return'])
+      .whereBetween('created_at', [start, end])
+      .select(db.raw('COALESCE(-SUM(qty * unit_cost), 0) as v')),
     db
       .from('expenses')
       .whereBetween('incurred_at', [start, end])
@@ -84,23 +85,28 @@ export async function computeDailyMetrics(day: DateTime): Promise<DailyMetrics> 
       .select('kind')
       .sum('amount as v'),
     db
-      .from('sales as s')
-      .join('customers as c', 'c.id', 's.customer_id')
-      .where('s.status', 'confirmed')
-      .whereBetween('s.confirmed_at', [start, end])
-      .groupBy('s.customer_id', 'c.name')
-      .select('s.customer_id as customerId', 'c.name as name')
-      .sum('s.total as v'),
+      .from('expenses')
+      .whereNull('job_id')
+      .whereBetween('incurred_at', [start, end])
+      .sum('amount as v'),
     db
-      .from('sale_items as si')
-      .join('sales as s', 's.id', 'si.sale_id')
-      .join('products as p', 'p.id', 'si.product_id')
-      .where('s.status', 'confirmed')
-      .whereBetween('s.confirmed_at', [start, end])
-      .groupBy('si.product_id', 'p.sku', 'p.name')
-      .select('si.product_id as productId', 'p.sku as sku', 'p.name as name')
-      .sum('si.qty as qty')
-      .sum('si.line_total as revenue'),
+      .from('orders as o')
+      .join('customers as c', 'c.id', 'o.customer_id')
+      .where('o.status', 'confirmed')
+      .whereBetween('o.confirmed_at', [start, end])
+      .groupBy('o.customer_id', 'c.name')
+      .select('o.customer_id as customerId', 'c.name as name')
+      .sum('o.total as v'),
+    db
+      .from('order_items as oi')
+      .join('orders as o', 'o.id', 'oi.order_id')
+      .join('products as p', 'p.id', 'oi.product_id')
+      .where('o.status', 'confirmed')
+      .whereBetween('o.confirmed_at', [start, end])
+      .groupBy('oi.product_id', 'p.sku', 'p.name')
+      .select('oi.product_id as productId', 'p.sku as sku', 'p.name as name')
+      .sum('oi.qty as qty')
+      .sum('oi.line_total as revenue'),
     db
       .from('inventory')
       .groupBy('item_kind')
@@ -109,14 +115,17 @@ export async function computeDailyMetrics(day: DateTime): Promise<DailyMetrics> 
   ])
 
   const revenue = sumOf(revenueRows)
+  // cost = COGS of the day's sales (from the stock ledger); profit is net of
+  // operating (non-job) expenses — job-linked expenses already sit inside COGS.
   const cost = sumOf(costRows)
+  const operatingExpenses = sumOf(operatingExpenseRows)
 
   return {
     salesTotal: sumOf(salesRows),
     purchaseTotal: sumOf(purchaseRows),
     revenue,
     cost,
-    profit: revenue - cost,
+    profit: revenue - cost - operatingExpenses,
     expensesByKind: expenseRows.map((r: any) => ({ kind: r.kind, amount: Number(r.v) })),
     customerSales: customerRows.map((r: any) => ({
       customerId: Number(r.customerId),

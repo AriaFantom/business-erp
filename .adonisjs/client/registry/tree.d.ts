@@ -39,8 +39,14 @@ export interface ApiDefinition {
     show: typeof routes['profile.show']
     update: typeof routes['profile.update']
     avatar: {
+      show: typeof routes['profile.avatar.show']
       update: typeof routes['profile.avatar.update']
       destroy: typeof routes['profile.avatar.destroy']
+    }
+  }
+  users: {
+    avatar: {
+      show: typeof routes['users.avatar.show']
     }
   }
   suppliers: {
@@ -64,6 +70,7 @@ export interface ApiDefinition {
     image: {
       update: typeof routes['materials.image.update']
       destroy: typeof routes['materials.image.destroy']
+      show: typeof routes['materials.image.show']
     }
   }
   components: {
@@ -75,6 +82,7 @@ export interface ApiDefinition {
     image: {
       update: typeof routes['components.image.update']
       destroy: typeof routes['components.image.destroy']
+      show: typeof routes['components.image.show']
     }
   }
   products: {
@@ -87,6 +95,10 @@ export interface ApiDefinition {
     image: {
       update: typeof routes['products.image.update']
       destroy: typeof routes['products.image.destroy']
+      show: typeof routes['products.image.show']
+    }
+    gallery: {
+      show: typeof routes['products.gallery.show']
     }
     files: {
       index: typeof routes['products.files.index']
@@ -118,12 +130,27 @@ export interface ApiDefinition {
     index: typeof routes['inventory.index']
     adjust: typeof routes['inventory.adjust']
   }
+  stockTakes: {
+    index: typeof routes['stockTakes.index']
+    store: typeof routes['stockTakes.store']
+    show: typeof routes['stockTakes.show']
+    saveCounts: typeof routes['stockTakes.saveCounts']
+    refresh: typeof routes['stockTakes.refresh']
+    complete: typeof routes['stockTakes.complete']
+    cancel: typeof routes['stockTakes.cancel']
+  }
   purchases: {
     index: typeof routes['purchases.index']
     show: typeof routes['purchases.show']
     store: typeof routes['purchases.store']
     confirm: typeof routes['purchases.confirm']
     cancel: typeof routes['purchases.cancel']
+    returns: {
+      store: typeof routes['purchases.returns.store']
+    }
+    payments: {
+      store: typeof routes['purchases.payments.store']
+    }
   }
   jobs: {
     index: typeof routes['jobs.index']
@@ -151,6 +178,7 @@ export interface ApiDefinition {
   }
   quotations: {
     index: typeof routes['quotations.index']
+    new: typeof routes['quotations.new']
     show: typeof routes['quotations.show']
     store: typeof routes['quotations.store']
     send: typeof routes['quotations.send']
@@ -160,12 +188,16 @@ export interface ApiDefinition {
     suggestPrice: typeof routes['quotations.suggest_price']
     download: typeof routes['quotations.download']
   }
-  sales: {
-    index: typeof routes['sales.index']
-    show: typeof routes['sales.show']
-    store: typeof routes['sales.store']
-    confirm: typeof routes['sales.confirm']
-    cancel: typeof routes['sales.cancel']
+  orders: {
+    index: typeof routes['orders.index']
+    new: typeof routes['orders.new']
+    show: typeof routes['orders.show']
+    store: typeof routes['orders.store']
+    confirm: typeof routes['orders.confirm']
+    cancel: typeof routes['orders.cancel']
+    returns: {
+      store: typeof routes['orders.returns.store']
+    }
   }
   invoices: {
     index: typeof routes['invoices.index']
@@ -177,6 +209,10 @@ export interface ApiDefinition {
   pos: {
     index: typeof routes['pos.index']
     sell: typeof routes['pos.sell']
+    session: {
+      open: typeof routes['pos.session.open']
+      close: typeof routes['pos.session.close']
+    }
   }
   reports: {
     profit: typeof routes['reports.profit']

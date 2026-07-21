@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 type Props = {
   /** Optional leading icon (lucide). */
   icon?: LucideIcon
-  /** Short headline, e.g. "No sales yet". */
+  /** Short headline, e.g. "No orders yet". */
   title: string
   /** Optional supporting line explaining what to do next. */
   description?: string

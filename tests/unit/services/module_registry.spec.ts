@@ -14,7 +14,7 @@ test.group('module registry: validateSelection', () => {
       'purchase',
       'manufacturing',
       'machines',
-      'sales',
+      'orders',
       'invoices',
       'quotations',
       'pos',
@@ -23,10 +23,10 @@ test.group('module registry: validateSelection', () => {
     assert.lengthOf(validateSelection(all), 0)
   })
 
-  test('sales without inventory or invoices reports missing dependencies', ({ assert }) => {
-    const violations = validateSelection(['sales'])
+  test('orders without inventory or invoices reports missing dependencies', ({ assert }) => {
+    const violations = validateSelection(['orders'])
     assert.lengthOf(violations, 1)
-    assert.equal(violations[0].module, 'sales')
+    assert.equal(violations[0].module, 'orders')
     assert.deepEqual(violations[0].missing.sort(), ['inventory', 'invoices'])
   })
 
@@ -47,7 +47,7 @@ test.group('module registry: resolveCascade', () => {
       'purchase',
       'manufacturing',
       'machines',
-      'sales',
+      'orders',
       'invoices',
       'quotations',
       'pos',
@@ -57,7 +57,7 @@ test.group('module registry: resolveCascade', () => {
     assert.deepEqual(result.sort(), ['invoices', 'reports'])
   })
 
-  test('disabling sales cascades to its dependents (quotations, pos)', ({ assert }) => {
+  test('disabling orders cascades to its dependents (quotations, pos)', ({ assert }) => {
     const result = resolveCascade(['inventory', 'invoices', 'quotations', 'pos'])
     assert.notInclude(result, 'quotations')
     assert.notInclude(result, 'pos')
@@ -66,14 +66,14 @@ test.group('module registry: resolveCascade', () => {
 })
 
 test.group('module registry: resolveEnable', () => {
-  test('enabling sales pulls in inventory and invoices', ({ assert }) => {
-    const result = resolveEnable(['sales'])
-    assert.includeMembers(result, ['sales', 'inventory', 'invoices'])
+  test('enabling orders pulls in inventory and invoices', ({ assert }) => {
+    const result = resolveEnable(['orders'])
+    assert.includeMembers(result, ['orders', 'inventory', 'invoices'])
   })
 
-  test('enabling pos pulls in the full sales chain', ({ assert }) => {
+  test('enabling pos pulls in the full orders chain', ({ assert }) => {
     const result = resolveEnable(['pos'])
-    assert.includeMembers(result, ['pos', 'sales', 'inventory', 'invoices'])
+    assert.includeMembers(result, ['pos', 'orders', 'inventory', 'invoices'])
   })
 })
 
@@ -94,6 +94,6 @@ test.group('module registry: presets', () => {
     const resolved = resolveEnable(retail.modules)
     assert.notInclude(resolved, 'purchase')
     assert.notInclude(resolved, 'manufacturing')
-    assert.includeMembers(resolved, ['inventory', 'sales'])
+    assert.includeMembers(resolved, ['inventory', 'orders'])
   })
 })

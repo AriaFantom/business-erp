@@ -17,12 +17,12 @@ import { storeCatalogImage, removeCatalogImage } from '#services/catalog_image_s
 import {
   storeProductFile,
   removeProductFile,
-  signProductFileUrl,
   listProductAttachments,
   storeProductImage,
   reorderProductImages,
 } from '#services/product_attachment_storage'
 import { qrPayload, renderQrSvg, renderQrPngBuffer } from '#services/product_qr'
+import { streamStoredObject, IMMUTABLE_PRIVATE, NO_STORE } from '#services/file_streaming'
 
 export default class ProductsController {
   async index({ request, inertia, bouncer }: HttpContext) {
@@ -222,15 +222,36 @@ export default class ProductsController {
     return response.redirect().back()
   }
 
+  async image({ params, response, bouncer }: HttpContext) {
+    await bouncer.authorize('products.view' as never)
+    const product = await Product.findOrFail(params.id)
+    if (!product.imageKey) return response.notFound({ error: 'File not found' })
+    return streamStoredObject({ response }, product.imageKey, { cacheControl: IMMUTABLE_PRIVATE })
+  }
+
+  async galleryImage({ params, response, bouncer }: HttpContext) {
+    await bouncer.authorize('products.view' as never)
+    const attachment = await ProductAttachment.findOrFail(params.imageId)
+    if (attachment.productId !== Number(params.id) || attachment.kind !== 'image') {
+      return response.notFound({ error: 'File not found' })
+    }
+    return streamStoredObject({ response }, attachment.fileKey, {
+      mimeType: attachment.mimeType,
+      cacheControl: IMMUTABLE_PRIVATE,
+    })
+  }
+
   async downloadFile({ params, response, bouncer }: HttpContext) {
     await bouncer.authorize('products.view' as never)
     const attachment = await ProductAttachment.findOrFail(params.fileId)
     if (attachment.productId !== Number(params.id)) {
       return response.notFound()
     }
-    const url = await signProductFileUrl(attachment)
-    if (!url) return response.internalServerError({ error: 'Could not sign URL' })
-    return response.redirect(url)
+    return streamStoredObject({ response }, attachment.fileKey, {
+      mimeType: attachment.mimeType,
+      downloadName: attachment.originalName,
+      cacheControl: NO_STORE,
+    })
   }
 
   async qr({ params, response, bouncer }: HttpContext) {

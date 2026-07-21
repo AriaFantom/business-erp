@@ -3,8 +3,58 @@ import PurchaseItem from '#models/purchase_item'
 import Expense from '#models/expense'
 import ProductionJob from '#models/production_job'
 import db from '@adonisjs/lucid/services/db'
+import { DateTime } from 'luxon'
+
+// Mirrors the union the machines pages expect; the schema column is a bare string.
+export type MachineStatus = 'idle' | 'running' | 'maintenance' | 'offline' | 'retired'
 
 type IndexFilters = { q?: string; status?: string }
+
+/**
+ * Run minutes over the last 30 days, grouped by machine — a single join of
+ * production_job_stages to production_jobs (on job_id), summing completed
+ * stage durations for jobs pinned to a machine. Avoids N+1 per-machine
+ * queries.
+ */
+async function getRunMinutes30dByMachine(): Promise<Map<number, number>> {
+  const since = DateTime.now().minus({ days: 30 }).toSQL()
+  const rows = await db
+    .from('production_job_stages as s')
+    .innerJoin('production_jobs as j', 's.job_id', 'j.id')
+    .whereNotNull('j.machine_id')
+    .whereNotNull('s.started_at')
+    .whereNotNull('s.completed_at')
+    .where('s.completed_at', '>=', since)
+    .groupBy('j.machine_id')
+    .select('j.machine_id as machineId')
+    .select(
+      db.raw(
+        'COALESCE(SUM(EXTRACT(EPOCH FROM (s.completed_at - s.started_at)) / 60), 0) as minutes'
+      )
+    )
+  const byMachine = new Map<number, number>()
+  for (const row of rows) {
+    byMachine.set(Number(row.machineId), Math.round(Number(row.minutes)))
+  }
+  return byMachine
+}
+
+/** Machine cost recovered over the last 30 days, grouped by machine. */
+async function getMachineCost30dByMachine(): Promise<Map<number, number>> {
+  const since = DateTime.now().minus({ days: 30 }).toSQL()
+  const rows = await db
+    .from('production_jobs')
+    .whereNotNull('machine_id')
+    .where('completed_at', '>=', since)
+    .groupBy('machine_id')
+    .select('machine_id')
+    .sum({ cost: 'total_machine_cost' })
+  const byMachine = new Map<number, number>()
+  for (const row of rows) {
+    byMachine.set(Number(row.machine_id), Number(row.cost) || 0)
+  }
+  return byMachine
+}
 
 export async function getMachinesIndexViewModel(filters: IndexFilters = {}) {
   const q = (filters.q ?? '').trim()
@@ -45,6 +95,11 @@ export async function getMachinesIndexViewModel(filters: IndexFilters = {}) {
   const items = itemIds.length ? await PurchaseItem.query().whereIn('id', itemIds) : []
   const itemById = new Map(items.map((i) => [i.id, i]))
 
+  const [runMinutes30dByMachine, machineCost30dByMachine] = await Promise.all([
+    getRunMinutes30dByMachine(),
+    getMachineCost30dByMachine(),
+  ])
+
   return {
     machines: filtered.map((m) => {
       const item = m.purchaseItemId ? itemById.get(m.purchaseItemId) : null
@@ -55,12 +110,15 @@ export async function getMachinesIndexViewModel(filters: IndexFilters = {}) {
         name: m.name,
         model: m.model,
         serialNumber: m.serialNumber,
-        status: m.status,
+        status: m.status as MachineStatus,
         currentJobId: m.currentJobId,
+        hourlyRate: m.hourlyRate,
         purchaseCost: String(purchaseCost),
         expenseTotal: String(expenseTotal),
         totalSpent: String(purchaseCost + expenseTotal),
         acquiredAt: m.acquiredAt?.toISO() ?? null,
+        runMinutes30d: runMinutes30dByMachine.get(m.id) ?? 0,
+        machineCost30d: String(machineCost30dByMachine.get(m.id) ?? 0),
       }
     }),
     filters: { q, status },
@@ -70,11 +128,23 @@ export async function getMachinesIndexViewModel(filters: IndexFilters = {}) {
 
 export async function getMachineShowViewModel(id: number) {
   const machine = await Machine.findOrFail(id)
-  const [jobs, expenses, item] = await Promise.all([
-    ProductionJob.query().where('machine_id', id).orderBy('started_at', 'desc').limit(50),
-    Expense.query().where('machine_id', id).orderBy('incurred_at', 'desc'),
-    machine.purchaseItemId ? PurchaseItem.find(machine.purchaseItemId) : null,
-  ])
+  const [jobs, expenses, item, runMinutes30dByMachine, machineCost30dByMachine, lifetimeRow] =
+    await Promise.all([
+      ProductionJob.query().where('machine_id', id).orderBy('started_at', 'desc').limit(50),
+      Expense.query().where('machine_id', id).orderBy('incurred_at', 'desc'),
+      machine.purchaseItemId ? PurchaseItem.find(machine.purchaseItemId) : null,
+      getRunMinutes30dByMachine(),
+      getMachineCost30dByMachine(),
+      // Lifetime totals aren't bounded by the 50-row job history above.
+      db
+        .from('production_jobs')
+        .where('machine_id', id)
+        .select(
+          db.raw('COALESCE(SUM(machine_minutes), 0) as minutes'),
+          db.raw('COALESCE(SUM(total_machine_cost), 0) as cost')
+        )
+        .first(),
+    ])
   const purchaseCost = item ? Number(item.lineTotal) : 0
   const expenseTotal = expenses.reduce((s, e) => s + Number(e.amount), 0)
   return {
@@ -83,13 +153,18 @@ export async function getMachineShowViewModel(id: number) {
       name: machine.name,
       model: machine.model,
       serialNumber: machine.serialNumber,
-      status: machine.status,
+      status: machine.status as MachineStatus,
       currentJobId: machine.currentJobId,
       notes: machine.notes,
       acquiredAt: machine.acquiredAt?.toISO() ?? null,
+      hourlyRate: machine.hourlyRate,
       purchaseCost: String(purchaseCost),
       expenseTotal: String(expenseTotal),
       totalSpent: String(purchaseCost + expenseTotal),
+      runMinutes30d: runMinutes30dByMachine.get(machine.id) ?? 0,
+      machineCost30d: String(machineCost30dByMachine.get(machine.id) ?? 0),
+      lifetimeMachineMinutes: Math.round(Number(lifetimeRow?.minutes ?? 0)),
+      lifetimeMachineCost: String(Number(lifetimeRow?.cost ?? 0)),
     },
     jobs: jobs.map((j) => ({
       id: j.id,

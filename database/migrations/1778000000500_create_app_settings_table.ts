@@ -11,7 +11,13 @@ export default class extends BaseSchema {
       // shape (arrays, objects) round-trips cleanly on Postgres.
       table.string('key').notNullable().unique()
       table.text('value').notNullable().defaultTo('null')
-      table.integer('updated_by').unsigned().nullable().references('id').inTable('users').onDelete('SET NULL')
+      table
+        .integer('updated_by')
+        .unsigned()
+        .nullable()
+        .references('id')
+        .inTable('users')
+        .onDelete('SET NULL')
       table.timestamp('created_at')
       table.timestamp('updated_at')
     })

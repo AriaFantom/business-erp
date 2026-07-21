@@ -38,10 +38,12 @@ type Report = {
   from: string
   to: string
   revenue: number
-  cost: number
+  cogs: number
+  grossProfit: number
   profit: number
   invoiceCount: number
   productionCost: number
+  operatingExpenses: number
   expenses: number
   grossMarginPct: number
   topProfitProducts: TopProfitProduct[]
@@ -89,11 +91,11 @@ export default function ProfitReport({ report }: PageProps) {
   const trendRows = report.profitTrend.map((r) => ({ ...r, label: fmtMonth(r.month) }))
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-8">
+    <div className="flex w-full flex-col gap-6 px-6 py-8">
       <div>
         <h1 className="text-2xl font-semibold">Profit report</h1>
         <p className="text-sm text-muted-foreground">
-          Revenue (non-void invoices) minus production cost (completed jobs) in window.
+          Revenue (non-void invoices) minus cost of goods sold and operating expenses in window.
         </p>
       </div>
 
@@ -156,13 +158,17 @@ export default function ProfitReport({ report }: PageProps) {
             <dd className="text-right">{report.invoiceCount}</dd>
             <dt className="text-muted-foreground">Revenue</dt>
             <dd className="text-right">{fmtINR(report.revenue)}</dd>
-            <dt className="text-muted-foreground">Production cost</dt>
-            <dd className="text-right">{fmtINR(report.productionCost)}</dd>
-            <dt className="text-muted-foreground">Expenses booked</dt>
-            <dd className="text-right">{fmtINR(report.expenses)}</dd>
+            <dt className="text-muted-foreground">Cost of goods sold</dt>
+            <dd className="text-right">{fmtINR(report.cogs)}</dd>
+            <dt className="text-muted-foreground">Gross profit</dt>
+            <dd className="text-right">{fmtINR(report.grossProfit)}</dd>
             <dt className="text-muted-foreground">Gross margin</dt>
             <dd className="text-right">{report.grossMarginPct.toFixed(1)}%</dd>
-            <dt className="font-medium">Profit</dt>
+            <dt className="text-muted-foreground">Operating expenses</dt>
+            <dd className="text-right">{fmtINR(report.operatingExpenses)}</dd>
+            <dt className="text-muted-foreground">Production cost (jobs completed)</dt>
+            <dd className="text-right">{fmtINR(report.productionCost)}</dd>
+            <dt className="font-medium">Net profit</dt>
             <dd className="text-right font-medium">{fmtINR(report.profit)}</dd>
           </dl>
         </CardContent>

@@ -7,7 +7,7 @@ type Variant = 'default' | 'secondary' | 'destructive' | 'outline'
  * consistent across list and detail pages; previously every page redefined its
  * own `statusVariant` helper, which drifted.
  */
-export type StatusKind = 'quotation' | 'sale' | 'invoice' | 'purchase' | 'job'
+export type StatusKind = 'quotation' | 'order' | 'invoice' | 'purchase' | 'job'
 
 const MAPS: Record<StatusKind, Record<string, Variant>> = {
   quotation: {
@@ -18,7 +18,7 @@ const MAPS: Record<StatusKind, Record<string, Variant>> = {
     rejected: 'destructive',
     expired: 'destructive',
   },
-  sale: {
+  order: {
     draft: 'outline',
     confirmed: 'default',
     cancelled: 'destructive',

@@ -50,9 +50,14 @@ interface MachineDetail {
   currentJobId: number | null
   notes: string | null
   acquiredAt: string | null
+  hourlyRate: string
   purchaseCost: string
   expenseTotal: string
   totalSpent: string
+  runMinutes30d: number
+  machineCost30d: string
+  lifetimeMachineMinutes: number
+  lifetimeMachineCost: string
 }
 interface JobRow {
   id: number
@@ -76,6 +81,90 @@ const STATUS_VARIANT: Record<MachineStatus, 'default' | 'secondary' | 'outline' 
   maintenance: 'secondary',
   offline: 'secondary',
   retired: 'destructive',
+}
+
+function formatMinutes(totalMinutes: number): string {
+  const h = Math.floor(totalMinutes / 60)
+  const m = totalMinutes % 60
+  if (h === 0) return `${m}m`
+  return `${h}h ${m}m`
+}
+
+function EditMachineDialog({ machine }: { machine: MachineDetail }) {
+  const [open, setOpen] = useState(false)
+  const { data, setData, post, processing, errors } = useForm({
+    name: machine.name,
+    model: machine.model ?? '',
+    serialNumber: machine.serialNumber ?? '',
+    notes: machine.notes ?? '',
+    hourlyRate: machine.hourlyRate,
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline">Edit</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit machine</DialogTitle>
+        </DialogHeader>
+        <form
+          className="flex flex-col gap-3"
+          onSubmit={(e) => {
+            e.preventDefault()
+            post(`/machines/${machine.id}`, {
+              preserveScroll: true,
+              onSuccess: () => setOpen(false),
+            })
+          }}
+        >
+          <div className="flex flex-col gap-1">
+            <Label>Name</Label>
+            <Input value={data.name} onChange={(e) => setData('name', e.target.value)} required />
+            {errors.name && <span className="text-xs text-destructive">{errors.name}</span>}
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label>Model</Label>
+            <Input value={data.model} onChange={(e) => setData('model', e.target.value)} />
+            {errors.model && <span className="text-xs text-destructive">{errors.model}</span>}
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label>Serial number</Label>
+            <Input
+              value={data.serialNumber}
+              onChange={(e) => setData('serialNumber', e.target.value)}
+            />
+            {errors.serialNumber && (
+              <span className="text-xs text-destructive">{errors.serialNumber}</span>
+            )}
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label>Hourly rate</Label>
+            <Input
+              type="number"
+              step="0.01"
+              min={0}
+              value={data.hourlyRate}
+              onChange={(e) => setData('hourlyRate', e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Cost per machine-hour (electricity + depreciation + upkeep) — folded into job cost
+              from actual run time.
+            </p>
+            {errors.hourlyRate && (
+              <span className="text-xs text-destructive">{errors.hourlyRate}</span>
+            )}
+          </div>
+          <DialogFooter>
+            <Button type="submit" disabled={processing}>
+              {processing ? 'Saving…' : 'Save changes'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
 }
 
 function AddExpenseDialog({ machineId }: { machineId: number }) {
@@ -219,6 +308,7 @@ export default function MachineShow() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant={STATUS_VARIANT[machine.status]}>{machine.status}</Badge>
+            <EditMachineDialog machine={machine} />
             {!isRetired && <AddExpenseDialog machineId={machine.id} />}
             {!isRetired && (
               <PostAction
@@ -277,6 +367,59 @@ export default function MachineShow() {
           <CardContent>
             <p className="text-2xl font-semibold tabular-nums">{machine.totalSpent}</p>
             <p className="text-xs text-muted-foreground">Purchase + expenses</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Hourly rate
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold tabular-nums">{machine.hourlyRate}</p>
+            <p className="text-xs text-muted-foreground">Folded into job cost from run time</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Run time (30d)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold tabular-nums">
+              {formatMinutes(machine.runMinutes30d)}
+            </p>
+            <p className="text-xs text-muted-foreground">Completed stage time, last 30 days</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Recovered (30d)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold tabular-nums">{machine.machineCost30d}</p>
+            <p className="text-xs text-muted-foreground">Machine cost booked to jobs</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Lifetime run time
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold tabular-nums">
+              {formatMinutes(machine.lifetimeMachineMinutes)}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {machine.lifetimeMachineCost} recovered all-time
+            </p>
           </CardContent>
         </Card>
       </div>

@@ -25,6 +25,7 @@ export const permissions = definePermissions({
   inventory: {
     view: 'View on-hand inventory and stock movements',
     adjust: 'Manually adjust inventory levels',
+    stockTake: 'Create, count and complete stock-take sessions',
   },
   materials: {
     view: 'View materials',
@@ -69,6 +70,8 @@ export const permissions = definePermissions({
     create: 'Create / edit draft purchases',
     confirm: 'Confirm a purchase (writes stock movements)',
     cancel: 'Cancel a draft purchase',
+    return: 'Return items from a confirmed purchase (debit note)',
+    pay: 'Record supplier payments against a purchase',
   },
 
   // ── Production ───────────────────────────────────────────────────────
@@ -94,13 +97,24 @@ export const permissions = definePermissions({
     send: 'Send a quotation to the customer',
     accept: 'Mark a quotation as accepted',
     reject: 'Mark a quotation as rejected',
-    convertToSale: 'Convert an accepted quotation into a sale',
+    convertToOrder: {
+      description: 'Convert an accepted quotation into an order',
+      aliases: ['quotations.convertToSale'],
+    },
   },
-  sales: {
-    view: 'View sales',
-    create: 'Create / edit draft sales',
-    confirm: 'Confirm a sale (issues an invoice)',
-    cancel: 'Cancel a draft sale',
+  orders: {
+    view: { description: 'View orders', aliases: ['sales.view'] },
+    create: { description: 'Create / edit draft orders', aliases: ['sales.create'] },
+    confirm: { description: 'Confirm an order (issues an invoice)', aliases: ['sales.confirm'] },
+    cancel: { description: 'Cancel a draft order', aliases: ['sales.cancel'] },
+    overridePrice: {
+      description: 'Override the suggested unit price on POS/manual orders',
+      aliases: ['sales.overridePrice'],
+    },
+    return: {
+      description: 'Return sold items and issue a credit note/refund',
+      aliases: ['sales.return'],
+    },
   },
   invoices: {
     view: 'View invoices',
@@ -112,7 +126,8 @@ export const permissions = definePermissions({
   // ── POS (point-of-sale) ──────────────────────────────────────────────
   pos: {
     view: 'Open the point-of-sale terminal',
-    sell: 'Complete a POS sale (creates sale + invoice + payment)',
+    sell: 'Complete a POS sale (creates order + invoice + payment)',
+    manageSession: 'Open and close cash register sessions (Z-report)',
   },
 
   // ── Reports ──────────────────────────────────────────────────────────

@@ -227,7 +227,12 @@ export default function InventoryPage({
             {inventory.length} stocked items · {lowCount} below threshold.
           </p>
         </div>
-        <AdjustDialog items={adjustableItems} />
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline">
+            <Link href="/inventory/stock-takes">Stock takes</Link>
+          </Button>
+          <AdjustDialog items={adjustableItems} />
+        </div>
       </div>
 
       <ListToolbar

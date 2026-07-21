@@ -43,6 +43,7 @@ export const createCustomerValidator = vine.compile(
     phone: vine.string().trim().maxLength(40).optional(),
     billingAddress: vine.string().trim().maxLength(500).optional(),
     shippingAddress: vine.string().trim().maxLength(500).optional(),
+    creditLimit: vine.number().min(0).max(99_999_999_999).nullable().optional(),
   })
 )
 
@@ -54,6 +55,7 @@ export const updateCustomerValidator = vine.compile(
     phone: vine.string().trim().maxLength(40).nullable().optional(),
     billingAddress: vine.string().trim().maxLength(500).nullable().optional(),
     shippingAddress: vine.string().trim().maxLength(500).nullable().optional(),
+    creditLimit: vine.number().min(0).max(99_999_999_999).nullable().optional(),
     isActive: vine.boolean().optional(),
   })
 )

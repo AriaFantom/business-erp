@@ -6,7 +6,7 @@ export type InvoicePdfData = {
   invoice: {
     id: number
     number: string
-    saleId: number
+    orderId: number
     status: string
     issuedAt: string | null
     dueAt: string | null
@@ -71,7 +71,7 @@ function fmtDate(iso: string | null): string {
   return `${months[d.getUTCMonth()]} ${String(d.getUTCDate()).padStart(2, '0')}, ${d.getUTCFullYear()}`
 }
 
-function MetaLine({ label, value }: { label: string; value: string }) {
+function MetaLine({ label, value }: { label: string; value: string }): React.JSX.Element {
   return (
     <View style={styles.metaRow}>
       <Text style={styles.metaLabel}>{label}</Text>

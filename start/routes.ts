@@ -24,11 +24,12 @@ const ComponentsController = () => import('#controllers/components_controller')
 const ProductsController = () => import('#controllers/products_controller')
 const ProductCategoriesController = () => import('#controllers/product_categories_controller')
 const InventoryController = () => import('#controllers/inventory_controller')
+const StockTakesController = () => import('#controllers/stock_takes_controller')
 const PurchasesController = () => import('#controllers/purchases_controller')
 const JobsController = () => import('#controllers/jobs_controller')
 const MachinesController = () => import('#controllers/machines_controller')
 const QuotationsController = () => import('#controllers/quotations_controller')
-const SalesController = () => import('#controllers/sales_controller')
+const OrdersController = () => import('#controllers/orders_controller')
 const InvoicesController = () => import('#controllers/invoices_controller')
 const ReportsController = () => import('#controllers/reports_controller')
 const PosController = () => import('#controllers/pos_controller')
@@ -79,10 +80,12 @@ router
       .as('settings.modules.update')
     router.get('profile', [ProfileController, 'show']).as('profile.show')
     router.post('profile', [ProfileController, 'update']).as('profile.update')
+    router.get('profile/avatar', [ProfileController, 'avatar']).as('profile.avatar.show')
     router.post('profile/avatar', [ProfileController, 'updateAvatar']).as('profile.avatar.update')
     router
       .post('profile/avatar/delete', [ProfileController, 'destroyAvatar'])
       .as('profile.avatar.destroy')
+    router.get('users/:id/avatar', [UsersController, 'avatar']).as('users.avatar.show')
 
     // ── Suppliers (Purchase module) ───────────────────────────────────
     router
@@ -96,7 +99,7 @@ router
       })
       .use(middleware.module({ module: 'purchase' }))
 
-    // ── Customers (Sales module) ──────────────────────────────────────
+    // ── Customers (Orders module) ─────────────────────────────────────
     router
       .group(() => {
         router.get('customers', [CustomersController, 'index']).as('customers.index')
@@ -106,7 +109,7 @@ router
           .post('customers/:id/archive', [CustomersController, 'archive'])
           .as('customers.archive')
       })
-      .use(middleware.module({ module: 'sales' }))
+      .use(middleware.module({ module: 'orders' }))
 
     // ── Catalog ───────────────────────────────────────────────────────
     router.get('catalog/materials', [MaterialsController, 'index']).as('materials.index')
@@ -124,6 +127,9 @@ router
     router
       .post('catalog/materials/:id/image/delete', [MaterialsController, 'destroyImage'])
       .as('materials.image.destroy')
+    router
+      .get('catalog/materials/:id/image', [MaterialsController, 'image'])
+      .as('materials.image.show')
 
     router.get('catalog/components', [ComponentsController, 'index']).as('components.index')
     router.post('catalog/components', [ComponentsController, 'store']).as('components.store')
@@ -140,6 +146,9 @@ router
     router
       .post('catalog/components/:id/image/delete', [ComponentsController, 'destroyImage'])
       .as('components.image.destroy')
+    router
+      .get('catalog/components/:id/image', [ComponentsController, 'image'])
+      .as('components.image.show')
 
     router.get('catalog/products', [ProductsController, 'index']).as('products.index')
     router.post('catalog/products', [ProductsController, 'store']).as('products.store')
@@ -157,6 +166,12 @@ router
     router
       .post('catalog/products/:id/image/delete', [ProductsController, 'destroyImage'])
       .as('products.image.destroy')
+    router
+      .get('catalog/products/:id/image', [ProductsController, 'image'])
+      .as('products.image.show')
+    router
+      .get('catalog/products/:id/gallery/:imageId', [ProductsController, 'galleryImage'])
+      .as('products.gallery.show')
     router
       .get('catalog/products/:id/files', [ProductsController, 'listFiles'])
       .as('products.files.index')
@@ -210,6 +225,26 @@ router
       .group(() => {
         router.get('inventory', [InventoryController, 'index']).as('inventory.index')
         router.post('inventory/adjustments', [InventoryController, 'adjust']).as('inventory.adjust')
+
+        // Stock takes — the GET list route must be registered before any
+        // param-style inventory routes so it isn't shadowed.
+        router.get('inventory/stock-takes', [StockTakesController, 'index']).as('stockTakes.index')
+        router.post('inventory/stock-takes', [StockTakesController, 'store']).as('stockTakes.store')
+        router
+          .get('inventory/stock-takes/:id', [StockTakesController, 'show'])
+          .as('stockTakes.show')
+        router
+          .post('inventory/stock-takes/:id/counts', [StockTakesController, 'saveCounts'])
+          .as('stockTakes.saveCounts')
+        router
+          .post('inventory/stock-takes/:id/refresh', [StockTakesController, 'refresh'])
+          .as('stockTakes.refresh')
+        router
+          .post('inventory/stock-takes/:id/complete', [StockTakesController, 'complete'])
+          .as('stockTakes.complete')
+        router
+          .post('inventory/stock-takes/:id/cancel', [StockTakesController, 'cancel'])
+          .as('stockTakes.cancel')
       })
       .use(middleware.module({ module: 'inventory' }))
 
@@ -223,6 +258,12 @@ router
           .post('purchases/:id/confirm', [PurchasesController, 'confirm'])
           .as('purchases.confirm')
         router.post('purchases/:id/cancel', [PurchasesController, 'cancel']).as('purchases.cancel')
+        router
+          .post('purchases/:id/returns', [PurchasesController, 'storeReturn'])
+          .as('purchases.returns.store')
+        router
+          .post('purchases/:id/payments', [PurchasesController, 'storePayment'])
+          .as('purchases.payments.store')
       })
       .use(middleware.module({ module: 'purchase' }))
 
@@ -266,6 +307,7 @@ router
     router
       .group(() => {
         router.get('quotations', [QuotationsController, 'index']).as('quotations.index')
+        router.get('quotations/new', [QuotationsController, 'create']).as('quotations.new')
         router.get('quotations/:id', [QuotationsController, 'show']).as('quotations.show')
         router.post('quotations', [QuotationsController, 'store']).as('quotations.store')
         router.post('quotations/:id/send', [QuotationsController, 'send']).as('quotations.send')
@@ -287,16 +329,20 @@ router
       })
       .use(middleware.module({ module: 'quotations' }))
 
-    // ── Sales ─────────────────────────────────────────────────────────
+    // ── Orders ────────────────────────────────────────────────────────
     router
       .group(() => {
-        router.get('sales', [SalesController, 'index']).as('sales.index')
-        router.get('sales/:id', [SalesController, 'show']).as('sales.show')
-        router.post('sales', [SalesController, 'store']).as('sales.store')
-        router.post('sales/:id/confirm', [SalesController, 'confirm']).as('sales.confirm')
-        router.post('sales/:id/cancel', [SalesController, 'cancel']).as('sales.cancel')
+        router.get('orders', [OrdersController, 'index']).as('orders.index')
+        router.get('orders/new', [OrdersController, 'create']).as('orders.new')
+        router.get('orders/:id', [OrdersController, 'show']).as('orders.show')
+        router.post('orders', [OrdersController, 'store']).as('orders.store')
+        router.post('orders/:id/confirm', [OrdersController, 'confirm']).as('orders.confirm')
+        router.post('orders/:id/cancel', [OrdersController, 'cancel']).as('orders.cancel')
+        router
+          .post('orders/:id/returns', [OrdersController, 'storeReturn'])
+          .as('orders.returns.store')
       })
-      .use(middleware.module({ module: 'sales' }))
+      .use(middleware.module({ module: 'orders' }))
 
     // ── Invoices ──────────────────────────────────────────────────────
     router
@@ -316,6 +362,8 @@ router
       .group(() => {
         router.get('pos', [PosController, 'index']).as('pos.index')
         router.post('pos/sell', [PosController, 'sell']).as('pos.sell')
+        router.post('pos/session/open', [PosController, 'openSession']).as('pos.session.open')
+        router.post('pos/session/close', [PosController, 'closeSession']).as('pos.session.close')
       })
       .use(middleware.module({ module: 'pos' }))
 

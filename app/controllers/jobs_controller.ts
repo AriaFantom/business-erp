@@ -178,6 +178,7 @@ export default class JobsController {
       await failJob({
         jobId: Number(params.id),
         reason: payload.reason ?? null,
+        returnMaterials: payload.returnMaterials ?? false,
         actor: auth.user!,
       })
       session.flash('success', 'Job marked as failed.')

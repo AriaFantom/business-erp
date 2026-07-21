@@ -7,13 +7,12 @@ import User from '#models/user'
 import { invalidateSnapshotCache } from '#services/inventory_service'
 import { audit } from '#services/audit'
 import { nextStage } from '#services/stage_advancement'
-import { completeJobInTrx } from '#services/job_costing'
+import { freeMachine } from '#services/job_costing'
 import { DateTime } from 'luxon'
 
 const TICK_INTERVAL_MS = 30_000
 const BATCH_SIZE = 50
 let timer: NodeJS.Timeout | null = null
-let systemActor: User | null = null
 
 export async function selectEligibleJobIds(
   trx: TransactionClientContract,
@@ -33,13 +32,15 @@ export async function selectEligibleJobIds(
   return rows.map((r: any) => r.id as number)
 }
 
-async function getSystemActor(): Promise<User> {
-  if (systemActor) return systemActor
-  // The scheduler attributes audit events to the first owner user. If no
-  // owner exists yet (fresh install), the audit is anonymous (actor = null
-  // is accepted by audit()).
-  systemActor = (await User.query().where('is_owner', true).first()) as User | null
-  return systemActor as User
+async function getSystemActor(): Promise<User | null> {
+  // The scheduler attributes audit events and stock movements to the first
+  // owner user (falling back to the earliest user). If no user exists yet
+  // (fresh install), the tick skips processing entirely — downstream code
+  // (applyMovement) requires an actor. Not cached: users can be rolled back
+  // under test transactions, and the query is cheap at tick cadence.
+  const owner = await User.query().where('is_owner', true).orderBy('id', 'asc').first()
+  if (owner) return owner
+  return User.query().orderBy('id', 'asc').first()
 }
 
 export async function tick(): Promise<number> {
@@ -47,6 +48,13 @@ export async function tick(): Promise<number> {
   if (eligibleIds.length === 0) return 0
 
   const actor = await getSystemActor()
+  if (!actor) {
+    logger.warn(
+      { scheduler: 'job_auto_complete', eligibleJobs: eligibleIds.length },
+      'no owner user found for system actor; skipping auto-complete tick'
+    )
+    return 0
+  }
   let advanced = 0
   for (const id of eligibleIds) {
     await db.transaction(async (trx) => {
@@ -61,7 +69,10 @@ export async function tick(): Promise<number> {
 
       if (!job.currentStageId) {
         // No stage on an in_progress job is a data inconsistency; flip to
-        // awaiting_confirmation rather than crash the scheduler.
+        // awaiting_confirmation rather than crash the scheduler. Release the
+        // machine too — otherwise it stays 'running' with currentJobId set
+        // and blocks every other job on that machine.
+        await freeMachine(job, trx)
         job.status = 'awaiting_confirmation'
         job.autoCompleteAt = null
         await job.save()
@@ -102,8 +113,14 @@ export async function tick(): Promise<number> {
           trx,
         })
       } else {
-        // Final stage finished — auto-complete the job (no manual confirm).
-        await completeJobInTrx(job, job.plannedQty, actor, trx)
+        // Final stage finished — hand off to manual confirmation instead of
+        // booking plannedQty blindly: the user confirms the actual yield
+        // (produced qty) before inventory and costs are posted.
+        await freeMachine(job, trx)
+        job.status = 'awaiting_confirmation'
+        job.autoCompleteAt = null
+        job.currentStageId = null
+        await job.save()
         await audit({
           actor,
           action: 'job.auto_timer_expired',

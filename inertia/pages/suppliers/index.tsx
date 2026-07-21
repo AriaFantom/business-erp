@@ -41,6 +41,7 @@ type Row = {
   email: string | null
   phone: string | null
   isActive: boolean
+  outstanding: string
 }
 
 type Filters = { q: string; status: string }
@@ -217,6 +218,7 @@ export default function SuppliersIndex({ suppliers, filters, counts }: PageProps
                   <TableHead>GSTIN</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Phone</TableHead>
+                  <TableHead className="text-right">Outstanding</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-32 text-right">Actions</TableHead>
                 </TableRow>
@@ -228,6 +230,13 @@ export default function SuppliersIndex({ suppliers, filters, counts }: PageProps
                     <TableCell className="font-mono text-xs">{s.gstin ?? '—'}</TableCell>
                     <TableCell>{s.email ?? '—'}</TableCell>
                     <TableCell>{s.phone ?? '—'}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {Number(s.outstanding) > 0 ? (
+                        <span className="font-medium">{s.outstanding}</span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
                     <TableCell>
                       {s.isActive ? (
                         <Badge variant="outline">Active</Badge>

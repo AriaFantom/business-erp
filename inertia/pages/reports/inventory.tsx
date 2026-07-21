@@ -70,7 +70,7 @@ function MovementTooltip({ active, payload }: any) {
 
 export default function InventoryReport({ report }: PageProps) {
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-6 px-6 py-8">
+    <div className="flex w-full flex-col gap-6 px-6 py-8">
       <div>
         <h1 className="text-2xl font-semibold">Inventory report</h1>
         <p className="text-sm text-muted-foreground">

@@ -36,7 +36,7 @@ import { Download } from 'lucide-react'
 type Invoice = {
   id: number
   number: string
-  saleId: number
+  orderId: number
   status: string
   issuedAt: string | null
   dueAt: string | null
@@ -44,6 +44,7 @@ type Invoice = {
   taxTotal: string
   total: string
   paidTotal: string
+  creditTotal: string
   customer: { id: number; name: string } | null
   replacesInvoiceId: number | null
 }
@@ -68,7 +69,23 @@ type Payment = {
   reference: string | null
 }
 
-type PageProps = { invoice: Invoice; items: Item[]; payments: Payment[] }
+type CreditNote = {
+  id: number
+  orderId: number
+  number: string
+  createdAt: string | null
+  total: string
+  creditApplied: string
+  refundAmount: string
+  refundMethod: string | null
+}
+
+type PageProps = {
+  invoice: Invoice
+  items: Item[]
+  payments: Payment[]
+  creditNotes: CreditNote[]
+}
 
 function PostAction({
   path,
@@ -201,10 +218,14 @@ function Field({
   )
 }
 
-export default function InvoiceShow({ invoice, items, payments }: PageProps) {
-  const due = Math.max(0, Number(invoice.total) - Number(invoice.paidTotal))
+export default function InvoiceShow({ invoice, items, payments, creditNotes }: PageProps) {
+  const due = Math.max(
+    0,
+    Number(invoice.total) - Number(invoice.paidTotal) - Number(invoice.creditTotal)
+  )
   const canPay = invoice.status === 'unpaid' || invoice.status === 'partial'
-  const canVoid = invoice.status !== 'void' && payments.length === 0
+  const canVoid =
+    invoice.status !== 'void' && payments.length === 0 && Number(invoice.creditTotal) === 0
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-8">
@@ -214,10 +235,10 @@ export default function InvoiceShow({ invoice, items, payments }: PageProps) {
           <p className="text-sm text-muted-foreground">
             {invoice.customer?.name ?? '—'} ·{' '}
             <Link
-              href={`/sales/${invoice.saleId}`}
+              href={`/orders/${invoice.orderId}`}
               className="underline-offset-2 hover:underline"
             >
-              sale #{invoice.saleId}
+              order #{invoice.orderId}
             </Link>{' '}
             · due {invoice.dueAt?.slice(0, 10) ?? '—'}
             {invoice.replacesInvoiceId ? (
@@ -302,6 +323,8 @@ export default function InvoiceShow({ invoice, items, payments }: PageProps) {
               <dd className="text-right font-medium">{invoice.total}</dd>
               <dt className="text-muted-foreground">Paid</dt>
               <dd className="text-right">{invoice.paidTotal}</dd>
+              <dt className="text-muted-foreground">Credit notes</dt>
+              <dd className="text-right">{invoice.creditTotal}</dd>
               <dt className="font-medium">Due</dt>
               <dd className="text-right font-medium">{due.toFixed(2)}</dd>
             </dl>
@@ -340,6 +363,40 @@ export default function InvoiceShow({ invoice, items, payments }: PageProps) {
           </CardContent>
         </Card>
       </div>
+
+      {creditNotes.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Credit notes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Number</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="text-right">Credit applied</TableHead>
+                  <TableHead className="text-right">Refunded</TableHead>
+                  <TableHead>Method</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {creditNotes.map((cn) => (
+                  <TableRow key={cn.id}>
+                    <TableCell className="font-mono text-sm">{cn.number}</TableCell>
+                    <TableCell>{cn.createdAt?.slice(0, 10) ?? '—'}</TableCell>
+                    <TableCell className="text-right">{cn.total}</TableCell>
+                    <TableCell className="text-right">{cn.creditApplied}</TableCell>
+                    <TableCell className="text-right">{cn.refundAmount}</TableCell>
+                    <TableCell>{cn.refundMethod ?? '—'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

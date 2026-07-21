@@ -8,6 +8,7 @@ import {
 import { getComponentsViewModel } from '#services/catalog_view_models'
 import { audit } from '#services/audit'
 import { storeCatalogImage, removeCatalogImage } from '#services/catalog_image_storage'
+import { streamStoredObject, IMMUTABLE_PRIVATE } from '#services/file_streaming'
 
 export default class ComponentsController {
   async index({ request, inertia, bouncer }: HttpContext) {
@@ -24,6 +25,13 @@ export default class ComponentsController {
         status: typeof qs.status === 'string' ? qs.status : 'all',
       },
     })
+  }
+
+  async image({ params, response, bouncer }: HttpContext) {
+    await bouncer.authorize('components.view' as never)
+    const component = await Component.findOrFail(params.id)
+    if (!component.imageKey) return response.notFound({ error: 'File not found' })
+    return streamStoredObject({ response }, component.imageKey, { cacheControl: IMMUTABLE_PRIVATE })
   }
 
   async updateImage({ params, request, auth, bouncer, response, session }: HttpContext) {

@@ -80,7 +80,7 @@ export default function SystemInvitations({
   const canRevoke = can('invitations.revoke')
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-8">
+    <div className="flex w-full flex-col gap-6 px-6 py-8">
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold">User Invitation</h1>
         <p className="text-sm text-muted-foreground">
@@ -139,13 +139,17 @@ export default function SystemInvitations({
                     )}
                   </div>
                 </CardContent>
-                <CardFooter className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">
+                <CardFooter className="flex flex-wrap items-center justify-between gap-3">
+                  <span className="min-w-0 flex-1 text-xs text-muted-foreground">
                     {assignableRoles.length === 0
                       ? 'No roles below your subtree — create one first.'
                       : `${assignableRoles.length} role${assignableRoles.length === 1 ? '' : 's'} in your subtree.`}
                   </span>
-                  <Button type="submit" disabled={processing || assignableRoles.length === 0}>
+                  <Button
+                    type="submit"
+                    disabled={processing || assignableRoles.length === 0}
+                    className="shrink-0"
+                  >
                     <Send />
                     {processing ? 'Sending…' : 'Send invite'}
                   </Button>

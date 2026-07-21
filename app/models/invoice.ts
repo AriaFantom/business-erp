@@ -2,7 +2,7 @@ import { belongsTo, hasMany } from '@adonisjs/lucid/orm'
 import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 import { InvoiceSchema } from '#database/schema'
 import Customer from '#models/customer'
-import Sale from '#models/sale'
+import Order from '#models/order'
 import User from '#models/user'
 import InvoiceItem from '#models/invoice_item'
 import InvoicePayment from '#models/invoice_payment'
@@ -11,8 +11,8 @@ export default class Invoice extends InvoiceSchema {
   @belongsTo(() => Customer)
   declare customer: BelongsTo<typeof Customer>
 
-  @belongsTo(() => Sale)
-  declare sale: BelongsTo<typeof Sale>
+  @belongsTo(() => Order)
+  declare order: BelongsTo<typeof Order>
 
   @hasMany(() => InvoiceItem)
   declare items: HasMany<typeof InvoiceItem>

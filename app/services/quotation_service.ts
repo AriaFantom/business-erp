@@ -168,6 +168,8 @@ async function createCustomProductFromLine(
       recipe.itemKind = bom.itemKind
       recipe.itemId = bom.itemId
       recipe.qtyPerUnit = String(bom.qty)
+      recipe.version = 1
+      recipe.isCurrent = true
       recipe.useTransaction(trx)
       await recipe.save()
     }

@@ -18,7 +18,10 @@ import { DomainError, InsufficientStockError, InvalidStateError } from '#service
 
 const MAX_REPRINT_CHAIN = 50
 
-async function freeMachine(job: ProductionJob, trx: TransactionClientContract): Promise<void> {
+export async function freeMachine(
+  job: ProductionJob,
+  trx: TransactionClientContract
+): Promise<void> {
   if (!job.machineId) return
   const machine = await Machine.query({ client: trx })
     .where('id', job.machineId)
@@ -30,6 +33,12 @@ async function freeMachine(job: ProductionJob, trx: TransactionClientContract): 
   await machine.save()
 }
 
+/** The scheduler's synthetic actor has no user id; real users always do. */
+function isSystemActor(actor: User): boolean {
+  const id: number | null | undefined = actor.id
+  return id === null || id === undefined
+}
+
 function round2(n: number): number {
   return Math.round(n * 100) / 100
 }
@@ -38,8 +47,36 @@ function round4(n: number): number {
 }
 
 /**
+ * Sum stage run time (completed_at - started_at, in minutes) across every
+ * stage of a job that actually ran to completion. Stages that never started
+ * or are still open are excluded. Rounded to the nearest minute, clamped
+ * to >= 0 in case of clock skew.
+ */
+export async function computeMachineRunMinutes(
+  jobId: number,
+  trx: TransactionClientContract
+): Promise<number> {
+  const row = await trx
+    .from('production_job_stages')
+    .where('job_id', jobId)
+    .whereNotNull('started_at')
+    .whereNotNull('completed_at')
+    .select(
+      db.raw('COALESCE(SUM(EXTRACT(EPOCH FROM (completed_at - started_at)) / 60), 0) as minutes')
+    )
+    .first()
+  const minutes = Math.round(Number(row?.minutes ?? 0))
+  return Math.max(0, minutes)
+}
+
+/**
  * Recompute and persist the four totals on a job. Must run inside the same
  * transaction as the consumption / expense / completion that triggered it.
+ *
+ * total_machine_cost is only ever set by completeJobInTrx (at completion
+ * time); for draft/in_progress/paused/awaiting_confirmation jobs it stays at
+ * its '0' default, so folding it into totalCost here is a no-op for the
+ * material-return and expense-add paths that call this before completion.
  */
 export async function recomputeJobTotals(
   jobId: number,
@@ -56,12 +93,12 @@ export async function recomputeJobTotals(
     else if (c.itemKind === 'component') componentCost += cost
   }
   const expenseTotal = expenses.reduce((s, e) => s + Number(e.amount), 0)
-  const totalCost = materialCost + componentCost + expenseTotal
 
   const job = await ProductionJob.query({ client: trx })
     .where('id', jobId)
     .forUpdate()
     .firstOrFail()
+  const totalCost = materialCost + componentCost + expenseTotal + Number(job.totalMachineCost)
   const unitCost = job.producedQty > 0 ? totalCost / job.producedQty : 0
 
   job.totalMaterialCost = String(round2(materialCost))
@@ -416,7 +453,7 @@ export async function completeJobInTrx(
   actor: User,
   trx: TransactionClientContract
 ): Promise<ProductionJob> {
-  if (!['in_progress', 'draft', 'paused', 'awaiting_confirmation'].includes(job.status)) {
+  if (!['in_progress', 'paused', 'awaiting_confirmation'].includes(job.status)) {
     throw new InvalidStateError({
       entity: 'job',
       from: job.status,
@@ -430,12 +467,31 @@ export async function completeJobInTrx(
       to: 'completed (produced_qty must be > 0)',
     })
   }
+  if (producedQty > job.plannedQty) {
+    throw new InvalidStateError({
+      entity: 'job',
+      from: job.status,
+      to: `completed (produced_qty ${producedQty} exceeds planned_qty ${job.plannedQty})`,
+    })
+  }
 
   job.status = 'completed'
   job.producedQty = producedQty
   job.completedAt = DateTime.now()
   job.autoCompleteAt = null
   job.currentStageId = null
+
+  // Fold machine run time into the job's cost before totals/unit-cost are
+  // (re)computed, so the finished-goods inbound valuation below reflects it.
+  // machineId can be null (e.g. jobs created before machines were required,
+  // or manually cleared) — minutes are still recorded, cost is just 0.
+  const machineMinutes = await computeMachineRunMinutes(job.id, trx)
+  const machine = job.machineId
+    ? await Machine.query({ client: trx }).where('id', job.machineId).first()
+    : null
+  const machineCost = machine ? round2((machineMinutes / 60) * Number(machine.hourlyRate)) : 0
+  job.machineMinutes = machineMinutes
+  job.totalMachineCost = String(machineCost)
   await job.save()
 
   await recomputeJobTotals(job.id, trx)
@@ -461,7 +517,7 @@ export async function completeJobInTrx(
     action: 'job.complete',
     targetType: 'job',
     targetId: job.id,
-    payload: { producedQty, unitCost: perUnitCost, auto: actor.id == null },
+    payload: { producedQty, unitCost: perUnitCost, auto: isSystemActor(actor) },
     trx,
   })
 
@@ -510,12 +566,11 @@ async function upsertProductRecipeFromJob(
   job: ProductionJob,
   trx: TransactionClientContract
 ): Promise<void> {
+  // Never delete learned recipes: a zero-output or zero-consumption completion
+  // simply doesn't produce a new recipe version.
   if (job.producedQty <= 0) return
   const consumptions = await JobMaterialConsumption.query({ client: trx }).where('job_id', job.id)
-  if (consumptions.length === 0) {
-    await ProductRecipe.query({ client: trx }).where('product_id', job.productId).delete()
-    return
-  }
+  if (consumptions.length === 0) return
 
   const totals = new Map<string, { itemKind: string; itemId: number; qty: number }>()
   for (const c of consumptions) {
@@ -525,7 +580,17 @@ async function upsertProductRecipeFromJob(
     else totals.set(key, { itemKind: c.itemKind, itemId: c.itemId, qty: Number(c.qtyConsumed) })
   }
 
-  await ProductRecipe.query({ client: trx }).where('product_id', job.productId).delete()
+  const maxRow = await ProductRecipe.query({ client: trx })
+    .where('product_id', job.productId)
+    .max('version as max_version')
+    .first()
+  const maxVersion = Number(maxRow?.$extras.max_version ?? 0)
+
+  await ProductRecipe.query({ client: trx })
+    .where('product_id', job.productId)
+    .where('is_current', true)
+    .update({ is_current: false })
+
   for (const row of totals.values()) {
     const qtyPerUnit = round4(row.qty / job.producedQty)
     if (qtyPerUnit <= 0) continue
@@ -534,18 +599,73 @@ async function upsertProductRecipeFromJob(
     recipe.itemKind = row.itemKind
     recipe.itemId = row.itemId
     recipe.qtyPerUnit = String(qtyPerUnit)
+    recipe.version = maxVersion + 1
+    recipe.isCurrent = true
     recipe.learnedFromJobId = job.id
     recipe.useTransaction(trx)
     await recipe.save()
   }
 }
 
+/**
+ * Return every not-yet-returned, not-wasted consumed quantity of a job back
+ * to stock at the cost it was consumed at. Line costs are shrunk so the job
+ * only carries the cost of what was actually lost (wasted + kept).
+ * No-ops when there is nothing to return. Returns the count of returned lines.
+ */
+async function returnJobMaterials(
+  job: ProductionJob,
+  trx: TransactionClientContract,
+  actor: User
+): Promise<number> {
+  const consumptions = await JobMaterialConsumption.query({ client: trx })
+    .where('job_id', job.id)
+    .forUpdate()
+
+  let returnedLines = 0
+  for (const c of consumptions) {
+    const returnable = Number(c.qtyConsumed) - Number(c.qtyWasted ?? 0) - Number(c.qtyReturned)
+    if (returnable <= 0) continue
+
+    await applyMovement({
+      itemKind: c.itemKind as 'material' | 'component',
+      itemId: c.itemId,
+      qty: returnable,
+      unitCost: Number(c.unitCostAtConsume),
+      reason: 'job_return',
+      referenceType: 'job',
+      referenceId: job.id,
+      note: null,
+      actor,
+      trx,
+    })
+
+    const qtyReturnedAfter = Number(c.qtyReturned) + returnable
+    c.qtyReturned = String(qtyReturnedAfter)
+    c.lineCost = String(
+      round2(Number(c.unitCostAtConsume) * (Number(c.qtyConsumed) - qtyReturnedAfter))
+    )
+    await c.save()
+    returnedLines++
+  }
+
+  if (returnedLines > 0) {
+    await recomputeJobTotals(job.id, trx)
+  }
+  return returnedLines
+}
+
+// failJob/cancelJob never book finished goods, so machine_minutes and
+// total_machine_cost are intentionally left at their '0' default — there's
+// no output to fold the machine-hour cost into.
 export async function failJob(input: {
   jobId: number
   reason?: string | null
+  returnMaterials?: boolean
   actor: User
 }): Promise<ProductionJob> {
-  return db.transaction(async (trx) => {
+  let returnedLines = 0
+  const result = await db.transaction(async (trx) => {
     const job = await ProductionJob.query({ client: trx })
       .where('id', input.jobId)
       .forUpdate()
@@ -557,6 +677,9 @@ export async function failJob(input: {
         to: 'failed',
       })
     }
+    if (input.returnMaterials) {
+      returnedLines = await returnJobMaterials(job, trx, input.actor)
+    }
     job.status = 'failed'
     job.completedAt = DateTime.now()
     if (input.reason) job.note = (job.note ? job.note + '\n\n' : '') + `Failed: ${input.reason}`
@@ -567,37 +690,48 @@ export async function failJob(input: {
       action: 'job.fail',
       targetType: 'job',
       targetId: input.jobId,
-      payload: { reason: input.reason ?? null },
+      payload: { reason: input.reason ?? null, returnedLines },
       trx,
     })
     return job
   })
+  if (returnedLines > 0) await invalidateSnapshotCache()
+  return result
 }
 
 export async function cancelJob(jobId: number, actor: User): Promise<ProductionJob> {
-  return db.transaction(async (trx) => {
+  let returnedLines = 0
+  const result = await db.transaction(async (trx) => {
     const job = await ProductionJob.query({ client: trx })
       .where('id', jobId)
       .forUpdate()
       .firstOrFail()
-    if (job.status !== 'draft') {
+    if (!['draft', 'in_progress', 'paused', 'awaiting_confirmation'].includes(job.status)) {
       throw new InvalidStateError({
         entity: 'job',
         from: job.status,
         to: 'cancelled',
       })
     }
-    const consumed = await JobMaterialConsumption.query({ client: trx })
+
+    // Unused materials go back to stock; no-op when nothing was consumed.
+    returnedLines = await returnJobMaterials(job, trx, actor)
+
+    // Close out any stages that never ran to completion.
+    const now = DateTime.now()
+    const openStages = await ProductionJobStage.query({ client: trx })
       .where('job_id', jobId)
-      .first()
-    if (consumed) {
-      throw new InvalidStateError({
-        entity: 'job',
-        from: 'has consumptions',
-        to: 'cancelled',
-      })
+      .whereIn('status', ['pending', 'in_progress'])
+      .forUpdate()
+    for (const stage of openStages) {
+      stage.status = 'skipped'
+      stage.completedAt = now
+      await stage.save()
     }
+
     job.status = 'cancelled'
+    job.autoCompleteAt = null
+    job.currentStageId = null
     await job.save()
     await freeMachine(job, trx)
     await audit({
@@ -605,10 +739,13 @@ export async function cancelJob(jobId: number, actor: User): Promise<ProductionJ
       action: 'job.cancel',
       targetType: 'job',
       targetId: jobId,
+      payload: { returnedLines },
       trx,
     })
     return job
   })
+  await invalidateSnapshotCache()
+  return result
 }
 
 /**
