@@ -6,9 +6,12 @@ import Material from '#models/material'
 import Component from '#models/component'
 import Inventory from '#models/inventory'
 import Machine from '#models/machine'
+import Worker from '#models/worker'
+import JobWorker from '#models/job_worker'
 import ProductionJobStage from '#models/production_job_stage'
 import ProductRecipe from '#models/product_recipe'
 import { totalChainCost } from '#services/job_costing'
+import { effectiveHourlyRate } from '#services/worker_service'
 import { DateTime } from 'luxon'
 
 export type JobStatus =
@@ -59,6 +62,112 @@ export async function getJobsIndexViewModel(
   }
 }
 
+/** Statuses that put a job on the shop floor (i.e. it is occupying resources). */
+const RUNNING_STATUSES = ['in_progress', 'paused', 'awaiting_confirmation'] as const
+
+export type RunningJobStatus = (typeof RUNNING_STATUSES)[number]
+
+/**
+ * The live shop-floor board: every job currently holding resources, with the
+ * machine and people attached to it, plus the drafts waiting to be started.
+ * Shaped so the page can draw worker → job → machine connections directly.
+ */
+export async function getProductionFloorViewModel() {
+  const [running, drafts] = await Promise.all([
+    ProductionJob.query()
+      .whereIn('status', [...RUNNING_STATUSES])
+      .orderBy('started_at', 'asc'),
+    ProductionJob.query().where('status', 'draft').orderBy('created_at', 'desc').limit(50),
+  ])
+
+  const jobIds = running.map((j) => j.id)
+  const productIds = [...new Set([...running, ...drafts].map((j) => j.productId))]
+  const machineIds = running.map((j) => j.machineId).filter((x): x is number => !!x)
+
+  const [assignments, products, machines, stages] = await Promise.all([
+    jobIds.length
+      ? JobWorker.query().whereIn('job_id', jobIds).whereNull('released_at')
+      : Promise.resolve([]),
+    productIds.length ? Product.query().whereIn('id', productIds) : Promise.resolve([]),
+    machineIds.length ? Machine.query().whereIn('id', machineIds) : Promise.resolve([]),
+    jobIds.length
+      ? ProductionJobStage.query().whereIn('job_id', jobIds).orderBy('sequence', 'asc')
+      : Promise.resolve([]),
+  ])
+
+  const workerIds = [...new Set(assignments.map((a) => a.workerId))]
+  const workers = workerIds.length ? await Worker.query().whereIn('id', workerIds) : []
+
+  const productById = new Map(products.map((p) => [p.id, p]))
+  const machineById = new Map(machines.map((m) => [m.id, m]))
+  const workerById = new Map(workers.map((w) => [w.id, w]))
+
+  const assignmentsByJob = new Map<number, typeof assignments>()
+  for (const a of assignments) {
+    const list = assignmentsByJob.get(a.jobId) ?? []
+    list.push(a)
+    assignmentsByJob.set(a.jobId, list)
+  }
+  const stagesByJob = new Map<number, typeof stages>()
+  for (const s of stages) {
+    const list = stagesByJob.get(s.jobId) ?? []
+    list.push(s)
+    stagesByJob.set(s.jobId, list)
+  }
+
+  return {
+    runningJobs: running.map((j) => {
+      const machine = j.machineId ? machineById.get(j.machineId) : null
+      const jobStages = stagesByJob.get(j.id) ?? []
+      const currentStage = j.currentStageId
+        ? (jobStages.find((s) => s.id === j.currentStageId) ?? null)
+        : null
+      return {
+        id: j.id,
+        number: j.number,
+        // The query filters to RUNNING_STATUSES, so this narrowing holds.
+        status: j.status as RunningJobStatus,
+        productId: j.productId,
+        productName: productById.get(j.productId)?.name ?? '—',
+        plannedQty: j.plannedQty,
+        producedQty: j.producedQty,
+        startedAt: j.startedAt?.toISO() ?? null,
+        autoCompleteAt: j.autoCompleteAt?.toISO() ?? null,
+        estimatedDurationMin: j.estimatedDurationMin,
+        pausedAt: j.pausedAt?.toISO() ?? null,
+        remainingSeconds: j.remainingSeconds,
+        currentStageId: j.currentStageId,
+        currentStageName: currentStage?.name ?? null,
+        machine: machine ? { id: machine.id, name: machine.name } : null,
+        workers: (assignmentsByJob.get(j.id) ?? []).map((a) => ({
+          id: a.workerId,
+          name: workerById.get(a.workerId)?.name ?? `#${a.workerId}`,
+          payType: workerById.get(a.workerId)?.payType ?? 'hourly',
+          hourlyRateAtAssign: a.hourlyRateAtAssign,
+        })),
+        stages: jobStages.map((s) => ({
+          id: s.id,
+          sequence: s.sequence,
+          name: s.name,
+          estimatedDurationMin: s.estimatedDurationMin,
+          status: s.status as JobStageStatus,
+          startedAt: s.startedAt?.toISO() ?? null,
+          completedAt: s.completedAt?.toISO() ?? null,
+          autoCompleteAt: s.autoCompleteAt?.toISO() ?? null,
+        })),
+      }
+    }),
+    draftJobs: drafts.map((j) => ({
+      id: j.id,
+      number: j.number,
+      productName: productById.get(j.productId)?.name ?? '—',
+      plannedQty: j.plannedQty,
+      createdAt: j.createdAt.toISO(),
+    })),
+    serverNow: DateTime.now().toISO(),
+  }
+}
+
 export async function getJobShowViewModel(jobId: number) {
   const job = await ProductionJob.findOrFail(jobId)
   const [product, consumptions, expenses, materials, components, inventory, stages, machineRow] =
@@ -79,9 +188,17 @@ export async function getJobShowViewModel(jobId: number) {
 
   const chainCost = await totalChainCost(jobId)
   const idleMachines = await Machine.query().where('status', 'idle').orderBy('name', 'asc')
+  const idleWorkers = await Worker.query().where('status', 'idle').orderBy('name', 'asc')
   const recipe = await ProductRecipe.query()
     .where('product_id', job.productId)
     .where('is_current', true)
+
+  const assignments = await JobWorker.query().where('job_id', jobId).orderBy('assigned_at', 'asc')
+  const assignedWorkerIds = assignments.map((a) => a.workerId)
+  const assignedWorkerRows = assignedWorkerIds.length
+    ? await Worker.query().whereIn('id', assignedWorkerIds)
+    : []
+  const workerById = new Map(assignedWorkerRows.map((w) => [w.id, w]))
 
   return {
     job: {
@@ -100,6 +217,8 @@ export async function getJobShowViewModel(jobId: number) {
       totalExpense: job.totalExpense,
       machineMinutes: job.machineMinutes,
       totalMachineCost: job.totalMachineCost,
+      labourMinutes: job.labourMinutes,
+      totalLabourCost: job.totalLabourCost,
       totalCost: job.totalCost,
       unitCost: job.unitCost,
       chainCost: String(chainCost),
@@ -167,6 +286,22 @@ export async function getJobShowViewModel(jobId: number) {
       autoCompleteAt: s.autoCompleteAt?.toISO() ?? null,
     })),
     idleMachines: idleMachines.map((m) => ({ id: m.id, name: m.name })),
+    idleWorkers: idleWorkers.map((w) => ({
+      id: w.id,
+      name: w.name,
+      payType: w.payType,
+      effectiveHourlyRate: String(effectiveHourlyRate(w)),
+    })),
+    assignedWorkers: assignments.map((a) => ({
+      id: a.id,
+      workerId: a.workerId,
+      name: workerById.get(a.workerId)?.name ?? `#${a.workerId}`,
+      payType: workerById.get(a.workerId)?.payType ?? 'hourly',
+      hourlyRateAtAssign: a.hourlyRateAtAssign,
+      minutesWorked: a.minutesWorked,
+      lineCost: a.lineCost,
+      releasedAt: a.releasedAt?.toISO() ?? null,
+    })),
     productRecipe: recipe.map((r) => ({
       itemKind: r.itemKind as 'material' | 'component',
       itemId: r.itemId,

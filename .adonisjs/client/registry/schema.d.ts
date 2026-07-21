@@ -1099,6 +1099,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/purchases_controller').default['storePayment']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
+  'jobs.floor': {
+    methods: ["GET","HEAD"]
+    pattern: '/production/floor'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/jobs_controller').default['floor']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/jobs_controller').default['floor']>>>
+    }
+  }
   'jobs.index': {
     methods: ["GET","HEAD"]
     pattern: '/jobs'
@@ -1337,6 +1349,102 @@ export interface Registry {
       query: ExtractQuery<InferInput<(typeof import('#validators/machines').machineExpenseValidator)>>
       response: ExtractResponse<Awaited<ReturnType<import('#controllers/machines_controller').default['addExpense']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/machines_controller').default['addExpense']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'workers.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/workers'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/workers_controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/workers_controller').default['index']>>>
+    }
+  }
+  'workers.new': {
+    methods: ["GET","HEAD"]
+    pattern: '/workers/new'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/workers_controller').default['create']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/workers_controller').default['create']>>>
+    }
+  }
+  'workers.store': {
+    methods: ["POST"]
+    pattern: '/workers'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/workers').createWorkerValidator)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#validators/workers').createWorkerValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/workers_controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/workers_controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'workers.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/workers/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/workers_controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/workers_controller').default['show']>>>
+    }
+  }
+  'workers.update': {
+    methods: ["POST"]
+    pattern: '/workers/:id'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/workers').updateWorkerValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#validators/workers').updateWorkerValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/workers_controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/workers_controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'workers.retire': {
+    methods: ["POST"]
+    pattern: '/workers/:id/retire'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/workers_controller').default['retire']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/workers_controller').default['retire']>>>
+    }
+  }
+  'workers.reactivate': {
+    methods: ["POST"]
+    pattern: '/workers/:id/reactivate'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/workers_controller').default['reactivate']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/workers_controller').default['reactivate']>>>
+    }
+  }
+  'workers.payments.store': {
+    methods: ["POST"]
+    pattern: '/workers/:id/payments'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/workers').workerPaymentValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#validators/workers').workerPaymentValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/workers_controller').default['storePayment']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/workers_controller').default['storePayment']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
   'quotations.index': {

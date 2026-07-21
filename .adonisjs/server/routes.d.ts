@@ -95,6 +95,7 @@ export type ScannedRoutes = {
     'purchases.cancel': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'purchases.returns.store': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'purchases.payments.store': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'jobs.floor': { paramsTuple?: []; params?: {} }
     'jobs.index': { paramsTuple?: []; params?: {} }
     'jobs.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.store': { paramsTuple?: []; params?: {} }
@@ -115,6 +116,14 @@ export type ScannedRoutes = {
     'machines.retire': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'machines.maintenance': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'machines.expense': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'workers.index': { paramsTuple?: []; params?: {} }
+    'workers.new': { paramsTuple?: []; params?: {} }
+    'workers.store': { paramsTuple?: []; params?: {} }
+    'workers.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'workers.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'workers.retire': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'workers.reactivate': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'workers.payments.store': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'quotations.index': { paramsTuple?: []; params?: {} }
     'quotations.new': { paramsTuple?: []; params?: {} }
     'quotations.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
@@ -178,11 +187,15 @@ export type ScannedRoutes = {
     'stockTakes.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'purchases.index': { paramsTuple?: []; params?: {} }
     'purchases.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'jobs.floor': { paramsTuple?: []; params?: {} }
     'jobs.index': { paramsTuple?: []; params?: {} }
     'jobs.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'machines.index': { paramsTuple?: []; params?: {} }
     'machines.new': { paramsTuple?: []; params?: {} }
     'machines.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'workers.index': { paramsTuple?: []; params?: {} }
+    'workers.new': { paramsTuple?: []; params?: {} }
+    'workers.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'quotations.index': { paramsTuple?: []; params?: {} }
     'quotations.new': { paramsTuple?: []; params?: {} }
     'quotations.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
@@ -231,11 +244,15 @@ export type ScannedRoutes = {
     'stockTakes.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'purchases.index': { paramsTuple?: []; params?: {} }
     'purchases.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'jobs.floor': { paramsTuple?: []; params?: {} }
     'jobs.index': { paramsTuple?: []; params?: {} }
     'jobs.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'machines.index': { paramsTuple?: []; params?: {} }
     'machines.new': { paramsTuple?: []; params?: {} }
     'machines.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'workers.index': { paramsTuple?: []; params?: {} }
+    'workers.new': { paramsTuple?: []; params?: {} }
+    'workers.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'quotations.index': { paramsTuple?: []; params?: {} }
     'quotations.new': { paramsTuple?: []; params?: {} }
     'quotations.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
@@ -326,6 +343,11 @@ export type ScannedRoutes = {
     'machines.retire': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'machines.maintenance': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'machines.expense': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'workers.store': { paramsTuple?: []; params?: {} }
+    'workers.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'workers.retire': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'workers.reactivate': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'workers.payments.store': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'quotations.store': { paramsTuple?: []; params?: {} }
     'quotations.send': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'quotations.accept': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }

@@ -14,6 +14,7 @@ test.group('module registry: validateSelection', () => {
       'purchase',
       'manufacturing',
       'machines',
+      'labour',
       'orders',
       'invoices',
       'quotations',
@@ -35,6 +36,11 @@ test.group('module registry: validateSelection', () => {
     assert.deepEqual(violations[0], { module: 'machines', missing: ['manufacturing'] })
   })
 
+  test('labour without manufacturing is invalid', ({ assert }) => {
+    const violations = validateSelection(['labour'])
+    assert.deepEqual(violations[0], { module: 'labour', missing: ['manufacturing'] })
+  })
+
   test('inventory alone is valid (it is the spine, depends on nothing)', ({ assert }) => {
     assert.lengthOf(validateSelection(['inventory']), 0)
   })
@@ -47,6 +53,7 @@ test.group('module registry: resolveCascade', () => {
       'purchase',
       'manufacturing',
       'machines',
+      'labour',
       'orders',
       'invoices',
       'quotations',
@@ -95,5 +102,19 @@ test.group('module registry: presets', () => {
     assert.notInclude(resolved, 'purchase')
     assert.notInclude(resolved, 'manufacturing')
     assert.includeMembers(resolved, ['inventory', 'orders'])
+  })
+
+  test('artisan preset enables labour but not machines', ({ assert }) => {
+    const artisan = PRESETS.find((p) => p.key === 'artisan')!
+    const resolved = resolveEnable(artisan.modules)
+    assert.includeMembers(resolved, ['manufacturing', 'labour'])
+    assert.notInclude(resolved, 'machines')
+  })
+
+  test('disabling manufacturing cascades to both machines and labour', ({ assert }) => {
+    const result = resolveCascade(['inventory', 'machines', 'labour'])
+    assert.notInclude(result, 'machines')
+    assert.notInclude(result, 'labour')
+    assert.deepEqual(result, ['inventory'])
   })
 })

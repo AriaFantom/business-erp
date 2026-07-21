@@ -89,6 +89,13 @@ export const permissions = definePermissions({
     edit: 'Edit machine details and record expenses',
     retire: 'Retire a machine',
   },
+  workers: {
+    view: 'View workers and their job history',
+    create: 'Add a new worker',
+    update: 'Edit worker details and pay rates',
+    retire: 'Deactivate a worker',
+    pay: 'Record wage / salary payments to a worker',
+  },
 
   // ── Sales ────────────────────────────────────────────────────────────
   quotations: {

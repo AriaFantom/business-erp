@@ -346,6 +346,7 @@ export default function QuotationNew({
                           <TableCell className="align-top">
                             <div className="flex flex-col gap-3">
                               <Input
+                                aria-label={`Line ${i + 1} item name`}
                                 value={ln.name}
                                 placeholder={isCustom ? 'Product name' : ''}
                                 onChange={(e) => updateLine(i, { name: e.target.value })}
@@ -416,6 +417,7 @@ export default function QuotationNew({
                                               </SelectContent>
                                             </Select>
                                             <Input
+                                              aria-label={`Line ${i + 1} BOM entry ${bi + 1} quantity`}
                                               type="number"
                                               step="0.0001"
                                               value={bom.qty}
@@ -449,6 +451,7 @@ export default function QuotationNew({
                           </TableCell>
                           <TableCell className="align-top">
                             <Input
+                              aria-label={`Line ${i + 1} quantity`}
                               type="number"
                               value={ln.qty}
                               onChange={(e) => updateLine(i, { qty: Number(e.target.value) })}
@@ -470,6 +473,7 @@ export default function QuotationNew({
                           <TableCell className="align-top">
                             {isCustom ? (
                               <Input
+                                aria-label={`Line ${i + 1} profit percent`}
                                 type="number"
                                 step="0.01"
                                 value={ln.profitPctOverride ?? ''}

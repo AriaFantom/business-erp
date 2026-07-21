@@ -18,6 +18,7 @@ export const MODULE_KEYS = [
   'purchase',
   'manufacturing',
   'machines',
+  'labour',
   'orders',
   'invoices',
   'quotations',
@@ -86,6 +87,17 @@ export const MODULES: ModuleDef[] = [
     dependsOn: ['manufacturing'],
     routePrefixes: ['/machines'],
     icon: 'Cpu',
+  },
+  {
+    key: 'labour',
+    label: 'Labour',
+    description:
+      'Workers paid hourly or monthly, their wage payments, and their time costed into jobs.',
+    stage: 'manufacturing',
+    parent: 'manufacturing',
+    dependsOn: ['manufacturing'],
+    routePrefixes: ['/workers'],
+    icon: 'HardHat',
   },
   {
     key: 'orders',
@@ -176,6 +188,21 @@ export const PRESETS: ModulePreset[] = [
     label: 'Manufacturer',
     description: 'Full chain: Purchase → Manufacturing → Inventory → Sale.',
     modules: [...MODULE_KEYS],
+  },
+  {
+    key: 'artisan',
+    label: 'Artisan',
+    description: 'Handmade goods: people, not machines — Purchase → Hand work → Order.',
+    modules: [
+      'purchase',
+      'inventory',
+      'manufacturing',
+      'labour',
+      'orders',
+      'invoices',
+      'quotations',
+      'reports',
+    ],
   },
   {
     key: 'retail',

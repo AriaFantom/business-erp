@@ -62,6 +62,8 @@ type Job = {
   totalExpense: string
   machineMinutes: number
   totalMachineCost: string
+  labourMinutes: number
+  totalLabourCost: string
   totalCost: string
   unitCost: string
   chainCost: string
@@ -113,6 +115,24 @@ type IdleMachine = {
   name: string
 }
 
+type IdleWorker = {
+  id: number
+  name: string
+  payType: string
+  effectiveHourlyRate: string
+}
+
+type AssignedWorker = {
+  id: number
+  workerId: number
+  name: string
+  payType: string
+  hourlyRateAtAssign: string
+  minutesWorked: number
+  lineCost: string
+  releasedAt: string | null
+}
+
 type RecipeItem = {
   itemKind: 'material' | 'component'
   itemId: number
@@ -140,6 +160,8 @@ type PageProps = {
   inventoryItems: InventoryItem[]
   stages: StageItem[]
   idleMachines: IdleMachine[]
+  idleWorkers: IdleWorker[]
+  assignedWorkers: AssignedWorker[]
   productRecipe: RecipeItem[]
   serverNow: string
 }
@@ -473,19 +495,31 @@ function StartForm({
   jobId,
   plannedQty,
   idleMachines,
+  idleWorkers,
   inventoryItems,
   productRecipe,
 }: {
   jobId: number
   plannedQty: number
   idleMachines: IdleMachine[]
+  idleWorkers: IdleWorker[]
   inventoryItems: InventoryItem[]
   productRecipe: RecipeItem[]
 }) {
-  const { props } = usePage<{ errors: Record<string, string> }>()
+  const { props } = usePage<{
+    errors: Record<string, string>
+    enabledModules?: string[]
+  }>()
   const serverErrors = props.errors ?? {}
+  // When the shared prop is missing (older payloads) assume everything is on.
+  const moduleOn = (key: string) => !props.enabledModules || props.enabledModules.includes(key)
+  const machinesEnabled = moduleOn('machines')
+  const labourEnabled = moduleOn('labour')
 
   const [machineId, setMachineId] = useState<string>('')
+  const [workerIds, setWorkerIds] = useState<number[]>([])
+  const toggleWorker = (id: number) =>
+    setWorkerIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]))
   const [stages, setStages] = useState<StageDraft[]>([{ name: 'Stage 1', durationMinutes: 30 }])
 
   const initialDrafts = useMemo<ConsumptionDraft[]>(() => {
@@ -527,6 +561,7 @@ function StartForm({
       `/jobs/${jobId}/start`,
       {
         machineId: machineId ? Number(machineId) : null,
+        workerIds: workerIds as unknown as FormDataConvertible,
         stages: stages as unknown as FormDataConvertible,
         consumptions,
       },
@@ -547,20 +582,58 @@ function StartForm({
       </CardHeader>
       <CardContent>
         <form className="flex flex-col gap-4" onSubmit={submit}>
-          <Field label="Machine" error={serverErrors.machineId}>
-            <Select value={machineId} onValueChange={setMachineId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a machine" />
-              </SelectTrigger>
-              <SelectContent>
-                {idleMachines.map((m) => (
-                  <SelectItem key={m.id} value={String(m.id)}>
-                    {m.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
+          {machinesEnabled && (
+            <Field label="Machine (optional)" error={serverErrors.machineId}>
+              <Select value={machineId} onValueChange={setMachineId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="No machine — hand work" />
+                </SelectTrigger>
+                <SelectContent>
+                  {idleMachines.map((m) => (
+                    <SelectItem key={m.id} value={String(m.id)}>
+                      {m.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          )}
+
+          {labourEnabled && (
+            <div className="flex flex-col gap-2">
+              <Label>Workers on this job</Label>
+              {serverErrors.workerIds && (
+                <span className="text-xs text-destructive">{serverErrors.workerIds}</span>
+              )}
+              {idleWorkers.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  No idle workers. Add people under Workers to assign them here.
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {idleWorkers.map((w) => (
+                    <label
+                      key={w.id}
+                      className="flex items-center gap-2 rounded-md border p-2 text-sm"
+                    >
+                      <Checkbox
+                        checked={workerIds.includes(w.id)}
+                        onCheckedChange={() => toggleWorker(w.id)}
+                      />
+                      <span className="flex-1">{w.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {w.effectiveHourlyRate}/h
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Each assigned worker bills their hourly rate for the job&apos;s run time.
+              </p>
+            </div>
+          )}
+
           <JobStagesRepeater value={stages} onChange={setStages} />
 
           <div className="flex flex-col gap-2">
@@ -637,10 +710,18 @@ function StartForm({
             </p>
           </div>
 
-          <div>
-            <Button type="submit" disabled={submitting}>
+          <div className="flex flex-col gap-1">
+            <Button
+              type="submit"
+              disabled={submitting || (!machineId && workerIds.length === 0)}
+            >
               {submitting ? 'Starting…' : 'Start'}
             </Button>
+            {!machineId && workerIds.length === 0 && (
+              <span className="text-xs text-muted-foreground">
+                Assign a machine, at least one worker, or both to start.
+              </span>
+            )}
           </div>
         </form>
       </CardContent>
@@ -681,6 +762,8 @@ export default function JobShow({
   inventoryItems,
   stages,
   idleMachines,
+  idleWorkers,
+  assignedWorkers,
   productRecipe,
   serverNow,
 }: PageProps) {
@@ -793,6 +876,7 @@ export default function JobShow({
           jobId={job.id}
           plannedQty={job.plannedQty}
           idleMachines={idleMachines}
+          idleWorkers={idleWorkers}
           inventoryItems={inventoryItems}
           productRecipe={productRecipe}
         />
@@ -814,6 +898,10 @@ export default function JobShow({
               <dt className="text-muted-foreground">Machine time</dt>
               <dd className="text-right">
                 {formatMinutes(job.machineMinutes)} · {job.totalMachineCost}
+              </dd>
+              <dt className="text-muted-foreground">Labour time</dt>
+              <dd className="text-right">
+                {formatMinutes(job.labourMinutes)} · {job.totalLabourCost}
               </dd>
               <dt className="font-medium">Total</dt>
               <dd className="text-right font-medium">{job.totalCost}</dd>
@@ -871,6 +959,49 @@ export default function JobShow({
           </CardContent>
         </Card>
       </div>
+
+      {assignedWorkers.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Workers</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Pay type</TableHead>
+                  <TableHead className="text-right">Rate</TableHead>
+                  <TableHead className="text-right">Time</TableHead>
+                  <TableHead className="text-right">Cost</TableHead>
+                  <TableHead>State</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {assignedWorkers.map((w) => (
+                  <TableRow key={w.id}>
+                    <TableCell>
+                      <Link
+                        href={`/workers/${w.workerId}`}
+                        className="underline-offset-2 hover:underline"
+                      >
+                        {w.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="capitalize">{w.payType}</TableCell>
+                    <TableCell className="text-right">{w.hourlyRateAtAssign}</TableCell>
+                    <TableCell className="text-right">
+                      {formatMinutes(w.minutesWorked)}
+                    </TableCell>
+                    <TableCell className="text-right">{w.lineCost}</TableCell>
+                    <TableCell>{w.releasedAt ? 'released' : 'on the job'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

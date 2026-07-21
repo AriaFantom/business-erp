@@ -206,6 +206,7 @@ export default function OrderNew({ customers, products }: PageProps) {
                   <TableRow key={i}>
                     <TableCell>
                       <Input
+                        aria-label={`Line ${i + 1} description`}
                         value={ln.description}
                         onChange={(e) => updateLine(i, { description: e.target.value })}
                         placeholder="Description"
@@ -213,6 +214,7 @@ export default function OrderNew({ customers, products }: PageProps) {
                     </TableCell>
                     <TableCell>
                       <Input
+                        aria-label={`Line ${i + 1} quantity`}
                         type="number"
                         value={ln.qty}
                         onChange={(e) => updateLine(i, { qty: Number(e.target.value) })}
@@ -221,6 +223,7 @@ export default function OrderNew({ customers, products }: PageProps) {
                     </TableCell>
                     <TableCell>
                       <Input
+                        aria-label={`Line ${i + 1} unit price`}
                         type="number"
                         step="0.0001"
                         value={ln.unitPrice}
@@ -230,6 +233,7 @@ export default function OrderNew({ customers, products }: PageProps) {
                     </TableCell>
                     <TableCell>
                       <Input
+                        aria-label={`Line ${i + 1} tax percent`}
                         type="number"
                         step="0.01"
                         value={ln.taxRatePct}

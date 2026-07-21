@@ -153,6 +153,7 @@ export interface ApiDefinition {
     }
   }
   jobs: {
+    floor: typeof routes['jobs.floor']
     index: typeof routes['jobs.index']
     show: typeof routes['jobs.show']
     store: typeof routes['jobs.store']
@@ -175,6 +176,18 @@ export interface ApiDefinition {
     retire: typeof routes['machines.retire']
     maintenance: typeof routes['machines.maintenance']
     expense: typeof routes['machines.expense']
+  }
+  workers: {
+    index: typeof routes['workers.index']
+    new: typeof routes['workers.new']
+    store: typeof routes['workers.store']
+    show: typeof routes['workers.show']
+    update: typeof routes['workers.update']
+    retire: typeof routes['workers.retire']
+    reactivate: typeof routes['workers.reactivate']
+    payments: {
+      store: typeof routes['workers.payments.store']
+    }
   }
   quotations: {
     index: typeof routes['quotations.index']

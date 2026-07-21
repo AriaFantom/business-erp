@@ -25,6 +25,7 @@ export function UnitPicker({ value, onChange, placeholder }: Props) {
     return (
       <div className="flex items-center gap-2">
         <Input
+          aria-label="Custom unit"
           autoFocus
           value={value}
           maxLength={16}

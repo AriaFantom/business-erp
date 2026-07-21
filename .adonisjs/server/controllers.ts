@@ -31,4 +31,5 @@ export const controllers = {
   StockTakes: () => import('#controllers/stock_takes_controller'),
   Suppliers: () => import('#controllers/suppliers_controller'),
   Users: () => import('#controllers/users_controller'),
+  Workers: () => import('#controllers/workers_controller'),
 }

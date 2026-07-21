@@ -234,6 +234,7 @@ function NewPurchaseDialog({
                         <TableCell>
                           <div className="flex items-center gap-1">
                             <Input
+                              aria-label={`Line ${i + 1} quantity`}
                               type="number"
                               step="0.001"
                               value={ln.qty}
@@ -250,6 +251,7 @@ function NewPurchaseDialog({
                         <TableCell>
                           <div className="flex items-center gap-1">
                             <Input
+                              aria-label={`Line ${i + 1} unit cost`}
                               type="number"
                               step="0.0001"
                               value={ln.unitCost}
@@ -265,6 +267,7 @@ function NewPurchaseDialog({
                         </TableCell>
                         <TableCell>
                           <Input
+                            aria-label={`Line ${i + 1} tax percent`}
                             type="number"
                             step="0.01"
                             value={ln.taxRatePct}

@@ -75,6 +75,7 @@ export function ListToolbar({ basePath, q, searchPlaceholder, selects = [] }: Pr
   return (
     <div className="flex flex-wrap items-center gap-3">
       <Input
+        aria-label={searchPlaceholder ?? 'Search'}
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder={searchPlaceholder ?? 'Search…'}

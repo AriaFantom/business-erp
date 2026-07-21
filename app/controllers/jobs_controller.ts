@@ -7,7 +7,11 @@ import {
   failJobValidator,
   startJobValidator,
 } from '#validators/jobs'
-import { getJobShowViewModel, getJobsIndexViewModel } from '#services/jobs_view_models'
+import {
+  getJobShowViewModel,
+  getJobsIndexViewModel,
+  getProductionFloorViewModel,
+} from '#services/jobs_view_models'
 import {
   cancelJob,
   confirmJob,
@@ -41,6 +45,12 @@ export default class JobsController {
     })
   }
 
+  async floor({ inertia, bouncer }: HttpContext) {
+    await bouncer.authorize('jobs.view' as never)
+    const data = await getProductionFloorViewModel()
+    return inertia.render('production/floor', data)
+  }
+
   async show({ params, inertia, bouncer }: HttpContext) {
     await bouncer.authorize('jobs.view' as never)
     const data = await getJobShowViewModel(Number(params.id))
@@ -71,7 +81,8 @@ export default class JobsController {
     try {
       await startJob({
         jobId: Number(params.id),
-        machineId: payload.machineId,
+        machineId: payload.machineId ?? null,
+        workerIds: payload.workerIds ?? [],
         stages: payload.stages,
         consumptions: payload.consumptions,
         actor: auth.user!,

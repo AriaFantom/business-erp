@@ -28,6 +28,7 @@ const StockTakesController = () => import('#controllers/stock_takes_controller')
 const PurchasesController = () => import('#controllers/purchases_controller')
 const JobsController = () => import('#controllers/jobs_controller')
 const MachinesController = () => import('#controllers/machines_controller')
+const WorkersController = () => import('#controllers/workers_controller')
 const QuotationsController = () => import('#controllers/quotations_controller')
 const OrdersController = () => import('#controllers/orders_controller')
 const InvoicesController = () => import('#controllers/invoices_controller')
@@ -270,6 +271,9 @@ router
     // ── Production jobs (Manufacturing module) ────────────────────────
     router
       .group(() => {
+        // Live shop-floor view — registered before `jobs/:id` style routes so
+        // the literal path can never be captured as a job id.
+        router.get('production/floor', [JobsController, 'floor']).as('jobs.floor')
         router.get('jobs', [JobsController, 'index']).as('jobs.index')
         router.get('jobs/:id', [JobsController, 'show']).as('jobs.show')
         router.post('jobs', [JobsController, 'store']).as('jobs.store')
@@ -302,6 +306,24 @@ router
           .as('machines.expense')
       })
       .use(middleware.module({ module: 'machines' }))
+
+    // ── Workers (Labour module) ───────────────────────────────────────
+    router
+      .group(() => {
+        router.get('workers', [WorkersController, 'index']).as('workers.index')
+        router.get('workers/new', [WorkersController, 'create']).as('workers.new')
+        router.post('workers', [WorkersController, 'store']).as('workers.store')
+        router.get('workers/:id', [WorkersController, 'show']).as('workers.show')
+        router.post('workers/:id', [WorkersController, 'update']).as('workers.update')
+        router.post('workers/:id/retire', [WorkersController, 'retire']).as('workers.retire')
+        router
+          .post('workers/:id/reactivate', [WorkersController, 'reactivate'])
+          .as('workers.reactivate')
+        router
+          .post('workers/:id/payments', [WorkersController, 'storePayment'])
+          .as('workers.payments.store')
+      })
+      .use(middleware.module({ module: 'labour' }))
 
     // ── Quotations ────────────────────────────────────────────────────
     router

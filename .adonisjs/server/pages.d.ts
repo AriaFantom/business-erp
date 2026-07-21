@@ -37,6 +37,7 @@ declare module '@adonisjs/inertia/types' {
     'orders/new': ExtractProps<(typeof import('../../inertia/pages/orders/new.tsx'))['default']>
     'orders/show': ExtractProps<(typeof import('../../inertia/pages/orders/show.tsx'))['default']>
     'pos/index': ExtractProps<(typeof import('../../inertia/pages/pos/index.tsx'))['default']>
+    'production/floor': ExtractProps<(typeof import('../../inertia/pages/production/floor.tsx'))['default']>
     'profile/edit': ExtractProps<(typeof import('../../inertia/pages/profile/edit.tsx'))['default']>
     'purchases/index': ExtractProps<(typeof import('../../inertia/pages/purchases/index.tsx'))['default']>
     'purchases/show': ExtractProps<(typeof import('../../inertia/pages/purchases/show.tsx'))['default']>
@@ -51,5 +52,8 @@ declare module '@adonisjs/inertia/types' {
     'system/modules': ExtractProps<(typeof import('../../inertia/pages/system/modules.tsx'))['default']>
     'system/roles': ExtractProps<(typeof import('../../inertia/pages/system/roles.tsx'))['default']>
     'system/users': ExtractProps<(typeof import('../../inertia/pages/system/users.tsx'))['default']>
+    'workers/index': ExtractProps<(typeof import('../../inertia/pages/workers/index.tsx'))['default']>
+    'workers/new': ExtractProps<(typeof import('../../inertia/pages/workers/new.tsx'))['default']>
+    'workers/show': ExtractProps<(typeof import('../../inertia/pages/workers/show.tsx'))['default']>
   }
 }

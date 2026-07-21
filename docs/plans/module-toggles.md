@@ -27,6 +27,7 @@ frontend (Settings page + nav) so the client never re-declares it.
 | `purchase` | Purchase | purchase | `inventory` | `/purchases`, `/suppliers` |
 | `manufacturing` | Manufacturing | manufacturing | `inventory` | `/jobs` |
 | `machines` | Machines | (chip of manufacturing) | `manufacturing` | `/machines` |
+| `labour` | Labour | (chip of manufacturing) | `manufacturing` | `/workers` |
 | `orders` | Orders | sales | `inventory`, `invoices` | `/orders`, `/customers` |
 | `invoices` | Invoices | (chip of orders) | — | `/invoices` |
 | `quotations` | Quotations | (chip of orders) | `orders` | `/quotations` |
@@ -38,8 +39,14 @@ frontend (Settings page + nav) so the client never re-declares it.
 in, manage catalog, and configure the system.
 
 **Presets** (match the workflow sketches): Wholesale (`purchase, inventory, orders,
-invoices, quotations, reports`), Manufacturer (all), Retail (`inventory, orders,
-invoices, pos, reports`).
+invoices, quotations, reports`), Manufacturer (all), Artisan (`purchase, inventory,
+manufacturing, labour, orders, invoices, quotations, reports` — hand work, no
+machines), Retail (`inventory, orders, invoices, pos, reports`).
+
+**Labour** adds workers paid hourly or by monthly salary. Monthly workers are
+costed into jobs at a derived rate (`monthly_salary / standard_monthly_hours`),
+so both pay types produce comparable per-job COGS. A job may run on a machine,
+on people, or both — `startJob` only requires that at least one is assigned.
 
 **Dependency rules** — a module may be enabled only if all its `dependsOn` are
 enabled. The UI auto-enables dependencies when you turn a module on, and

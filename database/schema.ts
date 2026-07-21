@@ -361,6 +361,31 @@ export class JobMaterialConsumptionSchema extends BaseModel {
   declare unitCostAtConsume: string
 }
 
+export class JobWorkerSchema extends BaseModel {
+  static $columns = ['assignedAt', 'createdAt', 'hourlyRateAtAssign', 'id', 'jobId', 'lineCost', 'minutesWorked', 'releasedAt', 'updatedAt', 'workerId'] as const
+  $columns = JobWorkerSchema.$columns
+  @column.dateTime()
+  declare assignedAt: DateTime
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare hourlyRateAtAssign: string
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare jobId: number
+  @column()
+  declare lineCost: string
+  @column()
+  declare minutesWorked: number
+  @column.dateTime()
+  declare releasedAt: DateTime | null
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare workerId: number
+}
+
 export class MachineSchema extends BaseModel {
   static $columns = ['acquiredAt', 'createdAt', 'currentJobId', 'hourlyRate', 'id', 'model', 'name', 'notes', 'purchaseItemId', 'serialNumber', 'status', 'updatedAt'] as const
   $columns = MachineSchema.$columns
@@ -644,7 +669,7 @@ export class ProductionJobStageSchema extends BaseModel {
 }
 
 export class ProductionJobSchema extends BaseModel {
-  static $columns = ['autoCompleteAt', 'completedAt', 'createdAt', 'createdByUserId', 'currentStageId', 'estimatedDurationMin', 'id', 'machineId', 'machineMinutes', 'note', 'number', 'parentJobId', 'pausedAt', 'plannedQty', 'producedQty', 'productId', 'remainingSeconds', 'startedAt', 'status', 'totalComponentCost', 'totalCost', 'totalExpense', 'totalMachineCost', 'totalMaterialCost', 'unitCost', 'updatedAt'] as const
+  static $columns = ['autoCompleteAt', 'completedAt', 'createdAt', 'createdByUserId', 'currentStageId', 'estimatedDurationMin', 'id', 'labourMinutes', 'machineId', 'machineMinutes', 'note', 'number', 'parentJobId', 'pausedAt', 'plannedQty', 'producedQty', 'productId', 'remainingSeconds', 'startedAt', 'status', 'totalComponentCost', 'totalCost', 'totalExpense', 'totalLabourCost', 'totalMachineCost', 'totalMaterialCost', 'unitCost', 'updatedAt'] as const
   $columns = ProductionJobSchema.$columns
   @column.dateTime()
   declare autoCompleteAt: DateTime | null
@@ -660,6 +685,8 @@ export class ProductionJobSchema extends BaseModel {
   declare estimatedDurationMin: number | null
   @column({ isPrimary: true })
   declare id: number
+  @column()
+  declare labourMinutes: number
   @column()
   declare machineId: number | null
   @column()
@@ -690,6 +717,8 @@ export class ProductionJobSchema extends BaseModel {
   declare totalCost: string
   @column()
   declare totalExpense: string
+  @column()
+  declare totalLabourCost: string
   @column()
   declare totalMachineCost: string
   @column()
@@ -1151,4 +1180,62 @@ export class UserSchema extends BaseModel {
   declare password: string
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
+}
+
+export class WorkerPaymentSchema extends BaseModel {
+  static $columns = ['amount', 'createdAt', 'createdByUserId', 'id', 'kind', 'note', 'paidAt', 'periodEnd', 'periodStart', 'updatedAt', 'workerId'] as const
+  $columns = WorkerPaymentSchema.$columns
+  @column()
+  declare amount: string
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare createdByUserId: number | null
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare kind: string
+  @column()
+  declare note: string | null
+  @column.dateTime()
+  declare paidAt: DateTime
+  @column.date()
+  declare periodEnd: DateTime | null
+  @column.date()
+  declare periodStart: DateTime | null
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare workerId: number
+}
+
+export class WorkerSchema extends BaseModel {
+  static $columns = ['createdAt', 'currentJobId', 'hourlyRate', 'id', 'joinedAt', 'monthlySalary', 'name', 'notes', 'payType', 'phone', 'standardMonthlyHours', 'status', 'updatedAt'] as const
+  $columns = WorkerSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare currentJobId: number | null
+  @column()
+  declare hourlyRate: string
+  @column({ isPrimary: true })
+  declare id: number
+  @column.dateTime()
+  declare joinedAt: DateTime | null
+  @column()
+  declare monthlySalary: string
+  @column()
+  declare name: string
+  @column()
+  declare notes: string | null
+  @column()
+  declare payType: string
+  @column()
+  declare phone: string | null
+  @column()
+  declare standardMonthlyHours: number
+  @column()
+  declare status: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
 }

@@ -552,6 +552,12 @@ const routes = {
     tokens: [{"old":"/purchases/:id/payments","type":0,"val":"purchases","end":""},{"old":"/purchases/:id/payments","type":1,"val":"id","end":""},{"old":"/purchases/:id/payments","type":0,"val":"payments","end":""}],
     types: placeholder as Registry['purchases.payments.store']['types'],
   },
+  'jobs.floor': {
+    methods: ["GET","HEAD"],
+    pattern: '/production/floor',
+    tokens: [{"old":"/production/floor","type":0,"val":"production","end":""},{"old":"/production/floor","type":0,"val":"floor","end":""}],
+    types: placeholder as Registry['jobs.floor']['types'],
+  },
   'jobs.index': {
     methods: ["GET","HEAD"],
     pattern: '/jobs',
@@ -671,6 +677,54 @@ const routes = {
     pattern: '/machines/:id/expense',
     tokens: [{"old":"/machines/:id/expense","type":0,"val":"machines","end":""},{"old":"/machines/:id/expense","type":1,"val":"id","end":""},{"old":"/machines/:id/expense","type":0,"val":"expense","end":""}],
     types: placeholder as Registry['machines.expense']['types'],
+  },
+  'workers.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/workers',
+    tokens: [{"old":"/workers","type":0,"val":"workers","end":""}],
+    types: placeholder as Registry['workers.index']['types'],
+  },
+  'workers.new': {
+    methods: ["GET","HEAD"],
+    pattern: '/workers/new',
+    tokens: [{"old":"/workers/new","type":0,"val":"workers","end":""},{"old":"/workers/new","type":0,"val":"new","end":""}],
+    types: placeholder as Registry['workers.new']['types'],
+  },
+  'workers.store': {
+    methods: ["POST"],
+    pattern: '/workers',
+    tokens: [{"old":"/workers","type":0,"val":"workers","end":""}],
+    types: placeholder as Registry['workers.store']['types'],
+  },
+  'workers.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/workers/:id',
+    tokens: [{"old":"/workers/:id","type":0,"val":"workers","end":""},{"old":"/workers/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['workers.show']['types'],
+  },
+  'workers.update': {
+    methods: ["POST"],
+    pattern: '/workers/:id',
+    tokens: [{"old":"/workers/:id","type":0,"val":"workers","end":""},{"old":"/workers/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['workers.update']['types'],
+  },
+  'workers.retire': {
+    methods: ["POST"],
+    pattern: '/workers/:id/retire',
+    tokens: [{"old":"/workers/:id/retire","type":0,"val":"workers","end":""},{"old":"/workers/:id/retire","type":1,"val":"id","end":""},{"old":"/workers/:id/retire","type":0,"val":"retire","end":""}],
+    types: placeholder as Registry['workers.retire']['types'],
+  },
+  'workers.reactivate': {
+    methods: ["POST"],
+    pattern: '/workers/:id/reactivate',
+    tokens: [{"old":"/workers/:id/reactivate","type":0,"val":"workers","end":""},{"old":"/workers/:id/reactivate","type":1,"val":"id","end":""},{"old":"/workers/:id/reactivate","type":0,"val":"reactivate","end":""}],
+    types: placeholder as Registry['workers.reactivate']['types'],
+  },
+  'workers.payments.store': {
+    methods: ["POST"],
+    pattern: '/workers/:id/payments',
+    tokens: [{"old":"/workers/:id/payments","type":0,"val":"workers","end":""},{"old":"/workers/:id/payments","type":1,"val":"id","end":""},{"old":"/workers/:id/payments","type":0,"val":"payments","end":""}],
+    types: placeholder as Registry['workers.payments.store']['types'],
   },
   'quotations.index': {
     methods: ["GET","HEAD"],

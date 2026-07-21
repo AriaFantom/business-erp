@@ -43,6 +43,7 @@ import {
 } from '@/components/data-table/column-visibility'
 import { useColumnVisibility } from '@/hooks/use-column-visibility'
 import { EmptyState } from '@/components/empty-state'
+import { SkuField } from '@/components/catalog/sku-field'
 
 type Row = {
   id: number
@@ -121,9 +122,13 @@ function NewProductDialog({ categories }: { categories: CategoryOpt[] }) {
           }}
         >
           <div className="grid grid-cols-2 gap-3">
-            <Field label="SKU" error={errors.sku}>
-              <Input value={data.sku} onChange={(e) => setData('sku', e.target.value)} />
-            </Field>
+            <SkuField
+              id="product-sku"
+              name={data.name}
+              value={data.sku}
+              onChange={(sku) => setData('sku', sku)}
+              error={errors.sku}
+            />
             <Field label="Name" error={errors.name}>
               <Input value={data.name} onChange={(e) => setData('name', e.target.value)} />
             </Field>

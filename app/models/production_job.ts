@@ -6,6 +6,7 @@ import User from '#models/user'
 import JobMaterialConsumption from '#models/job_material_consumption'
 import Expense from '#models/expense'
 import Machine from '#models/machine'
+import JobWorker from '#models/job_worker'
 import ProductionJobStage from '#models/production_job_stage'
 
 export default class ProductionJob extends ProductionJobSchema {
@@ -26,6 +27,9 @@ export default class ProductionJob extends ProductionJobSchema {
 
   @belongsTo(() => Machine, { foreignKey: 'machineId' })
   declare machine: BelongsTo<typeof Machine>
+
+  @hasMany(() => JobWorker, { foreignKey: 'jobId' })
+  declare workers: HasMany<typeof JobWorker>
 
   @hasMany(() => ProductionJobStage, { foreignKey: 'jobId' })
   declare stages: HasMany<typeof ProductionJobStage>

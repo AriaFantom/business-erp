@@ -4,7 +4,9 @@ import {
   ClipboardList,
   Factory,
   FileText,
+  HardHat,
   LayoutDashboard,
+  MonitorPlay,
   Mail,
   Package,
   Cpu as MachineIcon,
@@ -133,6 +135,13 @@ export const navItems: NavItem[] = [
     icon: Factory,
     children: [
       {
+        title: 'Floor',
+        url: '/production/floor',
+        icon: MonitorPlay,
+        permission: 'jobs.view',
+        module: 'manufacturing',
+      },
+      {
         title: 'Jobs',
         url: '/jobs',
         icon: Factory,
@@ -145,6 +154,13 @@ export const navItems: NavItem[] = [
         icon: MachineIcon,
         permission: 'machines.view',
         module: 'machines',
+      },
+      {
+        title: 'Workers',
+        url: '/workers',
+        icon: HardHat,
+        permission: 'workers.view',
+        module: 'labour',
       },
     ],
   },

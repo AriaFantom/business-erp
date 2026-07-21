@@ -43,7 +43,10 @@ export const failJobValidator = vine.compile(
 
 export const startJobValidator = vine.compile(
   vine.object({
-    machineId: vine.number().positive(),
+    // Both are optional individually — a job may run on a machine, on people,
+    // or on both. The service rejects a start with neither.
+    machineId: vine.number().positive().nullable().optional(),
+    workerIds: vine.array(vine.number().positive()).distinct().maxLength(50).optional(),
     stages: vine
       .array(
         vine.object({

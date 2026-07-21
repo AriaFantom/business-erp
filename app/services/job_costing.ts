@@ -8,9 +8,12 @@ import Inventory from '#models/inventory'
 import Product from '#models/product'
 import ProductRecipe from '#models/product_recipe'
 import Machine from '#models/machine'
+import Worker from '#models/worker'
+import JobWorker from '#models/job_worker'
 import ProductionJobStage from '#models/production_job_stage'
 import type User from '#models/user'
 import { applyMovement, invalidateSnapshotCache } from '#services/inventory_service'
+import { effectiveHourlyRate } from '#services/worker_service'
 import { audit } from '#services/audit'
 import { nextDocNumber } from '#services/numbering'
 import { nextStage, type StageLike } from '#services/stage_advancement'
@@ -31,6 +34,34 @@ export async function freeMachine(
   machine.status = 'idle'
   machine.currentJobId = null
   await machine.save()
+}
+
+/**
+ * Release every worker still assigned to a job: back to idle, off the job, and
+ * stamped with a release time. Mirrors freeMachine and is called from the same
+ * places (complete / fail / cancel) so a finished job never holds people.
+ */
+export async function freeWorkers(
+  job: ProductionJob,
+  trx: TransactionClientContract
+): Promise<void> {
+  const now = DateTime.now()
+  const assignments = await JobWorker.query({ client: trx })
+    .where('job_id', job.id)
+    .whereNull('released_at')
+    .forUpdate()
+  for (const assignment of assignments) {
+    assignment.releasedAt = now
+    await assignment.save()
+  }
+
+  const workers = await Worker.query({ client: trx }).where('current_job_id', job.id).forUpdate()
+  for (const worker of workers) {
+    // A worker deactivated mid-job stays inactive; only free the busy ones.
+    if (worker.status === 'working') worker.status = 'idle'
+    worker.currentJobId = null
+    await worker.save()
+  }
 }
 
 /** The scheduler's synthetic actor has no user id; real users always do. */
@@ -73,10 +104,11 @@ export async function computeMachineRunMinutes(
  * Recompute and persist the four totals on a job. Must run inside the same
  * transaction as the consumption / expense / completion that triggered it.
  *
- * total_machine_cost is only ever set by completeJobInTrx (at completion
- * time); for draft/in_progress/paused/awaiting_confirmation jobs it stays at
- * its '0' default, so folding it into totalCost here is a no-op for the
- * material-return and expense-add paths that call this before completion.
+ * total_machine_cost and total_labour_cost are only ever set by
+ * completeJobInTrx (at completion time); for draft/in_progress/paused/
+ * awaiting_confirmation jobs they stay at their '0' default, so folding them
+ * into totalCost here is a no-op for the material-return and expense-add paths
+ * that call this before completion.
  */
 export async function recomputeJobTotals(
   jobId: number,
@@ -98,7 +130,12 @@ export async function recomputeJobTotals(
     .where('id', jobId)
     .forUpdate()
     .firstOrFail()
-  const totalCost = materialCost + componentCost + expenseTotal + Number(job.totalMachineCost)
+  const totalCost =
+    materialCost +
+    componentCost +
+    expenseTotal +
+    Number(job.totalMachineCost) +
+    Number(job.totalLabourCost)
   const unitCost = job.producedQty > 0 ? totalCost / job.producedQty : 0
 
   job.totalMaterialCost = String(round2(materialCost))
@@ -164,13 +201,23 @@ export interface StartJobConsumptionInput {
 
 export async function startJob(input: {
   jobId: number
-  machineId: number
+  machineId?: number | null
+  workerIds?: number[]
   stages: StartJobStageInput[]
   consumptions: StartJobConsumptionInput[]
   actor: User
 }): Promise<ProductionJob> {
   if (input.stages.length === 0) {
     throw new DomainError({ code: 'INVALID_INPUT', message: 'A job must have at least one stage.' })
+  }
+  // De-duplicate so the same person can't be double-booked on one job (the
+  // job_workers unique index would reject it anyway, less legibly).
+  const workerIds = [...new Set(input.workerIds ?? [])]
+  if (!input.machineId && workerIds.length === 0) {
+    throw new DomainError({
+      code: 'INVALID_INPUT',
+      message: 'Assign a machine, at least one worker, or both before starting the job.',
+    })
   }
   if (!input.consumptions || input.consumptions.length === 0) {
     throw new DomainError({
@@ -188,16 +235,33 @@ export async function startJob(input: {
       throw new InvalidStateError({ entity: 'job', from: job.status, to: 'in_progress' })
     }
 
-    const machine = await Machine.query({ client: trx })
-      .where('id', input.machineId)
-      .forUpdate()
-      .firstOrFail()
-    if (machine.status !== 'idle') {
+    const machine = input.machineId
+      ? await Machine.query({ client: trx }).where('id', input.machineId).forUpdate().firstOrFail()
+      : null
+    if (machine && machine.status !== 'idle') {
       throw new InvalidStateError({
         entity: 'machine',
         from: machine.status,
         to: `assign job ${job.id}`,
       })
+    }
+
+    // Lock every worker up-front so two concurrent starts can't claim the same
+    // person; an already-busy or deactivated worker fails the whole start.
+    const workers: Worker[] = []
+    for (const workerId of workerIds) {
+      const worker = await Worker.query({ client: trx })
+        .where('id', workerId)
+        .forUpdate()
+        .firstOrFail()
+      if (worker.status !== 'idle') {
+        throw new InvalidStateError({
+          entity: 'worker',
+          from: worker.status,
+          to: `assign job ${job.id}`,
+        })
+      }
+      workers.push(worker)
     }
 
     // Insert all stages
@@ -222,15 +286,35 @@ export async function startJob(input: {
 
     job.status = 'in_progress'
     job.startedAt = now
-    job.machineId = machine.id
+    job.machineId = machine?.id ?? null
     job.currentStageId = stageRows[0].id
     job.estimatedDurationMin = stageRows[0].estimatedDurationMin
     job.autoCompleteAt = stageRows[0].autoCompleteAt
     await job.save()
 
-    machine.status = 'running'
-    machine.currentJobId = job.id
-    await machine.save()
+    if (machine) {
+      machine.status = 'running'
+      machine.currentJobId = job.id
+      await machine.save()
+    }
+
+    // Snapshot each worker's effective rate now, so a later pay change never
+    // rewrites the cost of work already done.
+    for (const worker of workers) {
+      const assignment = new JobWorker()
+      assignment.jobId = job.id
+      assignment.workerId = worker.id
+      assignment.assignedAt = now
+      assignment.minutesWorked = 0
+      assignment.hourlyRateAtAssign = String(effectiveHourlyRate(worker))
+      assignment.lineCost = '0'
+      assignment.useTransaction(trx)
+      await assignment.save()
+
+      worker.status = 'working'
+      worker.currentJobId = job.id
+      await worker.save()
+    }
 
     await audit({
       actor: input.actor,
@@ -238,7 +322,8 @@ export async function startJob(input: {
       targetType: 'job',
       targetId: job.id,
       payload: {
-        machineId: machine.id,
+        machineId: machine?.id ?? null,
+        workerIds,
         stages: input.stages.map((s) => ({ name: s.name, durationMinutes: s.durationMinutes })),
       },
       trx,
@@ -475,9 +560,25 @@ export async function completeJobInTrx(
     })
   }
 
+  const completedAt = DateTime.now()
+
+  // Close out any stage still running. Confirming a job early (straight from
+  // in_progress) would otherwise leave the current stage with no completed_at,
+  // and run-time — hence machine *and* labour cost — would compute as zero.
+  const openStages = await ProductionJobStage.query({ client: trx })
+    .where('job_id', job.id)
+    .where('status', 'in_progress')
+    .forUpdate()
+  for (const stage of openStages) {
+    stage.status = 'completed'
+    stage.completedAt = completedAt
+    stage.autoCompleteAt = null
+    await stage.save()
+  }
+
   job.status = 'completed'
   job.producedQty = producedQty
-  job.completedAt = DateTime.now()
+  job.completedAt = completedAt
   job.autoCompleteAt = null
   job.currentStageId = null
 
@@ -485,13 +586,30 @@ export async function completeJobInTrx(
   // (re)computed, so the finished-goods inbound valuation below reflects it.
   // machineId can be null (e.g. jobs created before machines were required,
   // or manually cleared) — minutes are still recorded, cost is just 0.
-  const machineMinutes = await computeMachineRunMinutes(job.id, trx)
+  const runMinutes = await computeMachineRunMinutes(job.id, trx)
   const machine = job.machineId
     ? await Machine.query({ client: trx }).where('id', job.machineId).first()
     : null
-  const machineCost = machine ? round2((machineMinutes / 60) * Number(machine.hourlyRate)) : 0
-  job.machineMinutes = machineMinutes
+  const machineCost = machine ? round2((runMinutes / 60) * Number(machine.hourlyRate)) : 0
+  job.machineMinutes = runMinutes
   job.totalMachineCost = String(machineCost)
+
+  // Workers are on the job for the same wall-clock stage time the machine is,
+  // so each assignment bills that run time at its snapshotted rate. Parallel
+  // workers each bill their own hours — two people for an hour is two hours.
+  const assignments = await JobWorker.query({ client: trx }).where('job_id', job.id).forUpdate()
+  let labourMinutes = 0
+  let labourCost = 0
+  for (const assignment of assignments) {
+    const lineCost = round2((runMinutes / 60) * Number(assignment.hourlyRateAtAssign))
+    assignment.minutesWorked = runMinutes
+    assignment.lineCost = String(lineCost)
+    await assignment.save()
+    labourMinutes += runMinutes
+    labourCost += lineCost
+  }
+  job.labourMinutes = labourMinutes
+  job.totalLabourCost = String(round2(labourCost))
   await job.save()
 
   await recomputeJobTotals(job.id, trx)
@@ -511,6 +629,7 @@ export async function completeJobInTrx(
     trx,
   })
   await freeMachine(refreshed, trx)
+  await freeWorkers(refreshed, trx)
 
   await audit({
     actor,
@@ -685,6 +804,7 @@ export async function failJob(input: {
     if (input.reason) job.note = (job.note ? job.note + '\n\n' : '') + `Failed: ${input.reason}`
     await job.save()
     await freeMachine(job, trx)
+    await freeWorkers(job, trx)
     await audit({
       actor: input.actor,
       action: 'job.fail',
@@ -734,6 +854,7 @@ export async function cancelJob(jobId: number, actor: User): Promise<ProductionJ
     job.currentStageId = null
     await job.save()
     await freeMachine(job, trx)
+    await freeWorkers(job, trx)
     await audit({
       actor,
       action: 'job.cancel',

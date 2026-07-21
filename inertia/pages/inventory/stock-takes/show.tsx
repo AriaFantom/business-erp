@@ -264,6 +264,7 @@ export default function StockTakeShow({ stockTake, lines, totals }: PageProps) {
                     <TableCell className="text-right">
                       {editable ? (
                         <Input
+                          aria-label={`Counted quantity for ${l.itemName}`}
                           type="number"
                           min={0}
                           step="0.001"
