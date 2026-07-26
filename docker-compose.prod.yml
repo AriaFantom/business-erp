@@ -31,13 +31,10 @@ services:
       # .env) so they can never be pointed at a public host by mistake.
       S3_ENDPOINT: http://minio:9000
       INFLUX_URL: http://influxdb:8086
-      # When set to "true", the entrypoint runs `node ace migration:run --force`
-      # before booting the server. Toggle with `MIGRATE=true ./deploy.sh up`.
+      # Emergency escape hatches for raw Compose usage. Normal deployments use
+      # deploy.sh, which forces these off and runs a verified backup followed by
+      # explicit migration and production-safe seeding steps.
       MIGRATE: ${MIGRATE:-false}
-      # When set to "true", the entrypoint runs `node ace db:seed --force`
-      # after migrations. Seeders are idempotent (updateOrCreate), so this is
-      # safe on every boot — leaving it on guarantees roles + default catalog
-      # rows exist on a fresh database.
       SEED: ${SEED:-false}
     # The app is the only service that publishes a host port. It binds to the
     # interface:port given by APP_BIND (default 127.0.0.1:3333 — loopback only).

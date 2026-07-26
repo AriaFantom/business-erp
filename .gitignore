@@ -10,6 +10,9 @@ tmp/*
 .env.production.local
 .env.development.local
 
+# Local deployment recovery archives (contain database data and .env secrets)
+backups/
+
 # Frontend assets compiled code
 public/assets
 

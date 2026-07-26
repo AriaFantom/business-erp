@@ -86,7 +86,7 @@ git clone <repo-url> layerdreams-panel && cd layerdreams-panel
 ./deploy.sh init # generate .env: all secrets auto-created (openssl),
                  # prompts only for APP_URL and APP_BIND
 
-./deploy.sh      # build image, start stack, wait healthy, run migrations
+./deploy.sh      # build → pending migrations/seed → start → health check
 ```
 
 `init` auto-generates `APP_KEY`, the Postgres/Redis/MinIO passwords, and the InfluxDB token; it asks only for the two values it can't guess (`APP_URL`, `APP_BIND`) and writes `.env` with `600` permissions. It refuses to overwrite an existing `.env`. Running `./deploy.sh` without a `.env` offers to run `init` for you. Prefer manual control? `cp .env.production.example .env` and fill it in yourself — `init` is optional.
@@ -104,7 +104,7 @@ Key values in `.env`:
 | `MINIO_ROOT_USER/PASSWORD`, `AWS_*`, `S3_BUCKET` | MinIO credentials; bucket is created automatically on first boot |
 | `INFLUX_TOKEN` | Minted as the InfluxDB admin token on **first boot only** — keep it stable forever; changing it later will not re-key the existing volume |
 | `INFLUX_INIT_USERNAME/PASSWORD` | First-boot InfluxDB admin credentials |
-| `MIGRATE` / `SEED` | When `true`, the container entrypoint runs migrations / seeders on every boot (both idempotent) |
+| `MIGRATE` / `SEED` | Keep `false`; `deploy.sh` runs controlled migrations and production-safe seeders |
 
 `S3_ENDPOINT` and `INFLUX_URL` are intentionally **not** in `.env` — they are pinned inside `docker-compose.prod.yml` to the internal hostnames (`http://minio:9000`, `http://influxdb:8086`) so they can never accidentally point at a public host.
 
@@ -112,11 +112,13 @@ Key values in `.env`:
 
 ```bash
 ./deploy.sh init         # generate .env (secrets auto-created; see above)
-./deploy.sh              # full deploy: build + up + wait healthy + migrate
-./deploy.sh update       # git pull --ff-only + rebuild + up + migrate
+./deploy.sh              # build + migrate pending files + seed + verify
+./deploy.sh update       # fast-forward Git, re-exec latest script, deploy
+./deploy.sh backup       # verified PostgreSQL custom dump + protected .env copy
 ./deploy.sh build        # build the app image only
 ./deploy.sh up           # start the stack only
-./deploy.sh migrate      # run pending migrations only
+./deploy.sh migrate      # migrate pending files + safe seed + restart/verify
+./deploy.sh migrate-only # pending migrations only; no backup or seeders
 ./deploy.sh logs         # tail app logs
 ./deploy.sh ps           # stack status
 ./deploy.sh pull         # git fetch + fast-forward only (no rebuild)
@@ -124,13 +126,29 @@ Key values in `.env`:
 ./deploy.sh nuke         # stop + DELETE all volumes (destroys DB!) — asks for confirmation
 ```
 
-`ENV_FILE=path/to/other.env ./deploy.sh …` overrides the env file; `GIT_BRANCH=… ./deploy.sh update` overrides the branch.
+`ENV_FILE=path/to/other.env ./deploy.sh …` overrides the env file; `GIT_BRANCH=… ./deploy.sh update` overrides the branch. Set `BACKUP_DIR=/secure/path` to store recovery archives outside the checkout and `HEALTH_TIMEOUT_SECONDS=…` to change the default 90-second health deadline.
+
+Deployments are backup-free by default. To create and verify a database backup before a particular release, use `WITH_BACKUP=true ./deploy.sh update`. For schema changes only against the currently built image, use `./deploy.sh migrate-only`; it applies only migrations still pending in `adonis_schema`, skips every seeder, restarts the app, and verifies health. Default deployments retain application-image rollback but cannot restore the database, so use backward-compatible migrations.
+
+On a server that predates the safe pipeline, first run `./deploy.sh pull`, then `./deploy.sh update`. This ensures the newly pulled script—not the already-running old script—controls the first migration-safe release.
+
+### Safe deployment pipeline
+
+Every full deploy/update performs these steps in order:
+
+1. Retain the current app image for application rollback, then build the new image while the old app stays online.
+2. Start/check persistent services. When `WITH_BACKUP=true`, create a verified PostgreSQL custom-format dump plus a mode-`600` `.env` copy before downtime.
+3. Stop only the app, run pending migrations in a one-off new-image container, then seed. Fresh databases run all initial seeders; existing databases run only `production_upgrade_seeder`, which may add required defaults/permissions but never replaces business data.
+4. Start the new app and require a healthy container. On migration, seed, or health failure, the previous application image is restored when available; the database is never automatically restored because that could erase writes.
+
+Only backward-compatible, expand/contract migrations are safe for automatic application rollback. Never combine destructive column/table removal with the release that stops using that data.
 
 ### What deploy.sh validates before touching anything
 
 - docker installed, daemon running (distinguishes "daemon down" from "permission denied"), Compose v2 plugin present
 - `.env` exists and every required variable is non-empty
 - `DB_HOST`/`REDIS_HOST` are service names, not localhost
+- only one deployment/backup runs at once (via `flock`)
 - warns on: stale public `S3_ENDPOINT` values, < 2 GB free disk, `APP_BIND` port already in use
 - `init` additionally checks `openssl` is available, validates the `APP_URL`/`APP_BIND` you type, and refuses to overwrite an existing `.env`
 
@@ -140,7 +158,7 @@ The stack deliberately stops at the published port. Point whatever you like at `
 
 ### Backups
 
-All state lives in four named Docker volumes: `postgres_data`, `minio_data`, `redis_data`, `influx_data`. Back up Postgres with `docker compose -f docker-compose.prod.yml exec postgres pg_dump -U $DB_USER $DB_DATABASE > backup.sql` and snapshot the MinIO volume for uploaded files.
+Automatic archives default to `./backups/` (gitignored) and are never pruned automatically. Copy them off-host and test restores regularly; a backup on the same server is not disaster recovery. `./deploy.sh backup` can be scheduled independently. The PostgreSQL dump covers business data, while uploaded files and metrics remain in the `minio_data` and `influx_data` named volumes and need separate volume-level backups. Never use `./deploy.sh nuke` or `docker compose down -v` during an update.
 
 ## Local development
 
