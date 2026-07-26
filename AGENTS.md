@@ -2,28 +2,31 @@
 
 ## Project Structure & Module Organization
 
-This repository is a single AdonisJS 7 application serving an Inertia/React frontend. Backend code lives in `app/`: controllers handle HTTP requests, services contain business logic, validators define VineJS input rules, and models map Lucid entities. Routes and middleware registration are in `start/`; runtime configuration is in `config/`. Database migrations and idempotent seeders belong under `database/`.
+AdonisJS 7 serves an Inertia/React frontend. Backend `app/` contains controllers, services, VineJS validators, and Lucid models. Routes and middleware live in `start/`, configuration in `config/`, providers in `providers/`, and migrations/seeders in `database/`. Frontend pages, components, layouts, and styles live under `inertia/`; Edge templates are in `resources/views/`. Tests are split among `tests/unit/`, `tests/functional/`, and `tests/browser/`.
 
-Frontend pages live in `inertia/pages/`, shared components in `inertia/components/`, layouts in `inertia/layouts/`, and global styles in `inertia/css/`. Edge templates are under `resources/views/`. Place Japa specs in `tests/unit/`, `tests/functional/`, or `tests/browser/` according to scope. Do not edit generated files such as `database/schema.ts` or `.adonisjs/` output directly.
+## Backend Architecture & Request Flow
+
+Define named routes in `start/routes.ts`; authenticated routes use session auth, Bouncer permissions, and—where applicable—`ensure_module_middleware.ts`. Controllers should remain thin: authorize with `bouncer`, validate with `request.validateUsing(...)`, call a service, flash a result, then render Inertia or redirect.
+
+Put business rules and state transitions in `app/services/`. Multi-record writes must use Lucid transactions and row locks where concurrency matters. Record important mutations through `audit(...)` in the same transaction. Use `DomainError` subclasses for database-dependent rule failures; Vine handles request-shape errors.
+
+Models extend generated schemas from `database/schema.ts`; never edit that file or `.adonisjs/` output manually. Module definitions and dependencies belong in `app/services/modules/registry.ts`. Files remain private in S3/MinIO and must stream through authorized app routes—never expose storage URLs. Web-only background schedules are registered by `providers/scheduler_provider.ts`.
 
 ## Build, Test, and Development Commands
 
-- `npm install` installs dependencies; Node.js 24 or newer is required.
-- `docker-compose -f docker-compose.dev.yml up -d` starts PostgreSQL, Redis, MinIO, and InfluxDB for local development.
+- `npm install` installs dependencies; Node 24+ is required.
+- `docker-compose -f docker-compose.dev.yml up -d` starts local infrastructure.
 - `node ace migration:run && node ace db:seed` prepares the database.
-- `npm run dev` starts AdonisJS and Vite with hot module replacement.
-- `npm run build` creates the production build; `npm start` runs it.
-- `npm test` runs all Japa suites. Target work with `node ace test --suites=unit` or `node ace test --files="tests/unit/pricing.spec.ts"`.
-- `npm run lint`, `npm run typecheck`, and `npm run format` check linting, both TypeScript projects, and formatting.
+- `npm run dev` starts AdonisJS and Vite with HMR; `npm run build` creates production output.
+- `npm test` runs all Japa suites; target one with `node ace test --suites=unit` or `--files="tests/unit/pricing.spec.ts"`.
+- `npm run lint`, `npm run typecheck`, and `npm run format` validate code quality.
 
-## Coding Style & Naming Conventions
+## Coding & Testing Conventions
 
-Use TypeScript with two-space indentation, single quotes, and the repository Prettier preset. ESLint extends the AdonisJS application configuration. Name classes and React components in `PascalCase`, variables and functions in `camelCase`, and files in `snake_case` on the backend (`order_service.ts`) or kebab-case for frontend components (`data-table.tsx`). Prefer configured aliases such as `#services/*` and `@/components/*` over deep relative imports.
+Use TypeScript, two-space indentation, single quotes, Prettier, and the AdonisJS ESLint preset. Use `PascalCase` for classes/components, `camelCase` for symbols, backend `snake_case.ts`, and frontend kebab-case files. Prefer `#services/*` and `@/*` aliases over deep relative imports. Name Japa tests `*.spec.ts`; keep pure logic unit-tested and cover routes, authorization, persistence, and regressions with functional tests.
 
-## Testing Guidelines
+## Commits, Pull Requests & Guide Maintenance
 
-Use Japa and name specs `*.spec.ts`. Keep pure logic in unit tests; use functional tests for routes, authorization, persistence, and integrations. Browser tests should cover only flows requiring a real browser. No fixed coverage threshold is configured, so add focused regression tests for changed behavior and run the affected suite before the full test command.
+Use concise imperative commits, optionally prefixed with `feat:` or `fix:`. PRs must describe behavior, database/configuration impact, verification, linked issues, and UI screenshots when relevant. Never commit secrets or generated output.
 
-## Commit & Pull Request Guidelines
-
-Write concise, imperative commit subjects, optionally using prefixes seen in history (`feat:`, `fix:`, `README:`). Keep each commit focused. Pull requests should explain the behavior change, database or configuration impact, and verification performed; link relevant issues and include screenshots for visible UI changes. Never commit `.env`, credentials, generated build output, or service data.
+For every repository change, re-read and update `AGENTS.md` in the same patch so its architecture, commands, paths, and conventions remain accurate. Fold durable guidance into the relevant section; do not append a change log.
