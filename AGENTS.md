@@ -27,7 +27,7 @@ Use TypeScript, two-space indentation, single quotes, Prettier, and the AdonisJS
 
 ## Production Deployment & Data Safety
 
-Run `./deploy.sh update` for releases. It retains the image, applies pending migrations, seeds, and health-checks without backing up by default. `migrate-only` also skips seeders; `WITH_BACKUP=true` opts a release into a verified backup. Use reviewed expand/contract migrations. Never run `docker compose down -v`, `./deploy.sh nuke`, or destructive rollbacks; copy backups off-host.
+Run `./deploy.sh update` for releases; it always fast-forwards `main`, then migrates, seeds, and health-checks without backing up by default. `migrate-only` also skips seeders; `WITH_BACKUP=true` opts a release into a verified backup. Use reviewed expand/contract migrations. Never run `docker compose down -v`, `./deploy.sh nuke`, or destructive rollbacks; copy backups off-host.
 
 ## Commits, Pull Requests & Guide Maintenance
 

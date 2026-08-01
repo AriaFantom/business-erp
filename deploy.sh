@@ -27,7 +27,6 @@
 #
 # Env:
 #   ENV_FILE=path/to/.env    # override the default ".env"
-#   GIT_BRANCH=main          # override the branch to pull (default: current branch)
 #   BACKUP_DIR=./backups     # host directory for verified DB + env backups
 #   HEALTH_TIMEOUT_SECONDS=90
 #   WITH_BACKUP=true         # opt in to backup before deploy/update/migrate
@@ -489,7 +488,7 @@ cmd_pull() {
     echo "✗ not a git checkout — cannot pull." >&2
     exit 1
   fi
-  local branch="${GIT_BRANCH:-$(git rev-parse --abbrev-ref HEAD)}"
+  local branch="main"
   echo "→ Fetching origin and fast-forwarding ${branch}…"
   git fetch --prune origin
   if ! git diff --quiet || ! git diff --cached --quiet; then

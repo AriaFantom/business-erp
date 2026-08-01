@@ -126,7 +126,7 @@ Key values in `.env`:
 ./deploy.sh nuke         # stop + DELETE all volumes (destroys DB!) — asks for confirmation
 ```
 
-`ENV_FILE=path/to/other.env ./deploy.sh …` overrides the env file; `GIT_BRANCH=… ./deploy.sh update` overrides the branch. Set `BACKUP_DIR=/secure/path` to store recovery archives outside the checkout and `HEALTH_TIMEOUT_SECONDS=…` to change the default 90-second health deadline.
+`deploy.sh pull` and `deploy.sh update` always fast-forward `main`. `ENV_FILE=path/to/other.env ./deploy.sh …` overrides the env file. Set `BACKUP_DIR=/secure/path` to store recovery archives outside the checkout and `HEALTH_TIMEOUT_SECONDS=…` to change the default 90-second health deadline.
 
 Deployments are backup-free by default. To create and verify a database backup before a particular release, use `WITH_BACKUP=true ./deploy.sh update`. For schema changes only against the currently built image, use `./deploy.sh migrate-only`; it applies only migrations still pending in `adonis_schema`, skips every seeder, restarts the app, and verifies health. Default deployments retain application-image rollback but cannot restore the database, so use backward-compatible migrations.
 
