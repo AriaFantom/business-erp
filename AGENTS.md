@@ -30,6 +30,8 @@ Use TypeScript, two-space indentation, single quotes, Prettier, and the AdonisJS
 
 For Inertia mutations that replace server-backed navigation or application configuration, disable preserved component state on success and invalidate prefetched pages so the persistent layout and edited page consume the same response snapshot.
 
+The module settings page uses the full dashboard content width, with Save and conditional Reset actions right-aligned in the page-title header. Presets and the connected workflow share one configuration card whose header introduces the presets without duplicating that text in the content, with the four large equal module-style preset options constrained and centered above the workflow. Operational stages use constrained columns with visible gaps and frequent, closely staggered MagicUI-style `AnimatedBeam` connections; Reports is rendered as a separate subsection.
+
 ## Production Deployment & Data Safety
 
 Run `./deploy.sh update` for releases; it always fast-forwards `main`, then migrates, seeds, and health-checks without backing up by default. `migrate-only` also skips seeders; `WITH_BACKUP=true` opts a release into a verified backup. Use reviewed expand/contract migrations. Never run `docker compose down -v`, `./deploy.sh nuke`, or destructive rollbacks; copy backups off-host.

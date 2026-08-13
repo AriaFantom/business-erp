@@ -1,5 +1,4 @@
 import {
-  ArrowRight,
   ClipboardList,
   Cpu,
   Factory,
@@ -12,8 +11,11 @@ import {
   Warehouse,
   type LucideIcon,
 } from 'lucide-react'
+import { useRef } from 'react'
 
+import { AnimatedBeam } from '@/components/ui/animated-beam'
 import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
@@ -53,6 +55,17 @@ type Props = {
 }
 
 export function ModulePipeline({ modules, selected, onToggle, blockedReason }: Props) {
+  const pipelineRef = useRef<HTMLDivElement>(null)
+  const purchaseOutRef = useRef<HTMLSpanElement>(null)
+  const manufacturingInRef = useRef<HTMLSpanElement>(null)
+  const manufacturingOutRef = useRef<HTMLSpanElement>(null)
+  const inventoryInRef = useRef<HTMLSpanElement>(null)
+  const inventoryOutRef = useRef<HTMLSpanElement>(null)
+  const salesInRef = useRef<HTMLSpanElement>(null)
+
+  const incomingAnchorRefs = [null, manufacturingInRef, inventoryInRef, salesInRef]
+  const outgoingAnchorRefs = [purchaseOutRef, manufacturingOutRef, inventoryOutRef, null]
+
   const byKey = new Map(modules.map((m) => [m.key, m]))
   const labelOf = (key: string) => byKey.get(key)?.label ?? key
 
@@ -65,53 +78,112 @@ export function ModulePipeline({ modules, selected, onToggle, blockedReason }: P
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex flex-col items-stretch gap-4 md:flex-row md:items-start">
+      <div
+        ref={pipelineRef}
+        className="relative grid grid-cols-1 items-start gap-4 lg:grid-cols-[repeat(4,minmax(10rem,14rem))] lg:justify-between lg:gap-10 xl:gap-16"
+      >
         {STAGE_ORDER.map((stage, i) => {
           const main = stageMain(stage)
           if (!main) return null
           const chips = stageChips(stage)
+          const incomingAnchorRef = incomingAnchorRefs[i]
+          const outgoingAnchorRef = outgoingAnchorRefs[i]
           return (
-            <div key={stage} className="flex flex-1 flex-col gap-3 md:flex-row md:items-start">
-              <div className="flex flex-1 flex-col gap-3">
+            <div key={stage} className="relative z-10 flex min-w-0 flex-col gap-3">
+              <div className="relative">
+                {incomingAnchorRef && (
+                  <span
+                    ref={incomingAnchorRef}
+                    aria-hidden="true"
+                    className="absolute top-1/2 left-0 size-px -translate-y-1/2"
+                  />
+                )}
                 <StageNode
                   module={main}
                   on={selected.has(main.key)}
                   blocked={blockedReason(main.key)}
                   depLabels={main.dependsOn.map(labelOf)}
                   onToggle={() => onToggle(main.key)}
+                  className="min-h-48"
                 />
-                {chips.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {chips.map((chip) => (
-                      <ChipNode
-                        key={chip.key}
-                        module={chip}
-                        on={selected.has(chip.key)}
-                        blocked={blockedReason(chip.key)}
-                        depLabels={chip.dependsOn.map(labelOf)}
-                        onToggle={() => onToggle(chip.key)}
-                      />
-                    ))}
-                  </div>
+                {outgoingAnchorRef && (
+                  <span
+                    ref={outgoingAnchorRef}
+                    aria-hidden="true"
+                    className="absolute top-1/2 right-0 size-px -translate-y-1/2"
+                  />
                 )}
               </div>
-              {i < STAGE_ORDER.length - 1 && (
-                <ArrowRight className="mx-auto hidden size-5 shrink-0 self-center text-muted-foreground/50 md:block" />
+              {chips.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {chips.map((chip) => (
+                    <ChipNode
+                      key={chip.key}
+                      module={chip}
+                      on={selected.has(chip.key)}
+                      blocked={blockedReason(chip.key)}
+                      depLabels={chip.dependsOn.map(labelOf)}
+                      onToggle={() => onToggle(chip.key)}
+                    />
+                  ))}
+                </div>
               )}
             </div>
           )
         })}
+
+        <AnimatedBeam
+          className="hidden lg:block"
+          containerRef={pipelineRef}
+          fromRef={purchaseOutRef}
+          toRef={manufacturingInRef}
+          pathColor="var(--border)"
+          gradientStartColor="var(--primary)"
+          gradientStopColor="var(--muted-foreground)"
+          duration={20.25}
+        />
+        <AnimatedBeam
+          className="hidden lg:block"
+          containerRef={pipelineRef}
+          fromRef={manufacturingOutRef}
+          toRef={inventoryInRef}
+          pathColor="var(--border)"
+          gradientStartColor="var(--primary)"
+          gradientStopColor="var(--muted-foreground)"
+          delay={0.25}
+          duration={20.25}
+        />
+        <AnimatedBeam
+          className="hidden lg:block"
+          containerRef={pipelineRef}
+          fromRef={inventoryOutRef}
+          toRef={salesInRef}
+          pathColor="var(--border)"
+          gradientStartColor="var(--primary)"
+          gradientStopColor="var(--muted-foreground)"
+          delay={0.25}
+          duration={20.25}
+        />
       </div>
 
       {reports && (
-        <div className="max-w-xs">
-          <StageNode
-            module={reports}
-            on={selected.has(reports.key)}
-            blocked={blockedReason(reports.key)}
-            depLabels={reports.dependsOn.map(labelOf)}
-            onToggle={() => onToggle(reports.key)}
-          />
+        <div className="flex flex-col gap-5">
+          <Separator />
+          <div className="flex flex-col gap-1">
+            <h3 className="font-medium">Reporting</h3>
+            <p className="text-sm text-muted-foreground">
+              Reports are configured separately from the operational workflow.
+            </p>
+          </div>
+          <div className="max-w-sm">
+            <StageNode
+              module={reports}
+              on={selected.has(reports.key)}
+              blocked={blockedReason(reports.key)}
+              depLabels={reports.dependsOn.map(labelOf)}
+              onToggle={() => onToggle(reports.key)}
+            />
+          </div>
         </div>
       )}
     </div>
@@ -124,9 +196,10 @@ type NodeProps = {
   blocked: string | null
   depLabels: string[]
   onToggle: () => void
+  className?: string
 }
 
-function StageNode({ module, on, blocked, depLabels, onToggle }: NodeProps) {
+function StageNode({ module, on, blocked, depLabels, onToggle, className }: NodeProps) {
   const Icon = ICONS[module.icon] ?? Warehouse
   const body = (
     <button
@@ -137,7 +210,8 @@ function StageNode({ module, on, blocked, depLabels, onToggle }: NodeProps) {
         'group w-full rounded-xl border p-4 text-left transition',
         on
           ? 'border-primary/40 bg-primary/5 shadow-sm'
-          : 'border-dashed border-muted-foreground/30 bg-muted/30 opacity-70 hover:opacity-100'
+          : 'border-dashed border-muted-foreground/30 bg-muted/30 opacity-70 hover:opacity-100',
+        className
       )}
     >
       <div className="flex items-center justify-between gap-2">

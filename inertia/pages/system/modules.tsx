@@ -1,13 +1,25 @@
 import { useMemo, useState, type ReactElement } from 'react'
 import { router, usePage } from '@inertiajs/react'
-import { RotateCcw, SlidersHorizontal } from 'lucide-react'
+import {
+  Boxes,
+  Factory,
+  Hammer,
+  RotateCcw,
+  ShoppingBag,
+  SlidersHorizontal,
+  type LucideIcon,
+} from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { ModulePipeline, type ModuleDef } from '@/components/modules/module-pipeline'
+import { cn } from '@/lib/utils'
 import type { InertiaProps } from '@/types'
 
 type Preset = { key: string; label: string; description: string; modules: string[] }
@@ -17,6 +29,13 @@ type PageProps = InertiaProps<{
   presets: Preset[]
   enabled: string[]
 }>
+
+const PRESET_ICONS: Record<string, LucideIcon> = {
+  wholesale: Boxes,
+  manufacturer: Factory,
+  artisan: Hammer,
+  retail: ShoppingBag,
+}
 
 export default function ModulesSettings() {
   const { modules, presets, enabled } = usePage<PageProps>().props
@@ -79,6 +98,14 @@ export default function ModulesSettings() {
     setSelected(closureEnable(new Set(preset.modules)))
   }
 
+  const activePreset =
+    presets.find((preset) => {
+      const presetModules = closureEnable(new Set(preset.modules))
+      return (
+        presetModules.size === selected.size && [...presetModules].every((key) => selected.has(key))
+      )
+    })?.key ?? ''
+
   function reset() {
     setSelected(new Set(enabled))
   }
@@ -121,71 +148,121 @@ export default function ModulesSettings() {
 
   return (
     <TooltipProvider>
-      <div className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-8">
-        <div className="flex items-center gap-3">
-          <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
-            <SlidersHorizontal className="size-5" />
+      <div className="flex w-full min-w-0 flex-col gap-6 px-6 py-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+              <SlidersHorizontal className="size-5" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <h1 className="text-2xl font-semibold">Modules</h1>
+              <p className="text-sm text-muted-foreground">
+                Turn business modules on or off to match your workflow. Disabled modules are hidden
+                from navigation and blocked — your data is preserved and returns when you re-enable
+                them.
+              </p>
+            </div>
           </div>
-          <div className="flex flex-col gap-1">
-            <h1 className="text-2xl font-semibold">Modules</h1>
-            <p className="text-sm text-muted-foreground">
-              Turn business modules on or off to match your workflow. Disabled modules are hidden
-              from navigation and blocked — your data is preserved and returns when you re-enable
-              them.
-            </p>
+
+          <div className="flex shrink-0 items-center justify-end gap-2">
+            {dirty && (
+              <Button variant="ghost" onClick={reset} disabled={saving}>
+                <RotateCcw data-icon="inline-start" />
+                Reset
+              </Button>
+            )}
+            <Button onClick={() => setConfirmOpen(true)} disabled={!dirty || saving}>
+              Save changes
+            </Button>
           </div>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Presets</CardTitle>
-            <CardDescription>Start from a common workflow, then fine-tune below.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-3">
-            {presets.map((preset) => (
-              <Button
-                key={preset.key}
-                variant="outline"
-                className="h-auto flex-col items-start gap-1 px-4 py-3 text-left"
-                onClick={() => applyPreset(preset)}
-              >
-                <span className="font-medium">{preset.label}</span>
-                <span className="text-xs font-normal text-muted-foreground">
-                  {preset.description}
-                </span>
-              </Button>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Workflow</CardTitle>
+            <CardTitle id="module-presets-heading">Presets</CardTitle>
             <CardDescription>
-              Click a stage or feature to toggle it. Dependencies are handled automatically.
+              Start from a common business setup, then customize individual modules below.
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <ModulePipeline
-              modules={modules}
-              selected={selected}
-              onToggle={toggle}
-              blockedReason={blockedReason}
-            />
+          <CardContent className="flex flex-col gap-8">
+            <section
+              aria-labelledby="module-presets-heading"
+              className="mx-auto flex w-full max-w-5xl flex-col gap-5"
+            >
+              <ToggleGroup
+                type="single"
+                value={activePreset}
+                onValueChange={(key) => {
+                  const preset = presets.find((candidate) => candidate.key === key)
+                  if (preset) applyPreset(preset)
+                }}
+                variant="outline"
+                aria-label="Module presets"
+                className="grid w-full grid-cols-1 items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-4"
+              >
+                {presets.map((preset) => {
+                  const active = preset.key === activePreset
+                  const Icon = PRESET_ICONS[preset.key] ?? Boxes
+                  const moduleCount = closureEnable(new Set(preset.modules)).size
+                  return (
+                    <ToggleGroupItem
+                      key={preset.key}
+                      value={preset.key}
+                      aria-label={`Apply ${preset.label} preset`}
+                      className="aspect-square h-auto w-full min-w-0 flex-col items-start justify-between whitespace-normal rounded-xl p-5 text-left data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:shadow-md"
+                    >
+                      <span className="flex w-full items-start justify-between gap-3">
+                        <span
+                          className={cn(
+                            'flex size-11 items-center justify-center rounded-lg',
+                            active
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted text-muted-foreground'
+                          )}
+                        >
+                          <Icon className="size-5" />
+                        </span>
+                        <Badge variant={active ? 'default' : 'outline'}>
+                          {active ? 'Selected' : 'Preset'}
+                        </Badge>
+                      </span>
+
+                      <span className="flex flex-col items-start gap-2">
+                        <span className="text-lg font-semibold">{preset.label}</span>
+                        <span className="text-sm font-normal text-muted-foreground">
+                          {preset.description}
+                        </span>
+                      </span>
+
+                      <span className="text-xs font-normal text-muted-foreground">
+                        {moduleCount} modules included
+                      </span>
+                    </ToggleGroupItem>
+                  )
+                })}
+              </ToggleGroup>
+            </section>
+
+            <Separator />
+
+            <section aria-labelledby="module-workflow-heading" className="flex flex-col gap-5">
+              <div className="flex flex-col gap-1">
+                <h3 id="module-workflow-heading" className="font-medium">
+                  Workflow
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Click a stage or feature to toggle it. Dependencies are handled automatically.
+                </p>
+              </div>
+              <ModulePipeline
+                modules={modules}
+                selected={selected}
+                onToggle={toggle}
+                blockedReason={blockedReason}
+              />
+            </section>
           </CardContent>
         </Card>
-
-        <div className="sticky bottom-4 flex items-center justify-end gap-2">
-          {dirty && (
-            <Button variant="ghost" onClick={reset} disabled={saving}>
-              <RotateCcw />
-              Reset
-            </Button>
-          )}
-          <Button onClick={() => setConfirmOpen(true)} disabled={!dirty || saving}>
-            Save changes
-          </Button>
-        </div>
       </div>
 
       <ConfirmDialog
