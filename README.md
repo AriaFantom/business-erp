@@ -1,4 +1,4 @@
-# LayerDreams Panel
+# Business ERP Panel
 
 Business panel for a 3D-printing / manufacturing operation: product, material and component catalog, production jobs with timers and printers, orders, invoices and quotations with PDF generation, POS with cash sessions, purchasing and supplier payments (AP), AR aging, stock takes, and InfluxDB-backed dashboards.
 
@@ -81,7 +81,7 @@ Images get `private, max-age=1y, immutable` (safe: the `?v=` token changes whene
 ### First deploy
 
 ```bash
-git clone <repo-url> layerdreams-panel && cd layerdreams-panel
+git clone <repo-url> Business ERP-panel && cd Business ERP-panel
 
 ./deploy.sh init # generate .env: all secrets auto-created (openssl),
                  # prompts only for APP_URL and APP_BIND
