@@ -132,33 +132,11 @@ Deployments are backup-free by default. To create and verify a database backup b
 
 On a server that predates the safe pipeline, first run `./deploy.sh pull`, then `./deploy.sh update`. This ensures the newly pulled script—not the already-running old script—controls the first migration-safe release.
 
-### Safe deployment pipeline
-
-Every full deploy/update performs these steps in order:
-
-1. Retain the current app image for application rollback, then build the new image while the old app stays online.
-2. Start/check persistent services. When `WITH_BACKUP=true`, create a verified PostgreSQL custom-format dump plus a mode-`600` `.env` copy before downtime.
-3. Stop only the app, run pending migrations in a one-off new-image container, then seed. Fresh databases run all initial seeders; existing databases run only `production_upgrade_seeder`, which may add required defaults/permissions but never replaces business data.
-4. Start the new app and require a healthy container. On migration, seed, or health failure, the previous application image is restored when available; the database is never automatically restored because that could erase writes.
-
-Only backward-compatible, expand/contract migrations are safe for automatic application rollback. Never combine destructive column/table removal with the release that stops using that data.
-
-### What deploy.sh validates before touching anything
-
-- docker installed, daemon running (distinguishes "daemon down" from "permission denied"), Compose v2 plugin present
-- `.env` exists and every required variable is non-empty
-- `DB_HOST`/`REDIS_HOST` are service names, not localhost
-- only one deployment/backup runs at once (via `flock`)
-- warns on: stale public `S3_ENDPOINT` values, < 2 GB free disk, `APP_BIND` port already in use
-- `init` additionally checks `openssl` is available, validates the `APP_URL`/`APP_BIND` you type, and refuses to overwrite an existing `.env`
 
 ### Exposing it to the world
 
 The stack deliberately stops at the published port. Point whatever you like at `APP_BIND` — a reverse proxy with TLS, a tunnel, or direct exposure via `APP_BIND=0.0.0.0:3333`. Nothing else (MinIO, Postgres, Redis, InfluxDB) is reachable from outside Docker, so there is nothing else to protect.
 
-### Backups
-
-Automatic archives default to `./backups/` (gitignored) and are never pruned automatically. Copy them off-host and test restores regularly; a backup on the same server is not disaster recovery. `./deploy.sh backup` can be scheduled independently. The PostgreSQL dump covers business data, while uploaded files and metrics remain in the `minio_data` and `influx_data` named volumes and need separate volume-level backups. Never use `./deploy.sh nuke` or `docker compose down -v` during an update.
 
 ## Local development
 
