@@ -166,10 +166,13 @@ On Windows, the development helper runs the infrastructure in Docker Desktop
 and the application directly through the locally installed Node.js/npm:
 
 ```powershell
-dev.cmd setup   # first run: install, start infrastructure, migrate, seed, run app
-dev.cmd         # later runs: start infrastructure and run app with HMR
-dev.cmd down    # stop infrastructure without deleting development data
+.\dev.ps1 setup   # first run: install, start infrastructure, migrate, seed, run app
+.\dev.ps1         # later runs: start infrastructure and run app with HMR
+.\dev.ps1 down    # stop infrastructure without deleting development data
 ```
+
+If local PowerShell scripts are disabled, use
+`powershell -ExecutionPolicy Bypass -File .\dev.ps1 setup`.
 
 The cross-platform manual equivalent is:
 
