@@ -15,7 +15,10 @@ Models extend generated `database/schema.ts`; never edit it or `.adonisjs/` manu
 ## Build, Test, and Development Commands
 
 - `npm install` installs dependencies (Node 24+); `npm run dev` starts HMR.
-- `docker-compose -f docker-compose.dev.yml up -d` starts local infrastructure.
+- On Windows, `dev.cmd setup` prepares a first-time development environment;
+  `dev.cmd` starts the Docker infrastructure and host-run npm app thereafter.
+- `docker compose -f docker-compose.dev.yml up -d` starts local infrastructure
+  when using the manual workflow.
 - `node ace migration:run && node ace db:seed` prepares the database.
 - `npm run build` creates production output; `npm start` runs it.
 - `npm test` runs Japa; target suites/files with `node ace test --suites=unit` or `--files="tests/unit/pricing.spec.ts"`.

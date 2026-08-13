@@ -162,8 +162,19 @@ Automatic archives default to `./backups/` (gitignored) and are never pruned aut
 
 ## Local development
 
+On Windows, the development helper runs the infrastructure in Docker Desktop
+and the application directly through the locally installed Node.js/npm:
+
+```powershell
+dev.cmd setup   # first run: install, start infrastructure, migrate, seed, run app
+dev.cmd         # later runs: start infrastructure and run app with HMR
+dev.cmd down    # stop infrastructure without deleting development data
+```
+
+The cross-platform manual equivalent is:
+
 ```bash
-docker-compose -f docker-compose.dev.yml up -d   # postgres/redis/minio/influx with dev creds
+docker compose -f docker-compose.dev.yml up -d   # postgres/redis/minio/influx with dev creds
 cp .env.dev.example .env                         # match the dev creds
 npm install
 node ace migration:run && node ace db:seed
