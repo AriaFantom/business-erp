@@ -28,6 +28,8 @@ Models extend generated `database/schema.ts`; never edit it or `.adonisjs/` manu
 
 Use TypeScript, two-space indentation, single quotes, Prettier, and the AdonisJS ESLint preset. Use `PascalCase` for classes/components, `camelCase` for symbols, backend `snake_case.ts`, and frontend kebab-case files. Prefer `#services/*` and `@/*` aliases. Name Japa tests `*.spec.ts`; use unit tests for pure logic and functional tests for routes, authorization, persistence, and regressions.
 
+For Inertia mutations that replace server-backed navigation or application configuration, disable preserved component state on success and invalidate prefetched pages so the persistent layout and edited page consume the same response snapshot.
+
 ## Production Deployment & Data Safety
 
 Run `./deploy.sh update` for releases; it always fast-forwards `main`, then migrates, seeds, and health-checks without backing up by default. `migrate-only` also skips seeders; `WITH_BACKUP=true` opts a release into a verified backup. Use reviewed expand/contract migrations. Never run `docker compose down -v`, `./deploy.sh nuke`, or destructive rollbacks; copy backups off-host.

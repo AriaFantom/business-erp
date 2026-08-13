@@ -125,17 +125,23 @@ test.group('Module settings', (group) => {
 
   test('a valid update persists and writes the setting row', async ({ client, assert }) => {
     const manager = await makeManager(`valid+${Date.now()}@test.com`)
+    const requested = ['inventory', 'orders', 'invoices', 'pos', 'reports']
     const res = await client
       .post('/system/modules')
       .loginAs(manager)
       .withCsrfToken()
       .redirects(0)
-      .json({ enabledModules: ['inventory', 'orders', 'invoices', 'pos', 'reports'] })
+      .json({ enabledModules: requested })
     res.assertStatus(302)
 
     const row = await AppSetting.findBy('key', ENABLED_MODULES_KEY)
     assert.isNotNull(row)
     assert.notInclude(row!.value as string[], 'purchase')
     assert.includeMembers(row!.value as string[], ['inventory', 'orders', 'invoices'])
+
+    // Navigation reads this cached service value on the redirect immediately
+    // after saving. It must match the persisted selection without a refresh.
+    const enabledAfterSave = await getEnabledModules()
+    assert.deepEqual(enabledAfterSave, requested)
   })
 })

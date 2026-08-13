@@ -101,7 +101,16 @@ export default function ModulesSettings() {
       '/system/modules',
       { enabledModules: Array.from(selected) },
       {
+        // A module update changes both this page and the persistent navigation.
+        // Recreate the page from the redirect props instead of keeping the
+        // pre-save React state that Inertia preserves for POST requests.
+        preserveState: false,
         preserveScroll: true,
+        onSuccess: () => {
+          // Module-gated destinations may have been prefetched while they were
+          // enabled. Do not let those stale pages survive a configuration change.
+          router.flushAll()
+        },
         onFinish: () => {
           setSaving(false)
           setConfirmOpen(false)
