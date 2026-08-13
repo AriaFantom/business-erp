@@ -3,7 +3,7 @@ node_modules
 build
 tmp/*
 !tmp/.gitkeep
-.adonisjs
+.adonisjs/*
 # Secrets
 .env
 .env.local
