@@ -390,12 +390,8 @@ router
       .use(middleware.module({ module: 'pos' }))
 
     // ── Reports ───────────────────────────────────────────────────────
-    router
-      .group(() => {
-        router.get('reports/profit', [ReportsController, 'profit']).as('reports.profit')
-        router.get('reports/inventory', [ReportsController, 'inventory']).as('reports.inventory')
-        router.get('reports/jobs', [ReportsController, 'jobs']).as('reports.jobs')
-      })
-      .use(middleware.module({ module: 'reports' }))
+    router.get('reports/profit', [ReportsController, 'profit']).as('reports.profit')
+    router.get('reports/inventory', [ReportsController, 'inventory']).as('reports.inventory')
+    router.get('reports/jobs', [ReportsController, 'jobs']).as('reports.jobs')
   })
   .use(middleware.auth())

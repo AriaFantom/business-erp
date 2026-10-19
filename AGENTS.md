@@ -10,7 +10,7 @@ Define routes in `start/routes.ts`; authenticated routes use session auth, Bounc
 
 Put business rules and state transitions in `app/services/`. Multi-record writes use Lucid transactions and row locks where needed. Record mutations through `audit(...)` in the same transaction. Use `DomainError` for database-dependent failures; Vine handles request-shape errors.
 
-Models extend generated `database/schema.ts`; never edit it or `.adonisjs/` manually. Module definitions belong in `app/services/modules/registry.ts`. S3/MinIO files stay private and stream through authorized app routes. Web-only schedules are registered by `providers/scheduler_provider.ts`.
+Models extend generated `database/schema.ts`; never edit it or `.adonisjs/` manually. Configurable module definitions belong in `app/services/modules/registry.ts`; reports are always available and remain protected by `reports.view`, not the module gate. S3/MinIO files stay private and stream through authorized app routes. Web-only schedules are registered by `providers/scheduler_provider.ts`.
 
 ## Build, Test, and Development Commands
 
@@ -24,13 +24,17 @@ Models extend generated `database/schema.ts`; never edit it or `.adonisjs/` manu
 - `npm test` runs Japa; target suites/files with `node ace test --suites=unit` or `--files="tests/unit/pricing.spec.ts"`.
 - `npm run lint`, `npm run typecheck`, and `npm run format` check quality.
 
+Vite pre-bundles `motion/react` for the lazy-loaded Modules and Production Floor pages. Browser tests use a separate Vite cache so they cannot invalidate assets served by an active development session.
+
 ## Coding & Testing Conventions
 
 Use TypeScript, two-space indentation, single quotes, Prettier, and the AdonisJS ESLint preset. Use `PascalCase` for classes/components, `camelCase` for symbols, backend `snake_case.ts`, and frontend kebab-case files. Prefer `#services/*` and `@/*` aliases. Name Japa tests `*.spec.ts`; use unit tests for pure logic and functional tests for routes, authorization, persistence, and regressions.
 
 For Inertia mutations that replace server-backed navigation or application configuration, disable preserved component state on success and invalidate prefetched pages so the persistent layout and edited page consume the same response snapshot.
 
-The module settings page uses the full dashboard content width, with Save and conditional Reset actions right-aligned in the page-title header. Presets and the connected workflow share one configuration card whose header introduces the presets without duplicating that text in the content, with the four large equal module-style preset options constrained and centered above the workflow. Operational stages use constrained columns with visible gaps and frequent, closely staggered MagicUI-style `AnimatedBeam` connections; Reports is rendered as a separate subsection.
+The products list offers both a primary, mobile-friendly three-step Basics, Details, Review dialog in `inertia/components/catalog/new-product-dialog.tsx` and a one-page quick add dialog. Keep the guided form's client-side step checks aligned with `createProductValidator`, and keep its fields mounted across steps so `SkuField` remembers manually edited SKUs. Quick add collects name, SKU, category, and an optional product picture; it omits description and percentages. Both forms submit through `products.store`, which inherits omitted profit and tax percentages from the selected category and saves an optional image using catalog image storage. Cover default inheritance, explicit overrides, and image creation in `tests/functional/products.spec.ts`.
+
+The module settings page uses the full dashboard content width, with Save and conditional Reset actions right-aligned in the page-title header. Presets and the connected workflow share one configuration card whose header introduces the presets without duplicating that text in the content, with the four large equal module-style preset options constrained and centered above the workflow. Operational stages use constrained columns with visible gaps and frequent, closely staggered MagicUI-style `AnimatedBeam` connections. Reports are not configurable and must not appear in this workflow or its presets.
 
 ## Production Deployment & Data Safety
 

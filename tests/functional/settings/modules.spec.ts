@@ -79,16 +79,7 @@ test.group('Module settings', (group) => {
     })
     // Everything except purchase.
     await setEnabledModules(
-      [
-        'inventory',
-        'manufacturing',
-        'machines',
-        'orders',
-        'invoices',
-        'quotations',
-        'pos',
-        'reports',
-      ],
+      ['inventory', 'manufacturing', 'machines', 'orders', 'invoices', 'quotations', 'pos'],
       owner
     )
 
@@ -125,7 +116,7 @@ test.group('Module settings', (group) => {
 
   test('a valid update persists and writes the setting row', async ({ client, assert }) => {
     const manager = await makeManager(`valid+${Date.now()}@test.com`)
-    const requested = ['inventory', 'orders', 'invoices', 'pos', 'reports']
+    const requested = ['inventory', 'orders', 'invoices', 'pos']
     const res = await client
       .post('/system/modules')
       .loginAs(manager)
@@ -143,5 +134,19 @@ test.group('Module settings', (group) => {
     // after saving. It must match the persisted selection without a refresh.
     const enabledAfterSave = await getEnabledModules()
     assert.deepEqual(enabledAfterSave, requested)
+  })
+
+  test('reports remain available when every configurable module is disabled', async ({
+    client,
+    assert,
+  }) => {
+    const viewer = await makeUserWithPerms(`reports+${Date.now()}@test.com`, ['reports.view'])
+    await setEnabledModules([], viewer)
+
+    for (const path of ['/reports/profit', '/reports/inventory', '/reports/jobs']) {
+      const response = await client.get(path).loginAs(viewer).redirects(0)
+      response.assertStatus(200)
+    }
+    assert.deepEqual(await getEnabledModules(), [])
   })
 })

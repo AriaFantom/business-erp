@@ -45,6 +45,7 @@ export function SkuField({ name, value, onChange, error, id = 'sku' }: Props) {
         <Input
           id={id}
           value={value}
+          aria-invalid={!!error}
           placeholder="Auto-filled"
           onChange={(e) => {
             editedByHand.current = true

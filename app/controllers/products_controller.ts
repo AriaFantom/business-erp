@@ -1,6 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { DateTime } from 'luxon'
 import Product from '#models/product'
+import ProductCategory from '#models/product_category'
 import ProductAttachment from '#models/product_attachment'
 import {
   createProductValidator,
@@ -88,22 +89,33 @@ export default class ProductsController {
       return response.redirect().back()
     }
 
+    const category = payload.categoryId
+      ? await ProductCategory.findOrFail(payload.categoryId)
+      : null
     const product = await Product.create({
       sku: payload.sku,
       name: payload.name,
       description: payload.description ?? null,
       categoryId: payload.categoryId ?? null,
       defaultProfitPct:
-        payload.defaultProfitPct !== undefined ? String(payload.defaultProfitPct) : null,
-      taxRatePct: payload.taxRatePct !== undefined ? String(payload.taxRatePct) : null,
+        payload.defaultProfitPct !== undefined
+          ? String(payload.defaultProfitPct)
+          : (category?.defaultProfitPct ?? null),
+      taxRatePct:
+        payload.taxRatePct !== undefined
+          ? String(payload.taxRatePct)
+          : (category?.taxRatePct ?? null),
       isActive: true,
     })
+    if (payload.image) {
+      await storeCatalogImage('product', product, payload.image)
+    }
     await audit({
       actor: auth.user!,
       action: 'product.create',
       targetType: 'product',
       targetId: product.id,
-      payload,
+      payload: { ...payload, image: payload.image ? '<file>' : undefined },
     })
     session.flash('success', `Product "${product.name}" created.`)
     return response.redirect().back()

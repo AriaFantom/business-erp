@@ -4,24 +4,6 @@ import { Link } from '@adonisjs/inertia/react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
   Table,
   TableBody,
   TableCell,
@@ -37,11 +19,15 @@ import { StatCard } from '@/components/catalog/stat-card'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { ProductFilesDialog } from '@/components/catalog/product-files-dialog'
 import { ProductQrDialog } from '@/components/catalog/product-qr-dialog'
+import {
+  NewProductDialog,
+  type ProductCategoryOption,
+} from '@/components/catalog/new-product-dialog'
+import { QuickProductDialog } from '@/components/catalog/quick-product-dialog'
 import { Package, CheckCircle2, XCircle } from 'lucide-react'
 import { ColumnVisibilityMenu, type ColumnDef } from '@/components/data-table/column-visibility'
 import { useColumnVisibility } from '@/hooks/use-column-visibility'
 import { EmptyState } from '@/components/empty-state'
-import { SkuField } from '@/components/catalog/sku-field'
 
 type Row = {
   id: number
@@ -58,162 +44,22 @@ type Row = {
   attachmentCount: number
 }
 
-type CategoryOpt = {
-  id: number
-  name: string
-  defaultProfitPct: string | null
-  taxRatePct: string | null
-}
-
 type Filters = { q: string; status: string; categoryId: string }
 
 type Counts = { total: number; active: number; archived: number }
 
 type PageProps = {
   products: Row[]
-  categories: CategoryOpt[]
+  categories: ProductCategoryOption[]
   filters: Filters
   counts: Counts
 }
 
-function NewProductDialog({ categories }: { categories: CategoryOpt[] }) {
-  const [open, setOpen] = useState(false)
-  const { data, setData, post, processing, errors, reset, transform } = useForm({
-    sku: '',
-    name: '',
-    description: '',
-    categoryId: '',
-    defaultProfitPct: '',
-    taxRatePct: '',
-  })
-
+function ProductCreateActions({ categories }: { categories: ProductCategoryOption[] }) {
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>New product</Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Create product</DialogTitle>
-        </DialogHeader>
-        <form
-          className="flex flex-col gap-4"
-          onSubmit={(e) => {
-            e.preventDefault()
-            transform((d) => ({
-              sku: d.sku,
-              name: d.name,
-              description: d.description || undefined,
-              categoryId: d.categoryId ? Number(d.categoryId) : undefined,
-              defaultProfitPct: d.defaultProfitPct ? Number(d.defaultProfitPct) : undefined,
-              taxRatePct: d.taxRatePct ? Number(d.taxRatePct) : undefined,
-            }))
-            post('/catalog/products', {
-              preserveScroll: true,
-              onSuccess: () => {
-                reset()
-                setOpen(false)
-              },
-            })
-          }}
-        >
-          <div className="grid grid-cols-2 gap-3">
-            <SkuField
-              id="product-sku"
-              name={data.name}
-              value={data.sku}
-              onChange={(sku) => setData('sku', sku)}
-              error={errors.sku}
-            />
-            <Field label="Name" error={errors.name}>
-              <Input
-                placeholder="e.g. Crochet Tote Bag"
-                value={data.name}
-                onChange={(e) => setData('name', e.target.value)}
-              />
-            </Field>
-          </div>
-          <Field label="Description" error={errors.description}>
-            <Textarea
-              rows={3}
-              className="resize-none"
-              placeholder="What is this product? Materials, size, finish…"
-              value={data.description}
-              onChange={(e) => setData('description', e.target.value)}
-            />
-          </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Category" error={errors.categoryId}>
-              <Select
-                value={data.categoryId}
-                onValueChange={(v) => {
-                  setData('categoryId', v)
-                  const cat = categories.find((c) => String(c.id) === v)
-                  if (cat) {
-                    setData(
-                      'defaultProfitPct',
-                      cat.defaultProfitPct !== null ? String(cat.defaultProfitPct) : ''
-                    )
-                    setData('taxRatePct', cat.taxRatePct !== null ? String(cat.taxRatePct) : '')
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="None" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={String(c.id)}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field label="Default profit %" error={errors.defaultProfitPct}>
-              <Input
-                type="number"
-                step="0.01"
-                placeholder="e.g. 30"
-                value={data.defaultProfitPct}
-                onChange={(e) => setData('defaultProfitPct', e.target.value)}
-              />
-            </Field>
-          </div>
-          <Field label="Tax rate %" error={errors.taxRatePct}>
-            <Input
-              type="number"
-              step="0.01"
-              placeholder="e.g. 18"
-              value={data.taxRatePct}
-              onChange={(e) => setData('taxRatePct', e.target.value)}
-            />
-          </Field>
-          <DialogFooter>
-            <Button type="submit" variant="success" disabled={processing}>
-              {processing ? 'Saving…' : 'Create'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function Field({
-  label,
-  error,
-  children,
-}: {
-  label: string
-  error?: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="flex flex-col gap-1">
-      <Label>{label}</Label>
-      {children}
-      {error && <span className="text-xs text-destructive">{error}</span>}
+    <div className="flex flex-wrap items-center gap-2">
+      <NewProductDialog categories={categories} />
+      <QuickProductDialog categories={categories} />
     </div>
   )
 }
@@ -282,9 +128,7 @@ export default function ProductsPage({ products, categories, filters, counts }: 
           <h1 className="text-2xl font-semibold">Products</h1>
           <p className="text-sm text-muted-foreground">{products.length} products in catalog.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <NewProductDialog categories={categories} />
-        </div>
+        <ProductCreateActions categories={categories} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -346,7 +190,7 @@ export default function ProductsPage({ products, categories, filters, counts }: 
               icon={Package}
               title="No products found"
               description="Add a product or adjust your search and filters."
-              action={<NewProductDialog categories={categories} />}
+              action={<ProductCreateActions categories={categories} />}
             />
           ) : (
             <Table>

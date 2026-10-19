@@ -4,7 +4,7 @@
  * Settings pipeline UI should lay them out.
  *
  * Disabling a module hides it from navigation, blocks its routes, and trims
- * cross-module touchpoints (dashboard widgets, reports, pricing). Dependencies
+ * cross-module touchpoints (dashboard widgets and pricing). Dependencies
  * are enforced so a *hard* seam (e.g. a sale writing stock) can never point at a
  * disabled module.
  *
@@ -23,13 +23,12 @@ export const MODULE_KEYS = [
   'invoices',
   'quotations',
   'pos',
-  'reports',
 ] as const
 
 export type ModuleKey = (typeof MODULE_KEYS)[number]
 
 /** Pipeline stages, left-to-right, matching the workflow sketch. */
-export type PipelineStage = 'purchase' | 'manufacturing' | 'inventory' | 'sales' | 'overview'
+export type PipelineStage = 'purchase' | 'manufacturing' | 'inventory' | 'sales'
 
 export interface ModuleDef {
   key: ModuleKey
@@ -139,15 +138,6 @@ export const MODULES: ModuleDef[] = [
     routePrefixes: ['/pos'],
     icon: 'Store',
   },
-  {
-    key: 'reports',
-    label: 'Reports',
-    description: 'Profit, inventory and job reports across the enabled modules.',
-    stage: 'overview',
-    dependsOn: [],
-    routePrefixes: ['/reports'],
-    icon: 'ClipboardList',
-  },
 ]
 
 const MODULE_BY_KEY = new Map<ModuleKey, ModuleDef>(MODULES.map((m) => [m.key, m]))
@@ -181,7 +171,7 @@ export const PRESETS: ModulePreset[] = [
     key: 'wholesale',
     label: 'Wholesale',
     description: 'Buy and resell: Purchase → Inventory → Order.',
-    modules: ['purchase', 'inventory', 'orders', 'invoices', 'quotations', 'reports'],
+    modules: ['purchase', 'inventory', 'orders', 'invoices', 'quotations'],
   },
   {
     key: 'manufacturer',
@@ -201,14 +191,13 @@ export const PRESETS: ModulePreset[] = [
       'orders',
       'invoices',
       'quotations',
-      'reports',
     ],
   },
   {
     key: 'retail',
     label: 'Retail',
     description: 'Sell from stock: Inventory → Sale.',
-    modules: ['inventory', 'orders', 'invoices', 'pos', 'reports'],
+    modules: ['inventory', 'orders', 'invoices', 'pos'],
   },
 ]
 

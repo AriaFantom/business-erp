@@ -1,6 +1,7 @@
 import { test } from '@japa/runner'
 import {
   PRESETS,
+  normalizeKeys,
   resolveCascade,
   resolveEnable,
   validateSelection,
@@ -8,6 +9,10 @@ import {
 } from '#services/modules/registry'
 
 test.group('module registry: validateSelection', () => {
+  test('legacy reports setting is ignored because reports are always available', ({ assert }) => {
+    assert.deepEqual(normalizeKeys(['inventory', 'reports']), ['inventory'])
+  })
+
   test('a full selection has no violations', ({ assert }) => {
     const all: ModuleKey[] = [
       'inventory',
@@ -19,7 +24,6 @@ test.group('module registry: validateSelection', () => {
       'invoices',
       'quotations',
       'pos',
-      'reports',
     ]
     assert.lengthOf(validateSelection(all), 0)
   })
@@ -58,10 +62,9 @@ test.group('module registry: resolveCascade', () => {
       'invoices',
       'quotations',
       'pos',
-      'reports',
     ])
-    // Only modules with no unmet deps survive: invoices and reports.
-    assert.deepEqual(result.sort(), ['invoices', 'reports'])
+    // Only invoices have no unmet dependencies.
+    assert.deepEqual(result, ['invoices'])
   })
 
   test('disabling orders cascades to its dependents (quotations, pos)', ({ assert }) => {

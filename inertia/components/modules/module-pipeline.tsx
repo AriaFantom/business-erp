@@ -1,5 +1,4 @@
 import {
-  ClipboardList,
   Cpu,
   Factory,
   FileText,
@@ -15,7 +14,6 @@ import { useRef } from 'react'
 
 import { AnimatedBeam } from '@/components/ui/animated-beam'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
@@ -23,7 +21,7 @@ export type ModuleDef = {
   key: string
   label: string
   description: string
-  stage: 'purchase' | 'manufacturing' | 'inventory' | 'sales' | 'overview'
+  stage: 'purchase' | 'manufacturing' | 'inventory' | 'sales'
   parent?: string
   dependsOn: string[]
   routePrefixes: string[]
@@ -40,7 +38,6 @@ const ICONS: Record<string, LucideIcon> = {
   Receipt,
   FileText,
   Store,
-  ClipboardList,
 }
 
 /** Pipeline stage columns, left-to-right, matching the workflow sketch. */
@@ -73,8 +70,6 @@ export function ModulePipeline({ modules, selected, onToggle, blockedReason }: P
     modules.find((m) => m.stage === stage && !m.parent)
   const stageChips = (stage: ModuleDef['stage']) =>
     modules.filter((m) => m.stage === stage && m.parent)
-
-  const reports = byKey.get('reports')
 
   return (
     <div className="flex flex-col gap-8">
@@ -165,27 +160,6 @@ export function ModulePipeline({ modules, selected, onToggle, blockedReason }: P
           duration={20.25}
         />
       </div>
-
-      {reports && (
-        <div className="flex flex-col gap-5">
-          <Separator />
-          <div className="flex flex-col gap-1">
-            <h3 className="font-medium">Reporting</h3>
-            <p className="text-sm text-muted-foreground">
-              Reports are configured separately from the operational workflow.
-            </p>
-          </div>
-          <div className="max-w-sm">
-            <StageNode
-              module={reports}
-              on={selected.has(reports.key)}
-              blocked={blockedReason(reports.key)}
-              depLabels={reports.dependsOn.map(labelOf)}
-              onToggle={() => onToggle(reports.key)}
-            />
-          </div>
-        </div>
-      )}
     </div>
   )
 }

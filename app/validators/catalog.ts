@@ -138,6 +138,7 @@ export const createProductValidator = vine.compile(
     categoryId: vine.number().positive().optional(),
     defaultProfitPct: percentRule.optional(),
     taxRatePct: percentRule.optional(),
+    image: vine.file({ size: '15mb', extnames: ['jpg', 'jpeg', 'png', 'webp'] }).optional(),
   })
 )
 

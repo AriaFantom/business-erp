@@ -1,8 +1,10 @@
 import { test } from '@japa/runner'
 import testUtils from '@adonisjs/core/services/test_utils'
+import drive from '@adonisjs/drive/services/main'
 import User from '#models/user'
 import Role from '#models/role'
 import Product from '#models/product'
+import ProductCategory from '#models/product_category'
 import AuditEvent from '#models/audit_event'
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -39,7 +41,107 @@ async function makeProduct(overrides: Partial<{ sku: string; name: string }> = {
   } as any)
 }
 
+async function makeUserWithProductsCreate(email: string): Promise<User> {
+  const role = await Role.create({
+    name: `t_prod_create_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
+    displayName: 'Test Products Create',
+    isSystem: false,
+    parentRoleId: null,
+  })
+  await role.syncPermissions(['products.create'])
+
+  const user = await User.create({
+    email,
+    password: 'Passw0rd!',
+    firstName: 'T',
+    lastName: 'C',
+    isOwner: false,
+  })
+  await user.related('roles').attach([role.id])
+  return user
+}
+
 // ── tests ──────────────────────────────────────────────────────────────────
+
+test.group('Product creation', (group) => {
+  group.each.setup(() => testUtils.db().withGlobalTransaction())
+  group.each.setup(() => {
+    drive.fake()
+    return () => drive.restore()
+  })
+
+  test('inherits category defaults and stores a picture during creation', async ({
+    client,
+    assert,
+  }) => {
+    const actor = await makeUserWithProductsCreate(`create+${Date.now()}@test.com`)
+    const category = await ProductCategory.create({
+      name: `Test Category ${Date.now()}`,
+      defaultProfitPct: '27.5',
+      taxRatePct: '18',
+      isActive: true,
+    })
+    const sku = `CREATE-${Date.now()}`
+    const png = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9f4C0AAAAASUVORK5CYII=',
+      'base64'
+    )
+
+    const response = await client
+      .post('/catalog/products')
+      .loginAs(actor)
+      .withCsrfToken()
+      .redirects(0)
+      .field('sku', sku)
+      .field('name', 'Quick Product')
+      .field('categoryId', String(category.id))
+      .file('image', png, { filename: 'picture.png', contentType: 'image/png' })
+
+    response.assertStatus(302)
+    const product = await Product.findByOrFail('sku', sku)
+    assert.equal(product.categoryId, category.id)
+    assert.equal(Number(product.defaultProfitPct), 27.5)
+    assert.equal(Number(product.taxRatePct), 18)
+    assert.isNotNull(product.imageKey)
+    assert.isTrue(await drive.use().exists(product.imageKey!))
+
+    const event = await AuditEvent.query()
+      .where('action', 'product.create')
+      .where('target_id', product.id)
+      .firstOrFail()
+    assert.equal(event.payload?.image, '<file>')
+  })
+
+  test('explicit percentages override category defaults', async ({ client, assert }) => {
+    const actor = await makeUserWithProductsCreate(`override+${Date.now()}@test.com`)
+    const category = await ProductCategory.create({
+      name: `Override Category ${Date.now()}`,
+      defaultProfitPct: '30',
+      taxRatePct: '18',
+      isActive: true,
+    })
+    const sku = `OVERRIDE-${Date.now()}`
+
+    const response = await client
+      .post('/catalog/products')
+      .loginAs(actor)
+      .withCsrfToken()
+      .redirects(0)
+      .json({
+        sku,
+        name: 'Configured Product',
+        categoryId: category.id,
+        defaultProfitPct: 0,
+        taxRatePct: 5,
+      })
+
+    response.assertStatus(302)
+    const product = await Product.findByOrFail('sku', sku)
+    assert.equal(Number(product.defaultProfitPct), 0)
+    assert.equal(Number(product.taxRatePct), 5)
+    assert.isNull(product.imageKey)
+  })
+})
 
 test.group('Product default-price endpoints', (group) => {
   group.each.setup(() => testUtils.db().withGlobalTransaction())
