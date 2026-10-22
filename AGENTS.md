@@ -10,6 +10,14 @@ Define routes in `start/routes.ts`; authenticated routes use session auth, Bounc
 
 Put business rules and state transitions in `app/services/`. Multi-record writes use Lucid transactions and row locks where needed. Record mutations through `audit(...)` in the same transaction. Use `DomainError` for database-dependent failures; Vine handles request-shape errors.
 
+Invitation and login email matching trims and lowercases addresses without removing dots or tags. Existing provider-normalized accounts remain accessible through a password-verified legacy lookup when no exact account matches; never rewrite or merge those accounts. Invitation acceptance locks and consumes the invitation inside the user-creation transaction; delivery state is separate from pending/accepted status. Keep all pending invitations visible, including expired links, so they can be retried; refresh the list on focus and at 15-second intervals while visible.
+
+Roles have a persisted, highest-first `rankPosition`. The old `parentRoleId` remains only for compatibility; authorization and the management UI use rank order. The Owner rank stays fixed first. Managers with `roles.update` can drag only ranks below their own highest assigned role, with all of their own roles fixed. Feature permissions are still the union of assigned roles. Serialize role creation, deletion, reorder, and assignment with the shared database lock, recheck authorization after acquiring it, and audit writes in the same transaction. Preserve custom rank positions when seeding. User role editing exposes server-calculated editability and allowed roles; never allow self-editing, Owner editing, or an empty role set.
+
+User revocation is reversible (`users.isActive`); preserve accounts and records. Deny revoked users at login and terminate their existing sessions on the next request. Revoke/restore is target-aware (`users.remove`), excluding self and Owner and respecting ranked-role boundaries; serialize and audit access changes.
+
+Dashboard branding lives in `app_settings` under `dashboard_branding`. Only the owner may rename the dashboard or upload/remove its private icon; share current branding through Inertia and stream the icon through an authenticated route. Audit setting changes in their transaction and clean up replaced images after commit.
+
 Models extend generated `database/schema.ts`; never edit it or `.adonisjs/` manually. Configurable module definitions belong in `app/services/modules/registry.ts`; reports are always available and remain protected by `reports.view`, not the module gate. S3/MinIO files stay private and stream through authorized app routes. Web-only schedules are registered by `providers/scheduler_provider.ts`.
 
 ## Build, Test, and Development Commands
@@ -25,6 +33,7 @@ Models extend generated `database/schema.ts`; never edit it or `.adonisjs/` manu
 - `npm run lint`, `npm run typecheck`, and `npm run format` check quality.
 
 Vite pre-bundles `motion/react` for the lazy-loaded Modules and Production Floor pages. Browser tests use a separate Vite cache so they cannot invalidate assets served by an active development session.
+The test runner forces a distinct `*_test` PostgreSQL database (default `dev_test`, override with `TEST_DB_DATABASE`) before application boot. Create and migrate that database before running Japa; never point tests at `dev`, since existing test helpers truncate tables. Test HTTP sessions use the in-memory store so Japa's session and CSRF clients share fixture state; development and production keep their configured store.
 
 ## Coding & Testing Conventions
 
@@ -39,6 +48,8 @@ The module settings page uses the full dashboard content width, with Save and co
 ## Production Deployment & Data Safety
 
 Run `./deploy.sh update` for releases; it always fast-forwards `main`, then migrates, seeds, and health-checks without backing up by default. `migrate-only` also skips seeders; `WITH_BACKUP=true` opts a release into a verified backup. Use reviewed expand/contract migrations. Never run `docker compose down -v`, `./deploy.sh nuke`, or destructive rollbacks; copy backups off-host.
+
+When `INFLUX_ENABLED=true`, HTTP startup requires a reachable InfluxDB 2.x `/ready` endpoint and a token-accessible configured organization/bucket; incomplete configuration or an unavailable store must fail startup. Railway's `InfluxDB` service uses a persistent `/var/lib/influxdb2` volume and the app connects over its private domain on port 8086; keep its initialization token in Railway variables, never in the repository. Local development may leave Influx disabled.
 
 ## Commits, Pull Requests & Guide Maintenance
 

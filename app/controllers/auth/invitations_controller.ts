@@ -5,6 +5,11 @@ import { acceptInvitationValidator } from '#validators/invitation'
 import { DateTime } from 'luxon'
 import db from '@adonisjs/lucid/services/db'
 import { verifyInvitationToken, type InvitationPurpose } from '#services/invitation_token'
+import { findUserByEmail, normalizeEmailAddress } from '#services/email_addresses'
+import { audit } from '#services/audit'
+import { lockRoleOrder } from '#services/role_order'
+
+class AcceptanceError extends Error {}
 
 async function resolveInvitation(token: string) {
   // The same URL has to handle both setup and invite tokens, so try both
@@ -50,55 +55,82 @@ export default class InvitationController {
   /** POST /invite/:token */
   async store({ params, request, response, session }: HttpContext) {
     const payload = await request.validateUsing(acceptInvitationValidator)
-
-    const invitation = await resolveInvitation(params.token)
-
-    if (!invitation) {
+    const purpose = (['invite', 'setup'] as InvitationPurpose[]).find(
+      (candidate) => verifyInvitationToken(params.token, candidate) !== null
+    )
+    const invitationId = purpose ? verifyInvitationToken(params.token, purpose) : null
+    if (!purpose || invitationId === null) {
       session.flash('error', 'This invitation is no longer valid.')
       return response.redirect('/login')
     }
 
-    // Resolve final email. For locked invitations, ignore client input.
-    const finalEmail = invitation.email ?? payload.email
+    try {
+      await db.transaction(async (trx) => {
+        await lockRoleOrder(trx)
+        const invitation = await Invitation.query({ client: trx })
+          .where('id', invitationId)
+          .forUpdate()
+          .first()
+        if (
+          !invitation ||
+          invitation.token !== params.token ||
+          invitation.type !== purpose ||
+          invitation.status !== 'pending' ||
+          invitation.expiresAt.toMillis() <= DateTime.now().toMillis()
+        ) {
+          throw new AcceptanceError('This invitation is no longer valid.')
+        }
 
-    if (!finalEmail) {
-      session.flash('errors', { email: 'Email is required.' })
-      return response.redirect().back()
+        const finalEmail = invitation.email ?? payload.email
+        if (!finalEmail) throw new AcceptanceError('Email is required.')
+        const address = normalizeEmailAddress(finalEmail)
+        if (
+          invitation.email !== null &&
+          payload.email !== undefined &&
+          normalizeEmailAddress(payload.email) !== address
+        ) {
+          throw new AcceptanceError('Email cannot be changed.')
+        }
+        // Different invitation rows for the same address cannot create accounts concurrently.
+        await trx.rawQuery('SELECT pg_advisory_xact_lock(179001, hashtext(?))', [address])
+        if (await findUserByEmail(address, trx)) {
+          throw new AcceptanceError('An account with this email already exists.')
+        }
+
+        const user = new User()
+        user.useTransaction(trx)
+        user.email = address
+        user.password = payload.password
+        user.firstName = payload.firstName
+        user.lastName = payload.lastName
+        user.isOwner = invitation.type === 'setup'
+        await user.save()
+        await user.related('roles').attach([invitation.roleId])
+
+        invitation.useTransaction(trx)
+        invitation.status = 'accepted'
+        invitation.acceptedAt = DateTime.now()
+        await invitation.save()
+        await audit({
+          actor: user,
+          action: 'invitation.accept',
+          targetType: 'invitation',
+          targetId: invitation.id,
+          trx,
+        })
+      })
+    } catch (error) {
+      if (error instanceof AcceptanceError || (error as { code?: string }).code === '23505') {
+        session.flash(
+          'error',
+          error instanceof AcceptanceError
+            ? error.message
+            : 'An account with this email already exists.'
+        )
+        return response.redirect().back()
+      }
+      throw error
     }
-
-    // For locked invitations, refuse any attempt to override the email.
-    if (
-      invitation.email !== null &&
-      payload.email !== undefined &&
-      payload.email !== invitation.email
-    ) {
-      return response.badRequest({ message: 'Email cannot be changed.' })
-    }
-
-    // Avoid the noisier unique-constraint error.
-    const existing = await User.findBy('email', finalEmail)
-    if (existing) {
-      session.flash('errors', { email: 'A user with this email already exists.' })
-      return response.redirect().back()
-    }
-
-    await db.transaction(async (trx) => {
-      const user = new User()
-      user.useTransaction(trx)
-      user.email = finalEmail
-      user.password = payload.password // hashed by withAuthFinder mixin's beforeSave hook
-      user.firstName = payload.firstName
-      user.lastName = payload.lastName
-      user.isOwner = invitation.type === 'setup'
-      await user.save()
-
-      await user.related('roles').attach([invitation.roleId])
-
-      invitation.useTransaction(trx)
-      invitation.status = 'accepted'
-      invitation.acceptedAt = DateTime.now()
-      await invitation.save()
-    })
 
     session.flash('success', 'Account created. Please log in.')
     return response.redirect('/login')

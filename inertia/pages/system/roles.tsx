@@ -1,6 +1,24 @@
-import { useMemo, useState, type ReactElement } from 'react'
+import { useEffect, useMemo, useState, type ReactElement } from 'react'
 import { router, useForm, usePage } from '@inertiajs/react'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, GripVertical } from 'lucide-react'
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 import { ConfirmDialog } from '@/components/confirm-dialog'
 
@@ -18,13 +36,6 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import type { InertiaProps } from '@/types'
@@ -35,9 +46,10 @@ type RoleOption = {
   displayName: string
   description: string | null
   isSystem: boolean
-  parentRoleId: number | null
+  rankPosition: number
   permissions: string[]
   assignable: boolean
+  reorderable: boolean
 }
 
 type PermissionOption = {
@@ -50,8 +62,6 @@ type RolesPageProps = {
   permissionCatalog: PermissionOption[]
 }
 
-type RoleNode = RoleOption & { depth: number }
-
 function groupPermissions(catalog: PermissionOption[]): Array<[string, PermissionOption[]]> {
   const groups: Record<string, PermissionOption[]> = {}
   for (const p of catalog) {
@@ -62,55 +72,11 @@ function groupPermissions(catalog: PermissionOption[]): Array<[string, Permissio
   return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b))
 }
 
-/**
- * Flatten the role forest into a depth-first list, mirroring how the server
- * walks the recursive CTE. Roots and siblings sort by displayName.
- */
-function flattenRoleTree(roles: RoleOption[]): RoleNode[] {
-  const byParent = new Map<number | null, RoleOption[]>()
-  for (const role of roles) {
-    const parentKey = role.parentRoleId
-    if (!byParent.has(parentKey)) byParent.set(parentKey, [])
-    byParent.get(parentKey)!.push(role)
-  }
-  for (const list of byParent.values()) {
-    list.sort((a, b) => a.displayName.localeCompare(b.displayName))
-  }
-  const out: RoleNode[] = []
-  const knownIds = new Set(roles.map((r) => r.id))
-  const visit = (parent: number | null, depth: number) => {
-    const children = byParent.get(parent) ?? []
-    for (const child of children) {
-      out.push({ ...child, depth })
-      visit(child.id, depth + 1)
-    }
-  }
-  visit(null, 0)
-  // Roles whose parent is filtered out (e.g. visibility scoping) appear as
-  // roots so they aren't dropped silently.
-  for (const role of roles) {
-    if (role.parentRoleId !== null && !knownIds.has(role.parentRoleId)) {
-      if (!out.find((r) => r.id === role.id)) {
-        out.push({ ...role, depth: 0 })
-      }
-    }
-  }
-  return out
-}
-
-function CreateRoleCard({
-  permissionCatalog,
-  parentChoices,
-}: {
-  permissionCatalog: PermissionOption[]
-  parentChoices: RoleOption[]
-}) {
-  const defaultParent = parentChoices[0]?.id ?? 0
+function CreateRoleCard({ permissionCatalog }: { permissionCatalog: PermissionOption[] }) {
   const { data, setData, post, processing, errors, reset } = useForm({
     name: '',
     displayName: '',
     description: '',
-    parentRoleId: defaultParent,
     permissions: [] as string[],
   })
 
@@ -135,7 +101,7 @@ function CreateRoleCard({
       <CardHeader>
         <CardTitle>Create role</CardTitle>
         <CardDescription>
-          Pick a parent in the role tree, then choose what the new role can do.
+          Choose what the new role can do. It starts at the bottom of the ranking.
         </CardDescription>
       </CardHeader>
       <form
@@ -143,7 +109,11 @@ function CreateRoleCard({
           e.preventDefault()
           post('/roles', {
             preserveScroll: true,
-            onSuccess: () => reset(),
+            preserveState: false,
+            onSuccess: () => {
+              router.flushAll()
+              reset()
+            },
           })
         }}
       >
@@ -179,7 +149,7 @@ function CreateRoleCard({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4">
             <div className="flex flex-col gap-2">
               <Label htmlFor="role-description">Description</Label>
               <Textarea
@@ -193,31 +163,6 @@ function CreateRoleCard({
               />
               {errors.description && (
                 <p className="text-sm text-destructive">{errors.description}</p>
-              )}
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="role-parent">Parent role</Label>
-              <Select
-                value={data.parentRoleId ? String(data.parentRoleId) : ''}
-                onValueChange={(v) => setData('parentRoleId', Number(v))}
-              >
-                <SelectTrigger id="role-parent" className="w-full">
-                  <SelectValue placeholder="Pick a parent" />
-                </SelectTrigger>
-                <SelectContent>
-                  {parentChoices.map((p) => (
-                    <SelectItem key={p.id} value={String(p.id)}>
-                      {p.displayName}{' '}
-                      <span className="ml-1 text-xs text-muted-foreground">{p.name}</span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <span className="text-xs text-muted-foreground">
-                The new role inherits hierarchy below this parent.
-              </span>
-              {errors.parentRoleId && (
-                <p className="text-sm text-destructive">{errors.parentRoleId}</p>
               )}
             </div>
           </div>
@@ -278,7 +223,7 @@ function CreateRoleCard({
           </div>
         </CardContent>
         <CardFooter className="flex justify-end">
-          <Button type="submit" disabled={processing || parentChoices.length === 0}>
+          <Button type="submit" disabled={processing}>
             <Plus />
             {processing ? 'Creating…' : 'Create role'}
           </Button>
@@ -288,16 +233,113 @@ function CreateRoleCard({
   )
 }
 
+function SortableRole({
+  role,
+  position,
+  canDelete,
+}: {
+  role: RoleOption
+  position: number
+  canDelete: boolean
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: role.id,
+    disabled: !role.reorderable,
+  })
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.6 : 1,
+      }}
+      className="flex items-center justify-between gap-3 rounded-md border border-border p-3"
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="w-6 text-right text-sm tabular-nums text-muted-foreground">
+          {position}
+        </span>
+        <div className="flex min-w-0 flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium">{role.displayName}</span>
+            <span className="font-mono text-xs text-muted-foreground">{role.name}</span>
+            {role.isSystem && <Badge variant="secondary">system</Badge>}
+            {role.assignable && <Badge variant="outline">below your rank</Badge>}
+          </div>
+          {role.description && (
+            <span className="text-xs text-muted-foreground">{role.description}</span>
+          )}
+          <span className="text-xs text-muted-foreground">
+            {role.permissions.length} permission{role.permissions.length === 1 ? '' : 's'}
+          </span>
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center gap-1">
+        {canDelete && !role.isSystem && role.assignable && (
+          <DeleteRoleButton roleId={role.id} roleName={role.displayName} />
+        )}
+        {role.reorderable ? (
+          <button
+            type="button"
+            aria-label={`Drag ${role.displayName} to change rank`}
+            className="cursor-grab rounded p-2 text-muted-foreground hover:bg-accent active:cursor-grabbing touch-none"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="size-4" />
+          </button>
+        ) : (
+          <span className="size-8" aria-hidden />
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function SystemRoles({ roles, permissionCatalog }: RolesPageProps) {
   const { user } = usePage<InertiaProps<RolesPageProps>>().props
-  const flatTree = useMemo(() => flattenRoleTree(roles), [roles])
+  const originalIds = useMemo(() => roles.map((role) => role.id), [roles])
+  const [order, setOrder] = useState<number[]>(originalIds)
+  const [saving, setSaving] = useState(false)
+  useEffect(() => setOrder(originalIds), [originalIds])
+  const byId = useMemo(() => new Map(roles.map((role) => [role.id, role])), [roles])
+  const orderedRoles = order
+    .map((id) => byId.get(id))
+    .filter((role): role is RoleOption => Boolean(role))
+  const changed = order.some((id, index) => id !== originalIds[index])
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
 
-  const parentChoices = useMemo(() => {
-    if (!user) return []
-    if (user.isOwner) return roles
-    const ownIds = new Set(user.roleIds ?? [])
-    return roles.filter((r) => ownIds.has(r.id) || r.assignable)
-  }, [roles, user])
+  function onDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const next = arrayMove(order, order.indexOf(Number(active.id)), order.indexOf(Number(over.id)))
+    if (
+      next.some(
+        (id, index) => !byId.get(originalIds[index])?.reorderable && id !== originalIds[index]
+      )
+    )
+      return
+    setOrder(next)
+  }
+
+  function saveOrder() {
+    setSaving(true)
+    router.post(
+      '/roles/reorder',
+      { orderedIds: order, originalIds },
+      {
+        preserveScroll: true,
+        preserveState: false,
+        onSuccess: () => router.flushAll(),
+        onFinish: () => setSaving(false),
+      }
+    )
+  }
 
   const can = (key: string): boolean => {
     if (!user) return false
@@ -307,73 +349,55 @@ export default function SystemRoles({ roles, permissionCatalog }: RolesPageProps
 
   const canCreateRole = can('roles.create')
   const canDeleteRole = can('roles.delete')
+  const canReorder = can('roles.update') && roles.some((role) => role.reorderable)
 
   return (
     <div className="flex w-full flex-col gap-6 px-6 py-8">
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold">Role Management</h1>
         <p className="text-sm text-muted-foreground">
-          View, create, and remove roles in your hierarchy.
+          Higher roles can manage users and roles below them. Feature permissions remain separate.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {canCreateRole && (
-          <div className="lg:col-span-2">
-            <CreateRoleCard permissionCatalog={permissionCatalog} parentChoices={parentChoices} />
-          </div>
-        )}
-
-        <Card className={canCreateRole ? '' : 'lg:col-span-3'}>
+      <div className="flex flex-col gap-4">
+        <Card>
           <CardHeader>
-            <CardTitle>Role tree</CardTitle>
+            <CardTitle>Role ranking</CardTitle>
             <CardDescription>
-              {roles.length} role{roles.length === 1 ? '' : 's'} configured. Each row's indent shows
-              its place in the hierarchy.
+              Highest first. Drag a handle to preview a new ranking, then save it.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-2">
-            {flatTree.map((role) => (
-              <div
-                key={role.id}
-                className="flex items-start justify-between gap-3 rounded-md border border-border p-3"
-                style={{ marginLeft: role.depth * 16 }}
-              >
-                <div className="flex min-w-0 flex-col gap-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {role.depth > 0 && (
-                      <span aria-hidden className="text-muted-foreground">
-                        {'└'.padStart(role.depth, ' ')}
-                      </span>
-                    )}
-                    <span className="text-sm font-medium">{role.displayName}</span>
-                    <span className="font-mono text-xs text-muted-foreground">{role.name}</span>
-                    {role.isSystem && (
-                      <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
-                        system
-                      </Badge>
-                    )}
-                    {role.assignable && (
-                      <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
-                        in your subtree
-                      </Badge>
-                    )}
-                  </div>
-                  {role.description && (
-                    <span className="text-xs text-muted-foreground">{role.description}</span>
-                  )}
-                  <span className="text-xs text-muted-foreground">
-                    {role.permissions.length} permission
-                    {role.permissions.length === 1 ? '' : 's'}
-                  </span>
-                </div>
-                {canDeleteRole && !role.isSystem && role.assignable && (
-                  <DeleteRoleButton roleId={role.id} roleName={role.displayName} />
-                )}
-              </div>
-            ))}
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+              <SortableContext items={order} strategy={verticalListSortingStrategy}>
+                {orderedRoles.map((role, index) => (
+                  <SortableRole
+                    key={role.id}
+                    role={role}
+                    position={index + 1}
+                    canDelete={canDeleteRole}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
           </CardContent>
+          {canReorder && (
+            <CardFooter className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                disabled={!changed || saving}
+                onClick={() => setOrder(originalIds)}
+              >
+                Reset
+              </Button>
+              <Button disabled={!changed || saving} onClick={saveOrder}>
+                {saving ? 'Saving…' : 'Save order'}
+              </Button>
+            </CardFooter>
+          )}
         </Card>
+        {canCreateRole && <CreateRoleCard permissionCatalog={permissionCatalog} />}
       </div>
     </div>
   )
@@ -393,7 +417,17 @@ function DeleteRoleButton({ roleId, roleName }: { roleId: number; roleName: stri
         description="The role will be removed and any users assigned to it will lose those permissions."
         confirmLabel="Delete"
         variant="destructive"
-        onConfirm={() => router.post(`/roles/${roleId}/delete`, {}, { preserveScroll: true })}
+        onConfirm={() =>
+          router.post(
+            `/roles/${roleId}/delete`,
+            {},
+            {
+              preserveScroll: true,
+              preserveState: false,
+              onSuccess: () => router.flushAll(),
+            }
+          )
+        }
       />
     </>
   )

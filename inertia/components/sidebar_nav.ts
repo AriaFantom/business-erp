@@ -13,6 +13,7 @@ import {
   Receipt,
   ScrollText,
   Settings2,
+  Palette,
   ShieldCheck,
   ShoppingCart,
   SlidersHorizontal,
@@ -31,6 +32,7 @@ export type NavItem = {
   icon: LucideIcon
   /** When set, item is hidden unless `user.permissions` includes this key. */
   permission?: string
+  ownerOnly?: boolean
   /** When set, item is hidden unless this module is enabled for the install. */
   module?: string
   children?: NavItem[]
@@ -231,6 +233,12 @@ export const navItems: NavItem[] = [
         url: '/system/modules',
         icon: SlidersHorizontal,
         permission: 'settings.view',
+      },
+      {
+        title: 'Dashboard branding',
+        url: '/system/branding',
+        icon: Palette,
+        ownerOnly: true,
       },
     ],
   },

@@ -28,6 +28,7 @@ export function isVisible(
   if (item.children && item.children.length > 0) {
     return item.children.some((c) => isVisible(c, user, enabledModules))
   }
+  if (item.ownerOnly && !user?.isOwner) return false
   return hasPermission(user, item.permission) && isModuleEnabled(enabledModules, item.module)
 }
 

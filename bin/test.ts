@@ -10,7 +10,31 @@
 |
 */
 
+import { existsSync, readFileSync } from 'node:fs'
+
 process.env.NODE_ENV = 'test'
+
+// Never let Japa's truncate helpers fall back to the development database.
+const readDatabaseName = (file: URL): string | undefined => {
+  if (!existsSync(file)) return undefined
+  return readFileSync(file, 'utf8').match(/^DB_DATABASE\s*=\s*["']?([^\s"'#]+)["']?/m)?.[1]
+}
+const developmentDatabase = readDatabaseName(new URL('../.env', import.meta.url))
+const configuredDatabase = process.env.DB_DATABASE ?? developmentDatabase
+const testDatabase =
+  process.env.TEST_DB_DATABASE ??
+  readDatabaseName(new URL('../.env.test', import.meta.url)) ??
+  (configuredDatabase?.endsWith('_test') ? configuredDatabase : `${configuredDatabase}_test`)
+if (
+  !configuredDatabase ||
+  !testDatabase.endsWith('_test') ||
+  testDatabase === developmentDatabase
+) {
+  throw new Error(
+    'Tests require a dedicated *_test database distinct from the development database.'
+  )
+}
+process.env.DB_DATABASE = testDatabase
 
 import 'reflect-metadata'
 import { Ignitor, prettyPrintError } from '@adonisjs/core'

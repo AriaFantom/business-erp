@@ -4,6 +4,14 @@ import User from '#models/user'
 import { DateTime } from 'luxon'
 import { permissions } from '#start/permissions'
 import { assignableRoleIds } from '#services/role_hierarchy'
+import {
+  assignedRoleIds,
+  highestRolePosition,
+  rankedRoles,
+  assignableRankedRoleIds,
+} from '#services/role_order'
+import { editUserRoles, manageUserAccess } from '#abilities/main'
+import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 
 export type RoleListItem = {
   id: number
@@ -11,9 +19,10 @@ export type RoleListItem = {
   displayName: string
   description: string | null
   isSystem: boolean
-  parentRoleId: number | null
+  rankPosition: number
   permissions: string[]
   assignable: boolean
+  reorderable: boolean
 }
 
 export type PendingInvitationItem = {
@@ -22,6 +31,8 @@ export type PendingInvitationItem = {
   role: string
   type: 'setup' | 'invite'
   expiresAt: string | null
+  deliveryStatus: 'unknown' | 'sent' | 'failed'
+  expired: boolean
 }
 
 export type PermissionCatalogItem = {
@@ -40,20 +51,22 @@ export type InvitationsViewModel = {
 }
 
 async function fetchRolesAndAssignable(user: User) {
-  const [roles, assignable] = await Promise.all([
-    Role.query().orderBy('name', 'asc'),
-    assignableRoleIds(user),
-  ])
+  const [roles, assignable] = await Promise.all([rankedRoles(), assignableRoleIds(user)])
   const assignableSet = new Set(assignable)
+  const ownIds = new Set(await assignedRoleIds(user))
+  const highest = await highestRolePosition(user, roles)
   return roles.map<RoleListItem>((r) => ({
     id: r.id,
     name: r.name,
     displayName: r.displayName,
     description: r.description,
     isSystem: r.isSystem,
-    parentRoleId: r.parentRoleId,
+    rankPosition: r.rankPosition,
     permissions: r.permissions ?? [],
     assignable: assignableSet.has(r.id),
+    reorderable:
+      r.name !== 'owner' &&
+      (user.isOwner || (highest !== null && r.rankPosition > highest && !ownIds.has(r.id))),
   }))
 }
 
@@ -76,11 +89,7 @@ export async function getRolesViewModel(user: User): Promise<RolesViewModel> {
 export async function getInvitationsViewModel(user: User): Promise<InvitationsViewModel> {
   const [roleList, pending] = await Promise.all([
     fetchRolesAndAssignable(user),
-    Invitation.query()
-      .where('status', 'pending')
-      .where('expires_at', '>', DateTime.now().toSQL()!)
-      .preload('role')
-      .orderBy('created_at', 'desc'),
+    Invitation.query().where('status', 'pending').preload('role').orderBy('created_at', 'desc'),
   ])
 
   return {
@@ -91,6 +100,8 @@ export async function getInvitationsViewModel(user: User): Promise<InvitationsVi
       role: i.role?.displayName ?? '—',
       type: i.type as 'setup' | 'invite',
       expiresAt: i.expiresAt.toISO(),
+      deliveryStatus: i.deliveryStatus as 'unknown' | 'sent' | 'failed',
+      expired: i.expiresAt.toMillis() <= DateTime.now().toMillis(),
     })),
   }
 }
@@ -101,6 +112,9 @@ export type UserListRow = {
   firstName: string | null
   lastName: string | null
   isOwner: boolean
+  isActive: boolean
+  editable: boolean
+  accessEditable: boolean
   roles: { id: number; name: string; displayName: string }[]
 }
 
@@ -120,15 +134,15 @@ export type UsersViewModel = {
  * Build the User List view model.
  *
  * - Owners see every user.
- * - Non-owners see only users whose roles all sit inside their assignable
- *   subtree, excluding themselves and the workspace owner.
+ * - Non-owners see only users whose roles all sit below their highest rank,
+ *   excluding themselves and the workspace owner.
  *
  * Even users that the actor cannot edit (themselves, workspace owner) are
  * surfaced so the actor has visibility into who exists; the UI hides edit
  * actions for those rows and the server enforces it on POST.
  */
 export async function getUsersViewModel(actor: User): Promise<UsersViewModel> {
-  const allRoles = await Role.query().orderBy('display_name', 'asc')
+  const allRoles = await rankedRoles()
   const assignableIds = actor.isOwner ? null : new Set(await assignableRoleIds(actor))
 
   const users = await User.query().preload('roles').orderBy('created_at', 'desc')
@@ -142,17 +156,35 @@ export async function getUsersViewModel(actor: User): Promise<UsersViewModel> {
         return u.roles.every((r) => assignableIds!.has(r.id))
       })
 
+  const editable = await Promise.all(
+    visibleUsers.map(async (u) => {
+      const decision = await editUserRoles.execute(actor, u)
+      return typeof decision === 'boolean' ? decision : decision.authorized
+    })
+  )
+  const accessEditable = await Promise.all(
+    visibleUsers.map(async (u) => {
+      const decision = await manageUserAccess.execute(actor, u)
+      return typeof decision === 'boolean' ? decision : decision.authorized
+    })
+  )
+
   return {
-    users: visibleUsers.map<UserListRow>((u) => ({
+    users: visibleUsers.map<UserListRow>((u, index) => ({
       id: u.id,
       email: u.email,
       firstName: u.firstName,
       lastName: u.lastName,
       isOwner: u.isOwner,
-      roles: u.roles.map((r) => ({ id: r.id, name: r.name, displayName: r.displayName })),
+      isActive: u.isActive,
+      editable: editable[index],
+      accessEditable: accessEditable[index],
+      roles: u.roles
+        .sort((a, b) => a.rankPosition - b.rankPosition)
+        .map((r) => ({ id: r.id, name: r.name, displayName: r.displayName })),
     })),
     assignableRoles: allRoles
-      .filter((r) => actor.isOwner || assignableIds!.has(r.id))
+      .filter((r) => r.name !== 'owner' && (actor.isOwner || assignableIds!.has(r.id)))
       .map<AssignableRoleOption>((r) => ({
         id: r.id,
         name: r.name,
@@ -164,11 +196,15 @@ export async function getUsersViewModel(actor: User): Promise<UsersViewModel> {
 
 /**
  * Final defensive guard for role-edit POSTs. Throws if any roleId is outside
- * the actor's assignable subtree. Owner bypasses the subtree check (still
+ * the actor's lower-ranked roles. Owner bypasses the rank check (still
  * verifies role existence). Owner role itself is never assignable here.
  */
-export async function ensureRolesAssignable(actor: User, roleIds: number[]): Promise<void> {
-  const found = await Role.query().whereIn('id', roleIds)
+export async function ensureRolesAssignable(
+  actor: User,
+  roleIds: number[],
+  trx?: TransactionClientContract
+): Promise<void> {
+  const found = await Role.query({ client: trx }).whereIn('id', roleIds)
   if (found.length !== roleIds.length) {
     throw new Error('One or more roles do not exist.')
   }
@@ -180,9 +216,9 @@ export async function ensureRolesAssignable(actor: User, roleIds: number[]): Pro
 
   if (actor.isOwner) return
 
-  const assignable = new Set(await assignableRoleIds(actor))
+  const assignable = new Set(await assignableRankedRoleIds(actor, trx))
   const overstep = roleIds.filter((id) => !assignable.has(id))
   if (overstep.length > 0) {
-    throw new Error('You cannot assign roles outside your subtree.')
+    throw new Error('You can only assign roles below your own rank.')
   }
 }

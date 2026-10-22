@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactElement } from 'react'
+import { useEffect, useState, type ReactElement } from 'react'
 import { Form } from '@adonisjs/inertia/react'
 import { router, usePage } from '@inertiajs/react'
 import { MoreHorizontal, Send } from 'lucide-react'
@@ -28,6 +28,7 @@ import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -42,7 +43,7 @@ type RoleOption = {
   displayName: string
   description: string | null
   isSystem: boolean
-  parentRoleId: number | null
+  rankPosition: number
   permissions: string[]
   assignable: boolean
 }
@@ -53,6 +54,8 @@ type PendingInvitation = {
   role: string
   type: 'setup' | 'invite'
   expiresAt: string | null
+  deliveryStatus: 'unknown' | 'sent' | 'failed'
+  expired: boolean
 }
 
 type InvitationsPageProps = {
@@ -65,7 +68,20 @@ export default function SystemInvitations({ roles, pendingInvitations }: Invitat
 
   const assignableRoles = roles.filter((r) => r.assignable)
   const defaultRoleId = assignableRoles[0]?.id ? String(assignableRoles[0].id) : ''
-  const rolesById = useMemo(() => new Map(roles.map((r) => [r.id, r])), [roles])
+
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === 'visible') {
+        router.reload({ only: ['pendingInvitations'] })
+      }
+    }
+    window.addEventListener('focus', refresh)
+    const timer = window.setInterval(refresh, 15_000)
+    return () => {
+      window.removeEventListener('focus', refresh)
+      window.clearInterval(timer)
+    }
+  }, [])
 
   const can = (key: string): boolean => {
     if (!user) return false
@@ -114,19 +130,13 @@ export default function SystemInvitations({ roles, pendingInvitations }: Invitat
                         <SelectValue placeholder="Pick a role" />
                       </SelectTrigger>
                       <SelectContent>
-                        {assignableRoles.map((role) => {
-                          const parent = role.parentRoleId ? rolesById.get(role.parentRoleId) : null
-                          return (
+                        <SelectGroup>
+                          {assignableRoles.map((role) => (
                             <SelectItem key={role.id} value={String(role.id)}>
                               {role.displayName}
-                              {parent && (
-                                <span className="ml-1 text-xs text-muted-foreground">
-                                  under {parent.displayName}
-                                </span>
-                              )}
                             </SelectItem>
-                          )
-                        })}
+                          ))}
+                        </SelectGroup>
                       </SelectContent>
                     </Select>
                     {errors.roleId && <p className="text-sm text-destructive">{errors.roleId}</p>}
@@ -135,8 +145,8 @@ export default function SystemInvitations({ roles, pendingInvitations }: Invitat
                 <CardFooter className="flex flex-wrap items-center justify-between gap-3">
                   <span className="min-w-0 flex-1 text-xs text-muted-foreground">
                     {assignableRoles.length === 0
-                      ? 'No roles below your subtree — create one first.'
-                      : `${assignableRoles.length} role${assignableRoles.length === 1 ? '' : 's'} in your subtree.`}
+                      ? 'No roles below your rank — create one first.'
+                      : `${assignableRoles.length} role${assignableRoles.length === 1 ? '' : 's'} below your rank.`}
                   </span>
                   <Button
                     type="submit"
@@ -154,14 +164,14 @@ export default function SystemInvitations({ roles, pendingInvitations }: Invitat
 
         <Card>
           <CardHeader>
-            <CardTitle>Pending invites</CardTitle>
+            <CardTitle>Invitations</CardTitle>
             <CardDescription>
               {pendingInvitations.length === 0
-                ? 'No pending invitations.'
+                ? 'No invitations awaiting acceptance.'
                 : `${pendingInvitations.length} awaiting response`}
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="flex flex-col gap-3">
             {pendingInvitations.map((invite) => (
               <div key={invite.id} className="flex items-center justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-3">
@@ -172,12 +182,22 @@ export default function SystemInvitations({ roles, pendingInvitations }: Invitat
                     <span className="truncate text-sm font-medium">
                       {invite.email ?? '(setup link)'}
                     </span>
-                    <span className="text-xs text-muted-foreground">
-                      <Badge variant="outline" className="mr-2">
-                        {invite.type}
-                      </Badge>
-                      {invite.role}
-                    </span>
+                    <span className="text-xs text-muted-foreground">{invite.role}</span>
+                    <Badge
+                      variant={
+                        invite.deliveryStatus === 'failed' || invite.expired
+                          ? 'destructive'
+                          : 'outline'
+                      }
+                    >
+                      {invite.expired
+                        ? 'Expired — resend'
+                        : invite.deliveryStatus === 'sent'
+                          ? 'Sent — awaiting acceptance'
+                          : invite.deliveryStatus === 'failed'
+                            ? 'Email failed — retry'
+                            : 'Awaiting acceptance'}
+                    </Badge>
                   </div>
                 </div>
                 {(canResend || canRevoke) && (
@@ -199,7 +219,7 @@ export default function SystemInvitations({ roles, pendingInvitations }: Invitat
                             )
                           }
                         >
-                          Resend
+                          {invite.deliveryStatus === 'failed' ? 'Retry email' : 'Resend'}
                         </DropdownMenuItem>
                       )}
                       {canResend && canRevoke && <DropdownMenuSeparator />}

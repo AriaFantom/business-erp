@@ -35,6 +35,7 @@ const InvoicesController = () => import('#controllers/invoices_controller')
 const ReportsController = () => import('#controllers/reports_controller')
 const PosController = () => import('#controllers/pos_controller')
 const SettingsController = () => import('#controllers/settings_controller')
+const DashboardBrandingController = () => import('#controllers/dashboard_branding_controller')
 const RootController = () => import('#controllers/root_controller')
 
 router.get('/health', ({ response }) => response.ok({ status: 'ok' })).as('health')
@@ -60,9 +61,25 @@ router
     router.get('system/roles', [RolesController, 'index']).as('system.roles')
     router.get('system/invitations', [InvitationsController, 'index']).as('system.invitations')
     router.get('system/users', [UsersController, 'index']).as('system.users')
+    router.get('system/branding', [DashboardBrandingController, 'show']).as('settings.branding')
+    router
+      .post('system/branding', [DashboardBrandingController, 'updateName'])
+      .as('settings.branding.update')
+    router
+      .post('system/branding/icon', [DashboardBrandingController, 'updateIcon'])
+      .as('settings.branding.icon.update')
+    router
+      .post('system/branding/icon/delete', [DashboardBrandingController, 'destroyIcon'])
+      .as('settings.branding.icon.destroy')
+    router
+      .get('branding/icon', [DashboardBrandingController, 'icon'])
+      .as('settings.branding.icon.show')
     router
       .post('system/users/:id/roles', [UsersController, 'updateRoles'])
       .as('system.users.update_roles')
+    router
+      .post('system/users/:id/access', [UsersController, 'updateAccess'])
+      .as('system.users.update_access')
 
     router.post('invitations', [InvitationsController, 'store']).as('invitations.store')
     router
@@ -72,6 +89,7 @@ router
       .post('invitations/:id/revoke', [InvitationsController, 'revoke'])
       .as('invitations.revoke')
     router.post('roles', [RolesController, 'store']).as('roles.store')
+    router.post('roles/reorder', [RolesController, 'reorder']).as('roles.reorder')
     router.post('roles/:id/delete', [RolesController, 'destroy']).as('roles.destroy')
 
     // Module enable/disable settings (always-on core — never module-gated).

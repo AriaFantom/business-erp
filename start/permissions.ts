@@ -6,7 +6,7 @@ export const permissions = definePermissions({
     view: 'View user list',
     invite: 'Send invitations to new users',
     update: 'Edit user details',
-    remove: { description: 'Delete users', aliases: ['users.delete'] },
+    remove: { description: 'Revoke or restore user access', aliases: ['users.delete'] },
     assignRole: 'Assign roles to users',
   },
   roles: {

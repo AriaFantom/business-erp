@@ -2,13 +2,9 @@ import db from '@adonisjs/lucid/services/db'
 import cache from '@adonisjs/cache/services/main'
 import type Role from '#models/role'
 import type User from '#models/user'
+import { assignableRankedRoleIds, assignedRoleIds, rankedRoles } from '#services/role_order'
 
 const OWNER_ROLE_NAME = 'owner'
-
-async function userRoleIds(user: User): Promise<number[]> {
-  const roles = await user.getRoles()
-  return roles.map((r) => r.id)
-}
 
 export async function descendantRoleIds(rootIds: number[]): Promise<number[]> {
   if (rootIds.length === 0) return []
@@ -26,16 +22,7 @@ export async function ancestorRoleIds(roleId: number): Promise<number[]> {
 }
 
 export async function assignableRoleIds(user: User): Promise<number[]> {
-  const tree = await getTree()
-  if (user.isOwner) {
-    return [...tree.values()].filter((n) => n.name !== OWNER_ROLE_NAME).map((n) => n.id)
-  }
-  const ownIds = await userRoleIds(user)
-  const out = new Set<number>()
-  for (const id of ownIds) {
-    for (const d of getDescendants(id, tree)) out.add(d)
-  }
-  return [...out]
+  return assignableRankedRoleIds(user)
 }
 
 export async function canAssignRole(user: User, role: Role): Promise<boolean> {
@@ -54,14 +41,11 @@ export async function wouldCreateCycle(
 }
 
 export async function visibleRoleIds(user: User): Promise<number[]> {
-  const tree = await getTree()
-  if (user.isOwner) return [...tree.keys()]
-  const own = await userRoleIds(user)
-  const out = new Set<number>(own)
-  for (const id of own) {
-    for (const d of getDescendants(id, tree)) out.add(d)
+  if (user.isOwner) {
+    const roles = await rankedRoles()
+    return roles.map((role) => role.id)
   }
-  return [...out]
+  return [...new Set([...(await assignedRoleIds(user)), ...(await assignableRankedRoleIds(user))])]
 }
 
 // --- Pure tree utilities (no DB, no cache) ---

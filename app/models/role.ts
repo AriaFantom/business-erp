@@ -33,6 +33,9 @@ export default class Role extends compose(BaseModel, withPermissions()) {
   @column()
   declare parentRoleId: number | null
 
+  @column()
+  declare rankPosition: number
+
   @belongsTo(() => Role, { foreignKey: 'parentRoleId' })
   declare parent: BelongsTo<typeof Role>
 

@@ -2,8 +2,10 @@ import { test } from '@japa/runner'
 import testUtils from '@adonisjs/core/services/test_utils'
 import User from '#models/user'
 import Role from '#models/role'
-import { editUserRoles } from '#abilities/main'
+import AuditEvent from '#models/audit_event'
+import { editUserRoles, manageUserAccess } from '#abilities/main'
 import { ensureRolesAssignable } from '#services/dashboard_view_models'
+import { getUsersViewModel } from '#services/dashboard_view_models'
 import { invalidateTreeCache } from '#services/role_hierarchy'
 
 /**
@@ -12,7 +14,7 @@ import { invalidateTreeCache } from '#services/role_hierarchy'
  * `ensureRolesAssignable` (final write-time guard).
  *
  * Test roles use a `t_` prefix so they don't collide with the persistent
- * seeded tree (owner / admin / member).
+ * seeded roles (owner / admin / member).
  */
 test.group('User role-editing security', (group) => {
   group.each.setup(async () => {
@@ -21,12 +23,8 @@ test.group('User role-editing security', (group) => {
   })
 
   /**
-   * Build a baseline test tree under the seeded `owner` role:
-   *   owner (seeded)
-   *     t_lead   (users.assignRole, users.view)
-   *       t_editor
-   *       t_viewer
-   *     t_watcher (users.view only — sibling of t_lead, no assignRole)
+   * Build a baseline ranking: owner, seeded roles, watcher, lead,
+   * editor, viewer. Legacy parent links do not grant authority.
    */
   async function seedRoles() {
     // Use firstOrCreate so the test works whether or not the role_seeder
@@ -38,14 +36,27 @@ test.group('User role-editing security', (group) => {
         displayName: 'Owner',
         isSystem: true,
         parentRoleId: null,
+        rankPosition: 0,
       }
     )
+
+    const currentMaximum = await Role.query().max('rank_position as maxPosition')
+    const nextPosition = currentMaximum[0].$extras.maxPosition as number
+    const watcher = await Role.create({
+      name: 't_watcher',
+      displayName: 'Test Watcher',
+      isSystem: false,
+      parentRoleId: ownerRole.id,
+      rankPosition: Number(nextPosition) + 1,
+    })
+    await watcher.syncPermissions(['users.view'])
 
     const lead = await Role.create({
       name: 't_lead',
       displayName: 'Test Lead',
       isSystem: false,
       parentRoleId: ownerRole.id,
+      rankPosition: Number(nextPosition) + 2,
     })
     await lead.syncPermissions(['users.view', 'users.assignRole'])
 
@@ -54,21 +65,15 @@ test.group('User role-editing security', (group) => {
       displayName: 'Test Editor',
       isSystem: false,
       parentRoleId: lead.id,
+      rankPosition: Number(nextPosition) + 3,
     })
     const viewer = await Role.create({
       name: 't_viewer',
       displayName: 'Test Viewer',
       isSystem: false,
       parentRoleId: lead.id,
+      rankPosition: Number(nextPosition) + 4,
     })
-
-    const watcher = await Role.create({
-      name: 't_watcher',
-      displayName: 'Test Watcher',
-      isSystem: false,
-      parentRoleId: ownerRole.id,
-    })
-    await watcher.syncPermissions(['users.view'])
 
     await invalidateTreeCache()
     return { ownerRole, lead, editor, viewer, watcher }
@@ -127,14 +132,14 @@ test.group('User role-editing security', (group) => {
     assert.isFalse(await editUserRoles.execute(actor, target))
   })
 
-  test('lead can edit a target inside their subtree', async ({ assert }) => {
+  test('lead can edit a target below their rank', async ({ assert }) => {
     const { lead, editor } = await seedRoles()
     const actor = await makeUser({ email: 'a@x.test', roleIds: [lead.id] })
     const target = await makeUser({ email: 't@x.test', roleIds: [editor.id] })
     assert.isTrue(await editUserRoles.execute(actor, target))
   })
 
-  test('lead cannot edit a target whose role sits outside their subtree', async ({ assert }) => {
+  test('lead cannot edit a target above their rank', async ({ assert }) => {
     const { lead, watcher } = await seedRoles()
     const actor = await makeUser({ email: 'a@x.test', roleIds: [lead.id] })
     const sibling = await makeUser({ email: 's@x.test', roleIds: [watcher.id] })
@@ -146,6 +151,80 @@ test.group('User role-editing security', (group) => {
     const actor = await makeUser({ email: 'a@x.test', roleIds: [lead.id] })
     const orphan = await makeUser({ email: 'o@x.test' })
     assert.isFalse(await editUserRoles.execute(actor, orphan))
+  })
+
+  test('multiple roles use the highest rank and never hide a higher target role', async ({
+    assert,
+  }) => {
+    const { lead, editor, viewer, watcher } = await seedRoles()
+    const actor = await makeUser({ email: 'multi@x.test', roleIds: [lead.id, viewer.id] })
+    const lower = await makeUser({ email: 'lower@x.test', roleIds: [editor.id, viewer.id] })
+    const higher = await makeUser({ email: 'higher@x.test', roleIds: [editor.id, watcher.id] })
+    assert.isTrue(await editUserRoles.execute(actor, lower))
+    assert.isFalse(await editUserRoles.execute(actor, higher))
+  })
+
+  test('users view model exposes editable rows and excludes Owner from options', async ({
+    assert,
+  }) => {
+    const { editor, ownerRole } = await seedRoles()
+    const owner = await makeUser({
+      email: 'view-owner@x.test',
+      isOwner: true,
+      roleIds: [ownerRole.id],
+    })
+    const target = await makeUser({ email: 'view-target@x.test', roleIds: [editor.id] })
+    const view = await getUsersViewModel(owner)
+    assert.isTrue(view.users.find((row) => row.id === target.id)?.editable)
+    assert.isFalse(view.users.find((row) => row.id === owner.id)?.editable)
+    assert.isFalse(view.assignableRoles.some((role) => role.id === ownerRole.id))
+  })
+
+  test('role changes persist multiple assignments with an audit record', async ({
+    client,
+    assert,
+  }) => {
+    const { ownerRole, editor, viewer } = await seedRoles()
+    const owner = await makeUser({
+      email: 'audit-owner@x.test',
+      isOwner: true,
+      roleIds: [ownerRole.id],
+    })
+    const target = await makeUser({ email: 'audit-target@x.test', roleIds: [editor.id] })
+    const response = await client
+      .post(`/system/users/${target.id}/roles`)
+      .loginAs(owner)
+      .withCsrfToken()
+      .redirects(0)
+      .json({ roleIds: [editor.id, viewer.id] })
+    response.assertStatus(302)
+    const assigned = await target.related('roles').query()
+    assert.sameMembers(
+      assigned.map((role) => role.id),
+      [editor.id, viewer.id]
+    )
+    const event = await AuditEvent.query()
+      .where('action', 'user.roles.update')
+      .where('target_id', target.id)
+      .first()
+    assert.isNotNull(event)
+  })
+
+  test('HTTP role update blocks promotion above the manager', async ({ client, assert }) => {
+    const { lead, editor, watcher } = await seedRoles()
+    const actor = await makeUser({ email: 'limited@x.test', roleIds: [lead.id] })
+    const target = await makeUser({ email: 'limited-target@x.test', roleIds: [editor.id] })
+    await client
+      .post(`/system/users/${target.id}/roles`)
+      .loginAs(actor)
+      .withCsrfToken()
+      .redirects(0)
+      .json({ roleIds: [watcher.id] })
+    const assigned = await target.related('roles').query()
+    assert.deepEqual(
+      assigned.map((role) => role.id),
+      [editor.id]
+    )
   })
 
   // ------------------------------------------------------------------
@@ -165,24 +244,101 @@ test.group('User role-editing security', (group) => {
     )
   })
 
-  test('lead can assign roles inside their subtree', async ({ assert }) => {
+  test('lead can assign roles below their rank', async ({ assert }) => {
     const { lead, editor, viewer } = await seedRoles()
     const actor = await makeUser({ email: 'a@x.test', roleIds: [lead.id] })
     await ensureRolesAssignable(actor, [editor.id, viewer.id])
     assert.isTrue(true)
   })
 
-  test('lead cannot assign roles outside their subtree (privilege escalation guard)', async ({
+  test('lead cannot assign roles above their rank (privilege escalation guard)', async ({
     assert,
   }) => {
     const { lead, watcher } = await seedRoles()
     const actor = await makeUser({ email: 'a@x.test', roleIds: [lead.id] })
-    await assert.rejects(() => ensureRolesAssignable(actor, [watcher.id]), /outside your subtree/)
+    await assert.rejects(() => ensureRolesAssignable(actor, [watcher.id]), /below your own rank/)
   })
 
   test('ensureRolesAssignable rejects unknown role ids', async ({ assert }) => {
     await seedRoles()
     const owner = await makeUser({ email: 'o@x.test', isOwner: true })
     await assert.rejects(() => ensureRolesAssignable(owner, [999_999]), /do not exist/)
+  })
+
+  test('owner revokes and restores a user with audited access changes', async ({
+    client,
+    assert,
+  }) => {
+    const { editor } = await seedRoles()
+    const owner = await makeUser({ email: 'access-owner@x.test', isOwner: true })
+    const target = await makeUser({ email: 'access-target@x.test', roleIds: [editor.id] })
+
+    const revoke = await client
+      .post(`/system/users/${target.id}/access`)
+      .loginAs(owner)
+      .withCsrfToken()
+      .redirects(0)
+      .json({ active: false })
+    revoke.assertStatus(302)
+    await target.refresh()
+    assert.isFalse(target.isActive)
+    assert.isNotNull(
+      await AuditEvent.query()
+        .where('action', 'user.access.revoke')
+        .where('target_id', target.id)
+        .first()
+    )
+
+    const blocked = await client.get('/dashboard').loginAs(target).redirects(0)
+    blocked.assertStatus(302)
+    assert.include(blocked.header('location'), '/login')
+
+    const login = await client
+      .post('/login')
+      .withCsrfToken()
+      .redirects(0)
+      .json({ email: target.email, password: 'password123' })
+    login.assertStatus(302)
+    const stillBlocked = await client.get('/dashboard').redirects(0)
+    stillBlocked.assertStatus(302)
+    assert.include(stillBlocked.header('location'), '/login')
+
+    const restore = await client
+      .post(`/system/users/${target.id}/access`)
+      .loginAs(owner)
+      .withCsrfToken()
+      .redirects(0)
+      .json({ active: true })
+    restore.assertStatus(302)
+    await target.refresh()
+    assert.isTrue(target.isActive)
+    assert.isNotNull(
+      await AuditEvent.query()
+        .where('action', 'user.access.restore')
+        .where('target_id', target.id)
+        .first()
+    )
+  })
+
+  test('cannot revoke self, Owner, or a user above the actor rank', async ({ client, assert }) => {
+    const { lead, watcher, editor } = await seedRoles()
+    const actor = await makeUser({ email: 'access-manager@x.test', roleIds: [lead.id] })
+    const senior = await makeUser({ email: 'access-senior@x.test', roleIds: [watcher.id] })
+    const junior = await makeUser({ email: 'access-junior@x.test', roleIds: [editor.id] })
+    const owner = await makeUser({ email: 'access-owner2@x.test', isOwner: true })
+    assert.isFalse(await manageUserAccess.execute(actor, actor))
+    assert.isFalse(await manageUserAccess.execute(actor, senior))
+    assert.isFalse(await manageUserAccess.execute(actor, owner))
+    assert.isFalse(await manageUserAccess.execute(actor, junior))
+
+    const blocked = await client
+      .post(`/system/users/${senior.id}/access`)
+      .loginAs(actor)
+      .withCsrfToken()
+      .redirects(0)
+      .json({ active: false })
+    blocked.assertStatus(302)
+    await senior.refresh()
+    assert.isTrue(senior.isActive)
   })
 })

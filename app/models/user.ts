@@ -38,6 +38,9 @@ export default class User extends compose(
   @column()
   declare isOwner: boolean
 
+  @column()
+  declare isActive: boolean
+
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
 

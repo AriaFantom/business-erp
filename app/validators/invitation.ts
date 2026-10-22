@@ -9,7 +9,7 @@ import vine from '@vinejs/vine'
  */
 export const acceptInvitationValidator = vine.compile(
   vine.object({
-    email: vine.string().email().normalizeEmail().optional(),
+    email: vine.string().trim().email().maxLength(254).optional(),
     password: vine.string().minLength(8).maxLength(128).confirmed(),
     firstName: vine.string().trim().minLength(1).maxLength(80),
     lastName: vine.string().trim().minLength(1).maxLength(80),
@@ -21,7 +21,7 @@ export const acceptInvitationValidator = vine.compile(
  */
 export const createInvitationValidator = vine.compile(
   vine.object({
-    email: vine.string().email().normalizeEmail(),
+    email: vine.string().trim().email().maxLength(254),
     roleId: vine.number().positive(),
   })
 )

@@ -213,12 +213,14 @@ export class InventorySchema extends BaseModel {
 }
 
 export class InvitationSchema extends BaseModel {
-  static $columns = ['acceptedAt', 'createdAt', 'email', 'expiresAt', 'id', 'invitedBy', 'roleId', 'status', 'token', 'type', 'updatedAt'] as const
+  static $columns = ['acceptedAt', 'createdAt', 'deliveryStatus', 'email', 'expiresAt', 'id', 'invitedBy', 'roleId', 'sentAt', 'status', 'token', 'type', 'updatedAt'] as const
   $columns = InvitationSchema.$columns
   @column.dateTime()
   declare acceptedAt: DateTime | null
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
+  @column()
+  declare deliveryStatus: string
   @column()
   declare email: string | null
   @column.dateTime()
@@ -229,6 +231,8 @@ export class InvitationSchema extends BaseModel {
   declare invitedBy: number | null
   @column()
   declare roleId: number
+  @column.dateTime()
+  declare sentAt: DateTime | null
   @column()
   declare status: string
   @column()
@@ -1024,7 +1028,7 @@ export class ResourceGrantSchema extends BaseModel {
 }
 
 export class RoleSchema extends BaseModel {
-  static $columns = ['createdAt', 'description', 'displayName', 'id', 'isSystem', 'name', 'parentRoleId', 'permissions', 'updatedAt'] as const
+  static $columns = ['createdAt', 'description', 'displayName', 'id', 'isSystem', 'name', 'parentRoleId', 'permissions', 'rankPosition', 'updatedAt'] as const
   $columns = RoleSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime | null
@@ -1042,6 +1046,8 @@ export class RoleSchema extends BaseModel {
   declare parentRoleId: number | null
   @column()
   declare permissions: string
+  @column()
+  declare rankPosition: number
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
 }
@@ -1158,7 +1164,7 @@ export class UserRoleSchema extends BaseModel {
 }
 
 export class UserSchema extends BaseModel {
-  static $columns = ['avatarKey', 'createdAt', 'email', 'firstName', 'fullName', 'id', 'isOwner', 'lastName', 'password', 'updatedAt'] as const
+  static $columns = ['avatarKey', 'createdAt', 'email', 'firstName', 'fullName', 'id', 'isActive', 'isOwner', 'lastName', 'password', 'updatedAt'] as const
   $columns = UserSchema.$columns
   @column()
   declare avatarKey: string | null
@@ -1172,6 +1178,8 @@ export class UserSchema extends BaseModel {
   declare fullName: string | null
   @column({ isPrimary: true })
   declare id: number
+  @column()
+  declare isActive: boolean
   @column()
   declare isOwner: boolean | null
   @column()

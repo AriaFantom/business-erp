@@ -58,7 +58,8 @@ const sessionConfig = defineConfig({
    * variable in order to infer the store name without any
    * errors.
    */
-  store: env.get('SESSION_DRIVER'),
+  // Japa's session client uses the in-memory store for request fixtures.
+  store: app.inTest ? 'memory' : env.get('SESSION_DRIVER'),
 
   /**
    * List of configured stores. Refer documentation to see

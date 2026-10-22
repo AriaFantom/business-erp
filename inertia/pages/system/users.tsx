@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactElement } from 'react'
-import { useForm, usePage } from '@inertiajs/react'
+import { router, useForm, usePage } from '@inertiajs/react'
 import { Link } from '@adonisjs/inertia/react'
-import { MoreHorizontal, ShieldCheck, Users } from 'lucide-react'
+import { ShieldCheck, UserRoundCheck, UserRoundX, Users } from 'lucide-react'
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { EmptyState } from '@/components/empty-state'
@@ -18,12 +18,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import {
   Table,
   TableBody,
@@ -42,6 +36,9 @@ type UserRow = {
   firstName: string | null
   lastName: string | null
   isOwner: boolean
+  isActive: boolean
+  editable: boolean
+  accessEditable: boolean
   roles: { id: number; name: string; displayName: string }[]
 }
 
@@ -59,18 +56,6 @@ type UsersPageProps = {
 
 function fullNameOf(row: UserRow): string {
   return [row.firstName, row.lastName].filter(Boolean).join(' ').trim() || row.email
-}
-
-/**
- * UI-only mirror of the server's editRoles policy. Source of truth is the
- * backend; this exists purely to hide actions the actor cannot use.
- */
-function isClientEditable(row: UserRow, actor: NonNullable<InertiaProps['user']>): boolean {
-  if (row.id === actor.id) return false
-  if (row.isOwner) return false
-  if (actor.isOwner) return true
-  if (!actor.permissions?.includes('users.assignRole')) return false
-  return row.roles.length > 0
 }
 
 function EditRolesDialog({
@@ -106,7 +91,9 @@ function EditRolesDialog({
     e.preventDefault()
     post(`/system/users/${target.id}/roles`, {
       preserveScroll: true,
+      preserveState: false,
       onSuccess: () => {
+        router.flushAll()
         reset()
         onClose()
       },
@@ -129,7 +116,7 @@ function EditRolesDialog({
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2 rounded-md border border-border p-3 max-h-72 overflow-y-auto">
             {assignableRoles.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No roles in your subtree to assign.</p>
+              <p className="text-sm text-muted-foreground">No lower-ranked roles to assign.</p>
             ) : (
               assignableRoles.map((role) => {
                 const checked = data.roleIds.includes(role.id)
@@ -179,10 +166,30 @@ function EditRolesDialog({
 export default function SystemUsers({ users, assignableRoles, currentUserId }: UsersPageProps) {
   const { user: actor } = usePage<InertiaProps<UsersPageProps>>().props
   const [editing, setEditing] = useState<UserRow | null>(null)
+  const [changingAccess, setChangingAccess] = useState<UserRow | null>(null)
+  const [accessProcessing, setAccessProcessing] = useState(false)
 
   if (!actor) return null
 
   const canAssign = actor.isOwner || (actor.permissions?.includes('users.assignRole') ?? false)
+
+  const submitAccessChange = () => {
+    if (!changingAccess || accessProcessing) return
+    setAccessProcessing(true)
+    router.post(
+      `/system/users/${changingAccess.id}/access`,
+      { active: !changingAccess.isActive },
+      {
+        preserveScroll: true,
+        preserveState: false,
+        onSuccess: () => {
+          router.flushAll()
+          setChangingAccess(null)
+        },
+        onFinish: () => setAccessProcessing(false),
+      }
+    )
+  }
 
   return (
     <div className="flex w-full flex-col gap-6 px-6 py-8">
@@ -198,8 +205,8 @@ export default function SystemUsers({ users, assignableRoles, currentUserId }: U
           <CardTitle>Users</CardTitle>
           <CardDescription>
             {canAssign
-              ? 'You can change role assignments for users in your subtree.'
-              : 'You can view users in your subtree. Role editing requires the users.assignRole permission.'}
+              ? 'You can change role assignments for users below your rank.'
+              : 'You can view users below your rank. Role editing requires the users.assignRole permission.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -221,14 +228,13 @@ export default function SystemUsers({ users, assignableRoles, currentUserId }: U
                   <TableHead>User</TableHead>
                   <TableHead>Roles</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-12 text-right">
+                  <TableHead className="text-right">
                     <span className="sr-only">Actions</span>
                   </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {users.map((row) => {
-                  const editable = isClientEditable(row, actor)
                   const isSelf = row.id === currentUserId
                   return (
                     <TableRow key={row.id}>
@@ -270,26 +276,34 @@ export default function SystemUsers({ users, assignableRoles, currentUserId }: U
                       <TableCell>
                         {row.isOwner ? (
                           <Badge variant="secondary">Owner</Badge>
+                        ) : row.isActive ? (
+                          <Badge variant="outline">Active</Badge>
                         ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
+                          <Badge variant="destructive">Revoked</Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {canAssign && editable ? (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon-sm">
-                                <MoreHorizontal />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onSelect={() => setEditing(row)}>
-                                <ShieldCheck />
-                                Edit roles
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        ) : null}
+                        <div className="flex justify-end gap-2">
+                          {canAssign && row.editable && (
+                            <Button variant="outline" size="sm" onClick={() => setEditing(row)}>
+                              <ShieldCheck data-icon="inline-start" /> Change roles
+                            </Button>
+                          )}
+                          {row.accessEditable && (
+                            <Button
+                              variant={row.isActive ? 'destructive' : 'outline'}
+                              size="sm"
+                              onClick={() => setChangingAccess(row)}
+                            >
+                              {row.isActive ? (
+                                <UserRoundX data-icon="inline-start" />
+                              ) : (
+                                <UserRoundCheck data-icon="inline-start" />
+                              )}
+                              {row.isActive ? 'Revoke access' : 'Restore access'}
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   )
@@ -307,6 +321,43 @@ export default function SystemUsers({ users, assignableRoles, currentUserId }: U
           onClose={() => setEditing(null)}
         />
       )}
+      <Dialog
+        open={Boolean(changingAccess)}
+        onOpenChange={(open) => !open && setChangingAccess(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {changingAccess?.isActive ? 'Revoke user access?' : 'Restore user access?'}
+            </DialogTitle>
+            <DialogDescription>
+              {changingAccess?.isActive
+                ? `${changingAccess.email} will be signed out on their next request and cannot log in. Their data and roles will be preserved.`
+                : `${changingAccess?.email} will be able to log in again with their existing roles.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={accessProcessing}
+              onClick={() => setChangingAccess(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant={changingAccess?.isActive ? 'destructive' : 'default'}
+              disabled={accessProcessing}
+              onClick={submitAccessChange}
+            >
+              {accessProcessing
+                ? 'Saving…'
+                : changingAccess?.isActive
+                  ? 'Revoke access'
+                  : 'Restore access'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -4,14 +4,60 @@ import influxConfig from '#config/influx'
 
 /**
  * Thin wrapper around the InfluxDB client used by the metrics snapshot Job
- * (writes) and the dashboard/reports (reads). The whole module is a no-op
- * when InfluxDB is disabled or unconfigured: writers/readers receive `null`
- * and callers fall back to empty data, so the app runs without Influx up.
+ * (writes) and the dashboard/reports (reads). Disabled local installations
+ * receive `null`; enabled installations must pass the startup readiness gate.
  */
 let client: InfluxDB | null = null
 
 export function isInfluxEnabled(): boolean {
   return influxConfig.enabled
+}
+
+type InfluxConnection = Pick<typeof influxConfig, 'url' | 'token' | 'org' | 'bucket'>
+
+/** One probe checks process readiness and that our token can see the configured bucket. */
+export async function checkInfluxConnection(
+  connection: InfluxConnection,
+  request: typeof fetch = fetch
+): Promise<void> {
+  if (!connection.url || !connection.token || !connection.org || !connection.bucket) {
+    throw new Error('InfluxDB is enabled but URL, token, organization, or bucket is missing.')
+  }
+  const base = connection.url.replace(/\/$/, '')
+  const ready = await request(`${base}/ready`, { signal: AbortSignal.timeout(5000) })
+  if (!ready.ok) throw new Error(`readiness endpoint returned ${ready.status}`)
+  const url = new URL(`${base}/api/v2/buckets`)
+  url.searchParams.set('org', connection.org)
+  url.searchParams.set('name', connection.bucket)
+  const buckets = await request(url, {
+    headers: { Authorization: `Token ${connection.token}` },
+    signal: AbortSignal.timeout(5000),
+  })
+  if (!buckets.ok) throw new Error(`bucket check returned ${buckets.status}`)
+  const result = (await buckets.json()) as { buckets?: { name?: string }[] }
+  if (!result.buckets?.some((bucket) => bucket.name === connection.bucket)) {
+    throw new Error('configured bucket does not exist or is inaccessible')
+  }
+}
+
+/** Fail before the HTTP listener starts if enabled Influx is not usable. */
+export async function assertInfluxReady(): Promise<void> {
+  if (!influxConfig.enabled) return
+  if (!influxConfig.url || !influxConfig.token || !influxConfig.org || !influxConfig.bucket) {
+    throw new Error('InfluxDB is enabled but URL, token, organization, or bucket is missing.')
+  }
+  let failure = 'unknown error'
+  for (let attempt = 0; attempt < 20; attempt++) {
+    try {
+      await checkInfluxConnection(influxConfig)
+      logger.info('InfluxDB startup check passed')
+      return
+    } catch (error) {
+      failure = error instanceof Error ? error.message : 'unknown error'
+      if (attempt < 19) await new Promise((resolve) => setTimeout(resolve, 3000))
+    }
+  }
+  throw new Error(`InfluxDB startup check failed: ${failure}`)
 }
 
 function getClient(): InfluxDB | null {

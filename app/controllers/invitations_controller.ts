@@ -8,6 +8,16 @@ import InvitationNotification from '#mails/invitation_notification'
 import { canAssignRole } from '#services/role_hierarchy'
 import { getInvitationsViewModel } from '#services/dashboard_view_models'
 import { issueInvitationToken } from '#services/invitation_token'
+import {
+  findUserByEmail,
+  legacyEmailAddress,
+  normalizeEmailAddress,
+} from '#services/email_addresses'
+import { audit } from '#services/audit'
+import { assignableRankedRoleIds, hasLivePermission, lockRoleOrder } from '#services/role_order'
+import db from '@adonisjs/lucid/services/db'
+
+class InvitationChangeError extends Error {}
 
 export default class InvitationsController {
   /** GET /system/invitations — invite form + pending invitations */
@@ -21,7 +31,9 @@ export default class InvitationsController {
   async store({ request, auth, bouncer, response, session }: HttpContext) {
     await bouncer.authorize('users.invite' as never)
 
-    const { email, roleId } = await request.validateUsing(createInvitationValidator)
+    const payload = await request.validateUsing(createInvitationValidator)
+    const email = normalizeEmailAddress(payload.email)
+    const { roleId } = payload
 
     const role = await Role.find(roleId)
     if (!role) {
@@ -36,9 +48,18 @@ export default class InvitationsController {
       return response.redirect().back()
     }
 
-    // Refuse duplicate pending invitations to the same email.
+    if (await findUserByEmail(email)) {
+      session.flash('errors', { email: 'An account already exists for this email.' })
+      return response.redirect().back()
+    }
+
+    // Include legacy addresses when checking older invitations.
+    const legacy = await legacyEmailAddress(email)
     const existing = await Invitation.query()
-      .where('email', email)
+      .whereRaw(
+        'lower(email) in (' + (legacy ? '?, ?' : '?') + ')',
+        legacy ? [email, legacy] : [email]
+      )
       .where('status', 'pending')
       .where('expires_at', '>', DateTime.now().toSQL()!)
       .first()
@@ -51,30 +72,73 @@ export default class InvitationsController {
     }
 
     const expiresIn = '7 days'
-    const invitation = await Invitation.create({
-      email,
-      // Filled in below once we know the row id.
-      token: '',
-      roleId,
-      invitedBy: auth.user!.id,
-      type: 'invite',
-      status: 'pending',
-      expiresAt: DateTime.now().plus({ days: 7 }),
-    })
-
-    // Encryption needs the row id so the link is bound to this specific
-    // invitation. Issue the token, then persist it.
-    invitation.token = issueInvitationToken(invitation.id, 'invite', expiresIn)
-    await invitation.save()
+    let invitation: Invitation
+    try {
+      invitation = await db.transaction(async (trx) => {
+        await lockRoleOrder(trx)
+        const assignableIds = await assignableRankedRoleIds(auth.user!, trx)
+        if (
+          !(await hasLivePermission(auth.user!, 'users.invite', trx)) ||
+          !assignableIds.includes(roleId)
+        ) {
+          throw new InvitationChangeError('You can no longer invite someone into this role.')
+        }
+        if (await findUserByEmail(email, trx)) {
+          throw new InvitationChangeError('An account already exists for this email.')
+        }
+        const duplicate = await Invitation.query({ client: trx })
+          .whereRaw(
+            'lower(email) in (' + (legacy ? '?, ?' : '?') + ')',
+            legacy ? [email, legacy] : [email]
+          )
+          .where('status', 'pending')
+          .where('expires_at', '>', DateTime.now().toSQL()!)
+          .first()
+        if (duplicate)
+          throw new InvitationChangeError('A pending invitation already exists for this email.')
+        const created = new Invitation()
+        created.useTransaction(trx)
+        created.merge({
+          email,
+          token: '',
+          roleId,
+          invitedBy: auth.user!.id,
+          type: 'invite',
+          status: 'pending',
+          deliveryStatus: 'unknown',
+          expiresAt: DateTime.now().plus({ days: 7 }),
+        })
+        await created.save()
+        created.token = issueInvitationToken(created.id, 'invite', expiresIn)
+        await created.save()
+        await audit({
+          actor: auth.user!,
+          action: 'invitation.create',
+          targetType: 'invitation',
+          targetId: created.id,
+          trx,
+        })
+        return created
+      })
+    } catch (error) {
+      if (!(error instanceof InvitationChangeError)) throw error
+      session.flash('error', error.message)
+      return response.redirect().back()
+    }
 
     invitation.$setRelated('role', role)
 
-    // Best-effort send. In dev with no SMTP configured, this will just
-    // log to the console.
     try {
       await mail.send(new InvitationNotification(invitation))
+      invitation.deliveryStatus = 'sent'
+      invitation.sentAt = DateTime.now()
+      await invitation.save()
     } catch (err) {
       console.warn('[invitation] mail send failed:', (err as Error).message)
+      invitation.deliveryStatus = 'failed'
+      await invitation.save()
+      session.flash('error', `Could not send the invitation to ${email}. Use Retry in Invitations.`)
+      return response.redirect().back()
     }
 
     session.flash('success', `Invitation sent to ${email}.`)
@@ -109,9 +173,14 @@ export default class InvitationsController {
 
     try {
       await mail.send(new InvitationNotification(invitation))
+      invitation.deliveryStatus = 'sent'
+      invitation.sentAt = DateTime.now()
+      await invitation.save()
     } catch (err) {
       console.warn('[invitation] resend failed:', (err as Error).message)
-      session.flash('error', 'Failed to send invitation email.')
+      invitation.deliveryStatus = 'failed'
+      await invitation.save()
+      session.flash('error', 'Failed to send invitation email. You can retry it.')
       return response.redirect().back()
     }
 

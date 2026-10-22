@@ -1,45 +1,67 @@
 import { BaseSeeder } from '@adonisjs/lucid/seeders'
 import Role from '#models/role'
 import { permissions } from '#start/permissions'
+import { lockRoleOrder, rankedRoles } from '#services/role_order'
+import db from '@adonisjs/lucid/services/db'
+import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
+
+async function saveSystemRole(
+  trx: TransactionClientContract,
+  values: Pick<Role, 'name' | 'displayName' | 'description' | 'parentRoleId' | 'permissions'>
+): Promise<Role> {
+  const existing = await Role.query({ client: trx }).where('name', values.name).first()
+  const role = existing ?? new Role()
+  const ordered = existing ? [] : await rankedRoles(trx)
+  role.useTransaction(trx)
+  role.merge({
+    ...values,
+    isSystem: true,
+    rankPosition: existing
+      ? existing.rankPosition
+      : values.name === 'owner'
+        ? 0
+        : ordered.length
+          ? Math.max(...ordered.map((item) => item.rankPosition)) + 1
+          : 0,
+  })
+  await role.save()
+  return role
+}
 
 export default class extends BaseSeeder {
   async run() {
-    const owner = await Role.updateOrCreate(
-      { name: 'owner' },
-      {
+    await db.transaction(async (trx) => {
+      await lockRoleOrder(trx)
+      const ownerExists = await Role.query({ client: trx }).where('name', 'owner').first()
+      if (!ownerExists) {
+        // A newly restored Owner must be inserted ahead of any surviving roles.
+        await trx.from('roles').increment('rank_position', 1)
+      }
+      const owner = await saveSystemRole(trx, {
         name: 'owner',
         displayName: 'Owner',
-        isSystem: true,
         description: 'Full access',
         parentRoleId: null,
-      }
-    )
-    await owner.syncPermissions(permissions.active())
+        permissions: permissions.active(),
+      })
 
-    const admin = await Role.updateOrCreate(
-      { name: 'admin' },
-      {
+      const admin = await saveSystemRole(trx, {
         name: 'admin',
         displayName: 'Admin',
-        isSystem: true,
         description: 'Manage users and invitations',
         parentRoleId: owner.id,
-      }
-    )
-    await admin.syncPermissions(permissions.active().filter((k) => !k.startsWith('roles.')))
+        permissions: permissions.active().filter((key) => !key.startsWith('roles.')),
+      })
 
-    const member = await Role.updateOrCreate(
-      { name: 'member' },
-      {
+      await saveSystemRole(trx, {
         name: 'member',
         displayName: 'Member',
-        isSystem: true,
         description: 'Read-only access',
         parentRoleId: admin.id,
-      }
-    )
-    await member.syncPermissions(
-      permissions.active().filter((k) => k.endsWith('.view') && !k.startsWith('settings.'))
-    )
+        permissions: permissions
+          .active()
+          .filter((key) => key.endsWith('.view') && !key.startsWith('settings.')),
+      })
+    })
   }
 }
