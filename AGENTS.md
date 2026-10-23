@@ -50,7 +50,7 @@ The module settings page uses the full dashboard content width, with Save and co
 
 Run `./deploy.sh update` for releases; it always fast-forwards `main`, then migrates, seeds, and health-checks without backing up by default. `migrate-only` also skips seeders; `WITH_BACKUP=true` opts a release into a verified backup. Use reviewed expand/contract migrations. Never run `docker compose down -v`, `./deploy.sh nuke`, or destructive rollbacks; copy backups off-host.
 
-When `INFLUX_ENABLED=true`, HTTP startup requires a reachable InfluxDB 2.x `/ready` endpoint and a token-accessible configured organization/bucket; incomplete configuration or an unavailable store must fail startup. Railway's `InfluxDB` service uses a persistent `/var/lib/influxdb2` volume and the app connects over its private domain on port 8086; keep its initialization token in Railway variables, never in the repository. Local development may leave Influx disabled.
+When `INFLUX_ENABLED=true`, HTTP startup requires a reachable InfluxDB 2.x `/ready` endpoint and a token-accessible configured organization/bucket; incomplete configuration or an unavailable store must fail startup. Keep the boot probe independent of container-resolved services such as the application logger because it runs before the container is ready. Railway's `InfluxDB` service uses a persistent `/var/lib/influxdb2` volume and the app connects over its private domain on port 8086; keep its initialization token in Railway variables, never in the repository. Local development may leave Influx disabled.
 
 ## Commits, Pull Requests & Guide Maintenance
 

@@ -1,5 +1,4 @@
 import { InfluxDB, type WriteApi, type QueryApi } from '@influxdata/influxdb-client'
-import logger from '@adonisjs/core/services/logger'
 import influxConfig from '#config/influx'
 
 /**
@@ -40,24 +39,39 @@ export async function checkInfluxConnection(
   }
 }
 
+type InfluxRetryOptions = {
+  request?: typeof fetch
+  attempts?: number
+  delayMs?: number
+}
+
+/** Retry the full authenticated probe without resolving container services during app boot. */
+export async function waitForInfluxReady(
+  connection: InfluxConnection,
+  { request = fetch, attempts = 20, delayMs = 3000 }: InfluxRetryOptions = {}
+): Promise<void> {
+  let failure = 'unknown error'
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    try {
+      await checkInfluxConnection(connection, request)
+      return
+    } catch (error) {
+      failure = error instanceof Error ? error.message : 'unknown error'
+      if (attempt < attempts - 1) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs))
+      }
+    }
+  }
+  throw new Error(`InfluxDB startup check failed: ${failure}`)
+}
+
 /** Fail before the HTTP listener starts if enabled Influx is not usable. */
 export async function assertInfluxReady(): Promise<void> {
   if (!influxConfig.enabled) return
   if (!influxConfig.url || !influxConfig.token || !influxConfig.org || !influxConfig.bucket) {
     throw new Error('InfluxDB is enabled but URL, token, organization, or bucket is missing.')
   }
-  let failure = 'unknown error'
-  for (let attempt = 0; attempt < 20; attempt++) {
-    try {
-      await checkInfluxConnection(influxConfig)
-      logger.info('InfluxDB startup check passed')
-      return
-    } catch (error) {
-      failure = error instanceof Error ? error.message : 'unknown error'
-      if (attempt < 19) await new Promise((resolve) => setTimeout(resolve, 3000))
-    }
-  }
-  throw new Error(`InfluxDB startup check failed: ${failure}`)
+  await waitForInfluxReady(influxConfig)
 }
 
 function getClient(): InfluxDB | null {
@@ -99,6 +113,7 @@ export async function queryRows(flux: string): Promise<Record<string, any>[]> {
   try {
     return (await api.collectRows(flux)) as Record<string, any>[]
   } catch (err) {
+    const { default: logger } = await import('@adonisjs/core/services/logger')
     logger.error({ err }, 'influx query failed')
     return []
   }

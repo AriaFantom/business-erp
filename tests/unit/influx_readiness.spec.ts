@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { checkInfluxConnection } from '#services/influx_service'
+import { checkInfluxConnection, waitForInfluxReady } from '#services/influx_service'
 
 const connection = {
   url: 'http://influxdb.railway.internal:8086',
@@ -27,6 +27,21 @@ test.group('InfluxDB startup check', () => {
     await checkInfluxConnection(connection, request)
     assert.lengthOf(seen, 2)
     assert.include(seen[1], 'name=dashboard-metrics')
+  })
+
+  test('successful startup retry returns without using application container services', async ({
+    assert,
+  }) => {
+    let requests = 0
+    const request = (async (url: string | URL) => {
+      requests++
+      return String(url).endsWith('/ready')
+        ? new Response(null, { status: 200 })
+        : Response.json({ buckets: [{ name: 'dashboard-metrics' }] })
+    }) as typeof fetch
+
+    await waitForInfluxReady(connection, { request, attempts: 1, delayMs: 0 })
+    assert.equal(requests, 2)
   })
 
   test('rejects an inaccessible configured bucket', async ({ assert }) => {
