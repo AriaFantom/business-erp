@@ -20,7 +20,7 @@ export default class DashboardBrandingController {
     const { name } = await request.validateUsing(renameDashboardValidator)
     await renameDashboard(auth.user!, name)
     session.flash('success', 'Dashboard name updated.')
-    return response.redirect().toRoute('settings.branding')
+    return response.redirect().toPath('/system/branding')
   }
 
   async icon({ response }: HttpContext) {
@@ -34,13 +34,13 @@ export default class DashboardBrandingController {
     const { icon } = await request.validateUsing(dashboardIconValidator)
     await replaceDashboardIcon(auth.user!, icon)
     session.flash('success', 'Dashboard icon updated.')
-    return response.redirect().toRoute('settings.branding')
+    return response.redirect().toPath('/system/branding')
   }
 
   async destroyIcon({ auth, bouncer, response, session }: HttpContext) {
     await bouncer.authorize('isOwner' as never)
     await removeDashboardIcon(auth.user!)
     session.flash('success', 'Dashboard icon removed.')
-    return response.redirect().toRoute('settings.branding')
+    return response.redirect().toPath('/system/branding')
   }
 }

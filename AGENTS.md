@@ -19,6 +19,7 @@ User revocation is reversible (`users.isActive`); preserve accounts and records.
 Dashboard branding lives in `app_settings` under `dashboard_branding`. Only the owner may rename the dashboard or upload/remove its private icon; share current branding through Inertia and stream the icon through an authenticated route. Audit setting changes in their transaction and clean up replaced images after commit.
 
 Models extend generated `database/schema.ts`; never edit it or `.adonisjs/` manually. Configurable module definitions belong in `app/services/modules/registry.ts`; reports are always available and remain protected by `reports.view`, not the module gate. S3/MinIO files stay private and stream through authorized app routes. Web-only schedules are registered by `providers/scheduler_provider.ts`.
+New routes must also pass a clean production build where `.adonisjs/` is regenerated from the committed source. Avoid making controller compilation depend on locally stale generated route-name types; use explicit redirect paths when the route is introduced in the same change.
 
 ## Build, Test, and Development Commands
 
