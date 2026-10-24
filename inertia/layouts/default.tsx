@@ -4,6 +4,17 @@ import { usePage } from '@inertiajs/react'
 import { toast } from 'sonner'
 
 import { Toaster } from '@/components/ui/sonner'
+import { syncDocumentBranding } from '@/lib/document-branding'
+
+function DocumentBranding() {
+  const { branding, user } = usePage<Data.SharedProps>().props
+
+  useEffect(() => {
+    syncDocumentBranding(branding, Boolean(user))
+  }, [branding?.iconUrl, branding?.name, user?.id])
+
+  return null
+}
 
 function FlashToasts() {
   const { flash } = usePage<Data.SharedProps>().props
@@ -23,6 +34,7 @@ export default function Layout({ children }: { children: ReactElement<Data.Share
   return (
     <>
       <main>{children}</main>
+      <DocumentBranding />
       <FlashToasts />
       <Toaster richColors closeButton position="top-right" />
     </>

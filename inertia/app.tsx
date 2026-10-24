@@ -7,11 +7,17 @@ import { createRoot } from 'react-dom/client'
 import { createInertiaApp } from '@inertiajs/react'
 import { TuyauProvider } from '@adonisjs/inertia/react'
 import { resolvePageComponent } from '@adonisjs/inertia/helpers'
+import {
+  formatDocumentTitle,
+  initializeDocumentBranding,
+  setInitialDashboardName,
+} from '@/lib/document-branding'
 
 const appName = import.meta.env.VITE_APP_NAME || 'LayerDreams Panel'
+setInitialDashboardName(appName)
 
 createInertiaApp({
-  title: (title) => (title ? `${title} - ${appName}` : appName),
+  title: formatDocumentTitle,
   resolve: (name) => {
     return resolvePageComponent(
       `./pages/${name}.tsx`,
@@ -20,6 +26,9 @@ createInertiaApp({
     )
   },
   setup({ el, App, props }) {
+    const { branding, user } = props.initialPage.props as unknown as Data.SharedProps
+    initializeDocumentBranding(branding, Boolean(user))
+
     createRoot(el).render(
       <TuyauProvider client={client}>
         <App {...props} />
