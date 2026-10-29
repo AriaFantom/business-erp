@@ -46,6 +46,8 @@ The products list offers both a primary, mobile-friendly three-step Basics, Deta
 
 New purchases use fixed purchase-level shipping and invoice-tax amounts. Allocate both charges proportionally by pre-charge goods value with deterministic, cent-exact remainders; store the allocations and four-decimal landed unit cost on each line. Confirmation uses landed cost for inbound stock and weighted-average valuation, while supplier returns always credit only the original goods unit cost. Omitted invoice tax retains the legacy per-line-tax path for existing callers, but never combine both tax modes. Cover allocation, confirmation, payment, validation, legacy compatibility, and return-credit behavior in `tests/functional/purchases.spec.ts`.
 
+Use the shared shadcn `Select` in dashboard dialogs instead of native HTML selects so option menus inherit the application theme, accessibility behavior, and overlay positioning. Keep `SelectItem` entries inside `SelectGroup`.
+
 The module settings page uses the full dashboard content width, with Save and conditional Reset actions right-aligned in the page-title header. Presets and the connected workflow share one configuration card whose header introduces the presets without duplicating that text in the content, with the four large equal module-style preset options constrained and centered above the workflow. Operational stages use constrained columns with visible gaps and frequent, closely staggered MagicUI-style `AnimatedBeam` connections. Reports are not configurable and must not appear in this workflow or its presets.
 
 ## Production Deployment & Data Safety

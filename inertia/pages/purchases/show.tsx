@@ -15,6 +15,14 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   Table,
   TableBody,
   TableCell,
@@ -272,16 +280,19 @@ function RecordPaymentDialog({ purchase }: { purchase: Purchase }) {
           </div>
           <div className="flex flex-col gap-1">
             <Label>Method</Label>
-            <select
-              className="border-input h-9 rounded-md border bg-transparent px-3 text-sm"
-              value={data.method}
-              onChange={(e) => setData('method', e.target.value)}
-            >
-              <option value="bank">Bank</option>
-              <option value="cash">Cash</option>
-              <option value="upi">UPI</option>
-              <option value="other">Other</option>
-            </select>
+            <Select value={data.method} onValueChange={(value) => setData('method', value)}>
+              <SelectTrigger className="w-full" aria-label="Payment method">
+                <SelectValue placeholder="Choose a payment method" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="bank">Bank</SelectItem>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="upi">UPI</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex flex-col gap-1">
             <Label>Reference</Label>
