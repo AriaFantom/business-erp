@@ -139,6 +139,8 @@ export async function getPurchaseShowViewModel(id: number) {
       supplier: supplier ? { id: supplier.id, name: supplier.name } : null,
       purchasedAt: purchase.purchasedAt?.toISO() ?? null,
       subtotal: purchase.subtotal,
+      shippingCharge: purchase.shippingCharge,
+      taxEntryMode: purchase.taxEntryMode,
       taxTotal: purchase.taxTotal,
       total: purchase.total,
       paidTotal: purchase.paidTotal,
@@ -162,6 +164,9 @@ export async function getPurchaseShowViewModel(id: number) {
         lineSubtotal: it.lineSubtotal,
         lineTax: it.lineTax,
         lineTotal: it.lineTotal,
+        allocatedShipping: it.allocatedShipping,
+        allocatedTax: it.allocatedTax,
+        landedUnitCost: it.landedUnitCost ?? it.unitCost,
         returnedQty: returnedByItem.get(it.id) ?? 0,
         machines: machinesByItem.get(it.id) ?? [],
       }

@@ -769,8 +769,12 @@ export class ProductSchema extends BaseModel {
 }
 
 export class PurchaseItemSchema extends BaseModel {
-  static $columns = ['createdAt', 'id', 'itemId', 'itemKind', 'lineSubtotal', 'lineTax', 'lineTotal', 'purchaseId', 'qty', 'taxRatePct', 'unitCost', 'updatedAt'] as const
+  static $columns = ['allocatedShipping', 'allocatedTax', 'createdAt', 'id', 'itemId', 'itemKind', 'landedUnitCost', 'lineSubtotal', 'lineTax', 'lineTotal', 'purchaseId', 'qty', 'taxRatePct', 'unitCost', 'updatedAt'] as const
   $columns = PurchaseItemSchema.$columns
+  @column()
+  declare allocatedShipping: string
+  @column()
+  declare allocatedTax: string
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column({ isPrimary: true })
@@ -779,6 +783,8 @@ export class PurchaseItemSchema extends BaseModel {
   declare itemId: number
   @column()
   declare itemKind: string
+  @column()
+  declare landedUnitCost: string | null
   @column()
   declare lineSubtotal: string
   @column()
@@ -871,7 +877,7 @@ export class PurchaseReturnSchema extends BaseModel {
 }
 
 export class PurchaseSchema extends BaseModel {
-  static $columns = ['attachmentKey', 'cancelledAt', 'cancelledByUserId', 'confirmedAt', 'confirmedByUserId', 'createdAt', 'createdByUserId', 'id', 'note', 'number', 'paidTotal', 'purchasedAt', 'status', 'subtotal', 'supplierId', 'taxTotal', 'total', 'updatedAt'] as const
+  static $columns = ['attachmentKey', 'cancelledAt', 'cancelledByUserId', 'confirmedAt', 'confirmedByUserId', 'createdAt', 'createdByUserId', 'id', 'note', 'number', 'paidTotal', 'purchasedAt', 'shippingCharge', 'status', 'subtotal', 'supplierId', 'taxEntryMode', 'taxTotal', 'total', 'updatedAt'] as const
   $columns = PurchaseSchema.$columns
   @column()
   declare attachmentKey: string | null
@@ -898,11 +904,15 @@ export class PurchaseSchema extends BaseModel {
   @column.dateTime()
   declare purchasedAt: DateTime
   @column()
+  declare shippingCharge: string
+  @column()
   declare status: string
   @column()
   declare subtotal: string
   @column()
   declare supplierId: number
+  @column()
+  declare taxEntryMode: string
   @column()
   declare taxTotal: string
   @column()

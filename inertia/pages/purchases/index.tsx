@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Separator } from '@/components/ui/separator'
 import {
   Select,
   SelectContent,
@@ -74,7 +75,6 @@ type LineDraft = {
   itemId: number
   qty: number
   unitCost: number
-  taxRatePct: number
 }
 
 function NewPurchaseDialog({
@@ -91,6 +91,8 @@ function NewPurchaseDialog({
     supplierId: '',
     purchasedAt: new Date().toISOString().slice(0, 10),
     note: '',
+    shippingCharge: 0,
+    taxAmount: 0,
     items: [] as LineDraft[],
   })
 
@@ -105,7 +107,6 @@ function NewPurchaseDialog({
         itemId,
         qty: 1,
         unitCost: Number(it.defaultUnitCost),
-        taxRatePct: 18,
       },
     ])
   }
@@ -133,17 +134,26 @@ function NewPurchaseDialog({
     })
   }
 
+  const goodsSubtotal =
+    Math.round(
+      data.items.reduce(
+        (sum, line) => sum + Number(line.qty || 0) * Number(line.unitCost || 0),
+        0
+      ) * 100
+    ) / 100
+  const grandTotal = Math.round((goodsSubtotal + data.shippingCharge + data.taxAmount) * 100) / 100
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>New purchase</Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-3xl">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Create purchase</DialogTitle>
         </DialogHeader>
         <form className="flex flex-col gap-3" onSubmit={submit}>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Supplier" error={errors.supplierId}>
               <Select value={data.supplierId} onValueChange={(v) => setData('supplierId', v)}>
                 <SelectTrigger>
@@ -215,7 +225,6 @@ function NewPurchaseDialog({
                       <TableHead>Item</TableHead>
                       <TableHead>Qty</TableHead>
                       <TableHead>Unit cost</TableHead>
-                      <TableHead>Tax %</TableHead>
                       <TableHead></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -263,19 +272,6 @@ function NewPurchaseDialog({
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Input
-                              aria-label={`Line ${i + 1} tax percent`}
-                              placeholder="Tax %"
-                              type="number"
-                              step="0.01"
-                              value={ln.taxRatePct}
-                              onChange={(e) =>
-                                updateLine(i, { taxRatePct: Number(e.target.value) })
-                              }
-                              className="w-20"
-                            />
-                          </TableCell>
-                          <TableCell>
                             <Button
                               type="button"
                               variant="destructive-soft"
@@ -292,6 +288,47 @@ function NewPurchaseDialog({
                 </Table>
               </div>
             )}
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field label="Shipping charge" error={errors.shippingCharge}>
+              <Input
+                aria-label="Shipping charge"
+                type="number"
+                min={0}
+                step="0.01"
+                inputMode="decimal"
+                value={data.shippingCharge}
+                onChange={(e) => setData('shippingCharge', Number(e.target.value))}
+              />
+            </Field>
+            <Field label="Invoice tax" error={errors.taxAmount}>
+              <Input
+                aria-label="Invoice tax"
+                type="number"
+                min={0}
+                step="0.01"
+                inputMode="decimal"
+                value={data.taxAmount}
+                onChange={(e) => setData('taxAmount', Number(e.target.value))}
+              />
+            </Field>
+          </div>
+
+          <div className="rounded-lg border bg-muted/30 p-4">
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+              <dt className="text-muted-foreground">Goods subtotal</dt>
+              <dd className="text-right tabular-nums">{goodsSubtotal.toFixed(2)}</dd>
+              <dt className="text-muted-foreground">Shipping</dt>
+              <dd className="text-right tabular-nums">{data.shippingCharge.toFixed(2)}</dd>
+              <dt className="text-muted-foreground">Invoice tax</dt>
+              <dd className="text-right tabular-nums">{data.taxAmount.toFixed(2)}</dd>
+            </dl>
+            <Separator className="my-3" />
+            <div className="flex items-center justify-between font-medium">
+              <span>Grand total</span>
+              <span className="tabular-nums">{grandTotal.toFixed(2)}</span>
+            </div>
           </div>
 
           <DialogFooter>

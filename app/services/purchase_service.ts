@@ -20,7 +20,7 @@ export type PurchaseLineInput = {
   itemId: number
   qty: number
   unitCost: number
-  taxRatePct: number
+  taxRatePct?: number
 }
 
 export type CreatePurchaseInput = {
@@ -28,19 +28,129 @@ export type CreatePurchaseInput = {
   purchasedAt: DateTime
   note?: string | null
   attachmentKey?: string | null
+  shippingCharge?: number
+  taxAmount?: number
   items: PurchaseLineInput[]
   actor: User
 }
 
 function recomputeLine(line: PurchaseLineInput) {
   const subtotal = round2(line.qty * line.unitCost)
-  const tax = round2((subtotal * line.taxRatePct) / 100)
+  const tax = round2((subtotal * (line.taxRatePct ?? 0)) / 100)
   const total = round2(subtotal + tax)
   return { lineSubtotal: subtotal, lineTax: tax, lineTotal: total }
 }
 
 function round2(n: number): number {
-  return Math.round(n * 100) / 100
+  return Math.round((n + Number.EPSILON) * 100) / 100
+}
+
+function round4(n: number): number {
+  return Math.round((n + Number.EPSILON) * 10_000) / 10_000
+}
+
+const MAX_DATABASE_MONEY = 999_999_999_999.99
+const MAX_DATABASE_UNIT_COST = 9_999_999_999.9999
+
+function normalizeCharge(value: number | undefined, label: string): number {
+  if (value === undefined) return 0
+  const scaled = value * 100
+  if (
+    !Number.isFinite(value) ||
+    value < 0 ||
+    value > 99_999_999_999 ||
+    Math.abs(scaled - Math.round(scaled)) > 1e-7
+  ) {
+    throw new DomainError({
+      code: 'INVALID_PURCHASE_CHARGE',
+      message: `${label} must be a non-negative amount with no more than two decimal places.`,
+    })
+  }
+  return round2(value)
+}
+
+function assertDatabaseMoney(value: number, label: string) {
+  if (!Number.isFinite(value) || value < 0 || value > MAX_DATABASE_MONEY) {
+    throw new DomainError({
+      code: 'PURCHASE_TOTAL_TOO_LARGE',
+      message: `${label} is too large to save safely. Reduce the quantities or amounts.`,
+    })
+  }
+}
+
+function assertPurchaseLine(line: PurchaseLineInput) {
+  if (!Number.isFinite(line.qty) || line.qty <= 0 || line.qty > 999_999_999) {
+    throw new DomainError({
+      code: 'INVALID_PURCHASE_LINE',
+      message: 'Purchase quantities must be positive, finite numbers.',
+    })
+  }
+  if (
+    !Number.isFinite(line.unitCost) ||
+    line.unitCost < 0 ||
+    line.unitCost > MAX_DATABASE_UNIT_COST
+  ) {
+    throw new DomainError({
+      code: 'INVALID_PURCHASE_LINE',
+      message: 'A purchase unit cost is outside the supported database range.',
+    })
+  }
+  const taxRatePct = line.taxRatePct ?? 0
+  if (!Number.isFinite(taxRatePct) || taxRatePct < 0 || taxRatePct > 100) {
+    throw new DomainError({
+      code: 'INVALID_PURCHASE_LINE',
+      message: 'A purchase line tax percentage must be between 0 and 100.',
+    })
+  }
+}
+
+function assertDatabaseUnitCost(value: number) {
+  if (!Number.isFinite(value) || value < 0 || value > MAX_DATABASE_UNIT_COST) {
+    throw new DomainError({
+      code: 'PURCHASE_TOTAL_TOO_LARGE',
+      message: 'A landed unit cost is too large to save safely.',
+    })
+  }
+}
+
+/**
+ * Allocate a fixed charge by goods value while keeping the result cent-exact.
+ * Largest fractional remainders receive the spare cents; line order breaks ties.
+ */
+export function allocatePurchaseCharge(amount: number, goodsValues: number[]): number[] {
+  const amountCents = Math.round(round2(amount) * 100)
+  if (amountCents === 0) return goodsValues.map(() => 0)
+
+  const weights = goodsValues.map((value) => BigInt(Math.round(round2(value) * 100)))
+  const totalWeight = weights.reduce((sum, value) => sum + value, 0n)
+  if (totalWeight <= 0n) {
+    throw new DomainError({
+      code: 'PURCHASE_CHARGES_REQUIRE_SUBTOTAL',
+      message: 'Shipping and invoice tax cannot be allocated without a positive goods subtotal.',
+    })
+  }
+
+  const amountCentsBigInt = BigInt(amountCents)
+  const shares = weights.map((weight, index) => {
+    const numerator = amountCentsBigInt * weight
+    return {
+      index,
+      cents: numerator / totalWeight,
+      remainder: numerator % totalWeight,
+    }
+  })
+  const allocated = shares.map((share) => share.cents)
+  const remaining = Number(amountCentsBigInt - allocated.reduce((sum, value) => sum + value, 0n))
+  const priority = [...shares].sort((a, b) => {
+    if (a.remainder === b.remainder) return a.index - b.index
+    return a.remainder > b.remainder ? -1 : 1
+  })
+
+  for (let i = 0; i < remaining; i++) {
+    allocated[priority[i % priority.length].index] += 1n
+  }
+
+  return allocated.map((cents) => Number(cents) / 100)
 }
 
 async function ensureItemExists(kind: 'material' | 'component', id: number) {
@@ -65,22 +175,69 @@ export async function createPurchase(input: CreatePurchaseInput): Promise<Purcha
     })
   }
   for (const item of input.items) {
+    assertPurchaseLine(item)
     await ensureItemExists(item.itemKind, item.itemId)
+  }
+
+  const shippingCharge = normalizeCharge(input.shippingCharge, 'Shipping charge')
+  const usesInvoiceTax = input.taxAmount !== undefined
+  const invoiceTax = normalizeCharge(input.taxAmount, 'Invoice tax')
+  if (usesInvoiceTax && input.items.some((item) => (item.taxRatePct ?? 0) !== 0)) {
+    throw new DomainError({
+      code: 'PURCHASE_TAX_MODE_CONFLICT',
+      message: 'Invoice tax cannot be combined with per-line tax percentages.',
+    })
   }
 
   return db.transaction(async (trx) => {
     const number = await nextDocNumber('PO', trx, input.purchasedAt)
 
     let subtotal = 0
-    let taxTotal = 0
-    let total = 0
-    const lines = input.items.map((l) => {
+    let legacyTaxTotal = 0
+    const baseLines = input.items.map((l) => {
       const t = recomputeLine(l)
+      assertDatabaseMoney(t.lineSubtotal, 'A purchase line subtotal')
+      assertDatabaseMoney(t.lineTotal, 'A purchase line total')
       subtotal += t.lineSubtotal
-      taxTotal += t.lineTax
-      total += t.lineTotal
-      return { ...l, ...t }
+      legacyTaxTotal += t.lineTax
+      return { ...l, taxRatePct: l.taxRatePct ?? 0, ...t }
     })
+    subtotal = round2(subtotal)
+    legacyTaxTotal = round2(legacyTaxTotal)
+    assertDatabaseMoney(subtotal, 'The goods subtotal')
+
+    if (subtotal <= 0 && (shippingCharge > 0 || invoiceTax > 0)) {
+      throw new DomainError({
+        code: 'PURCHASE_CHARGES_REQUIRE_SUBTOTAL',
+        message: 'Shipping and invoice tax cannot be added when the goods subtotal is zero.',
+      })
+    }
+
+    const shippingAllocations = allocatePurchaseCharge(
+      shippingCharge,
+      baseLines.map((line) => line.lineSubtotal)
+    )
+    const taxAllocations = allocatePurchaseCharge(
+      usesInvoiceTax ? invoiceTax : 0,
+      baseLines.map((line) => line.lineSubtotal)
+    )
+    const lines = baseLines.map((line, index) => {
+      const landedUnitCost = round4(
+        (line.lineSubtotal + shippingAllocations[index] + taxAllocations[index]) / line.qty
+      )
+      assertDatabaseUnitCost(landedUnitCost)
+      return {
+        ...line,
+        allocatedShipping: shippingAllocations[index],
+        allocatedTax: taxAllocations[index],
+        landedUnitCost,
+        lineTax: usesInvoiceTax ? 0 : line.lineTax,
+        lineTotal: usesInvoiceTax ? line.lineSubtotal : line.lineTotal,
+      }
+    })
+    const taxTotal = usesInvoiceTax ? invoiceTax : legacyTaxTotal
+    const total = round2(subtotal + shippingCharge + taxTotal)
+    assertDatabaseMoney(total, 'The purchase total')
 
     const purchase = new Purchase()
     purchase.number = number
@@ -89,7 +246,9 @@ export async function createPurchase(input: CreatePurchaseInput): Promise<Purcha
     purchase.purchasedAt = input.purchasedAt
     purchase.subtotal = String(round2(subtotal))
     purchase.taxTotal = String(round2(taxTotal))
-    purchase.total = String(round2(total))
+    purchase.shippingCharge = String(shippingCharge)
+    purchase.taxEntryMode = usesInvoiceTax ? 'invoice_amount' : 'legacy_line'
+    purchase.total = String(total)
     purchase.note = input.note ?? null
     purchase.attachmentKey = input.attachmentKey ?? null
     purchase.createdByUserId = input.actor.id
@@ -107,6 +266,9 @@ export async function createPurchase(input: CreatePurchaseInput): Promise<Purcha
       item.lineSubtotal = String(l.lineSubtotal)
       item.lineTax = String(l.lineTax)
       item.lineTotal = String(l.lineTotal)
+      item.allocatedShipping = String(l.allocatedShipping)
+      item.allocatedTax = String(l.allocatedTax)
+      item.landedUnitCost = String(l.landedUnitCost)
       item.useTransaction(trx)
       await item.save()
     }
@@ -116,7 +278,16 @@ export async function createPurchase(input: CreatePurchaseInput): Promise<Purcha
       action: 'purchase.create',
       targetType: 'purchase',
       targetId: purchase.id,
-      payload: { number, supplierId: input.supplierId, lineCount: input.items.length },
+      payload: {
+        number,
+        supplierId: input.supplierId,
+        lineCount: input.items.length,
+        subtotal,
+        shippingCharge,
+        taxTotal,
+        taxEntryMode: purchase.taxEntryMode,
+        total,
+      },
       trx,
     })
 
@@ -163,7 +334,7 @@ export async function confirmPurchase(purchaseId: number, actor: User): Promise<
         itemKind: l.itemKind as 'material' | 'component',
         itemId: l.itemId,
         qty: Number(l.qty),
-        unitCost: Number(l.unitCost),
+        unitCost: l.landedUnitCost === null ? Number(l.unitCost) : Number(l.landedUnitCost),
         reason: 'purchase',
         referenceType: 'purchase',
         referenceId: purchase.id,

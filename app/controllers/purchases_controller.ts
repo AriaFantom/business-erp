@@ -52,6 +52,8 @@ export default class PurchasesController {
         supplierId: payload.supplierId,
         purchasedAt: payload.purchasedAt ?? DateTime.now(),
         note: payload.note ?? null,
+        shippingCharge: payload.shippingCharge,
+        taxAmount: payload.taxAmount,
         items: payload.items,
         actor: auth.user!,
       })

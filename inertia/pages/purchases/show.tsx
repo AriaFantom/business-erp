@@ -32,6 +32,8 @@ type Purchase = {
   supplier: { id: number; name: string } | null
   purchasedAt: string | null
   subtotal: string
+  shippingCharge: string
+  taxEntryMode: string
   taxTotal: string
   total: string
   paidTotal: string
@@ -63,6 +65,9 @@ type Item = {
   lineSubtotal: string
   lineTax: string
   lineTotal: string
+  allocatedShipping: string
+  allocatedTax: string
+  landedUnitCost: string
   returnedQty: number
   machines?: { id: number; name: string }[]
 }
@@ -356,10 +361,19 @@ export default function PurchaseShow({ purchase, items, returns, payments }: Pag
                   <TableHead>Item</TableHead>
                   <TableHead className="text-right">Qty</TableHead>
                   <TableHead className="text-right">Returned</TableHead>
-                  <TableHead className="text-right">Unit cost</TableHead>
-                  <TableHead className="text-right">Tax %</TableHead>
-                  <TableHead className="text-right">Subtotal</TableHead>
-                  <TableHead className="text-right">Tax</TableHead>
+                  <TableHead className="text-right">Goods unit cost</TableHead>
+                  {purchase.taxEntryMode === 'legacy_line' && (
+                    <TableHead className="text-right">Tax %</TableHead>
+                  )}
+                  <TableHead className="text-right">Goods subtotal</TableHead>
+                  <TableHead className="text-right">Shipping allocated</TableHead>
+                  {purchase.taxEntryMode === 'invoice_amount' && (
+                    <TableHead className="text-right">Tax allocated</TableHead>
+                  )}
+                  <TableHead className="text-right">Landed unit cost</TableHead>
+                  {purchase.taxEntryMode === 'legacy_line' && (
+                    <TableHead className="text-right">Line tax</TableHead>
+                  )}
                   <TableHead className="text-right">Total</TableHead>
                 </TableRow>
               </TableHeader>
@@ -389,9 +403,18 @@ export default function PurchaseShow({ purchase, items, returns, payments }: Pag
                       {it.returnedQty > 0 ? it.returnedQty : '—'}
                     </TableCell>
                     <TableCell className="text-right">{it.unitCost}</TableCell>
-                    <TableCell className="text-right">{it.taxRatePct}</TableCell>
+                    {purchase.taxEntryMode === 'legacy_line' && (
+                      <TableCell className="text-right">{it.taxRatePct}</TableCell>
+                    )}
                     <TableCell className="text-right">{it.lineSubtotal}</TableCell>
-                    <TableCell className="text-right">{it.lineTax}</TableCell>
+                    <TableCell className="text-right">{it.allocatedShipping}</TableCell>
+                    {purchase.taxEntryMode === 'invoice_amount' && (
+                      <TableCell className="text-right">{it.allocatedTax}</TableCell>
+                    )}
+                    <TableCell className="text-right">{it.landedUnitCost}</TableCell>
+                    {purchase.taxEntryMode === 'legacy_line' && (
+                      <TableCell className="text-right">{it.lineTax}</TableCell>
+                    )}
                     <TableCell className="text-right">{it.lineTotal}</TableCell>
                   </TableRow>
                 ))}
@@ -407,11 +430,15 @@ export default function PurchaseShow({ purchase, items, returns, payments }: Pag
         </CardHeader>
         <CardContent>
           <dl className="grid grid-cols-2 gap-2 text-sm">
-            <dt className="text-muted-foreground">Subtotal</dt>
+            <dt className="text-muted-foreground">Goods subtotal</dt>
             <dd className="text-right">{purchase.subtotal}</dd>
-            <dt className="text-muted-foreground">Tax</dt>
+            <dt className="text-muted-foreground">Shipping</dt>
+            <dd className="text-right">{purchase.shippingCharge}</dd>
+            <dt className="text-muted-foreground">
+              {purchase.taxEntryMode === 'invoice_amount' ? 'Invoice tax' : 'Legacy line tax'}
+            </dt>
             <dd className="text-right">{purchase.taxTotal}</dd>
-            <dt className="font-medium">Total</dt>
+            <dt className="font-medium">Grand total</dt>
             <dd className="text-right font-medium">{purchase.total}</dd>
             {purchase.status === 'confirmed' && (
               <>
