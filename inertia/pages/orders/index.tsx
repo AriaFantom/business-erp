@@ -18,6 +18,7 @@ import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
 import { ColumnVisibilityMenu, type ColumnDef } from '@/components/data-table/column-visibility'
 import { useColumnVisibility } from '@/hooks/use-column-visibility'
+import { formatMoney, useCurrency } from '@/lib/currency'
 
 type OrderRow = {
   id: number
@@ -60,6 +61,7 @@ const ORDER_COLUMNS: ColumnDef[] = [
 ]
 
 export default function OrdersIndex({ orders, customers, filters }: PageProps) {
+  const currency = useCurrency()
   const { isVisible, toggle, reset } = useColumnVisibility('orders')
   const confirmedCount = orders.filter((o) => o.status === 'confirmed').length
   const cancelledCount = orders.filter((o) => o.status === 'cancelled').length
@@ -82,7 +84,7 @@ export default function OrdersIndex({ orders, customers, filters }: PageProps) {
         <StatCard
           label="Confirmed"
           value={confirmedCount}
-          hint={`Revenue ₹${totalRevenue.toFixed(2)}`}
+          hint={`Revenue ${formatMoney(totalRevenue, currency)}`}
           icon={CheckCircle2}
         />
         <StatCard label="Cancelled" value={cancelledCount} icon={XCircle} />
@@ -160,7 +162,9 @@ export default function OrdersIndex({ orders, customers, filters }: PageProps) {
                         <StatusBadge kind="order" status={o.status} />
                       </TableCell>
                     )}
-                    {isVisible('total') && <TableCell className="text-right">{o.total}</TableCell>}
+                    {isVisible('total') && (
+                      <TableCell className="text-right">{formatMoney(o.total, currency)}</TableCell>
+                    )}
                     {isVisible('confirmed') && (
                       <TableCell>{o.confirmedAt?.slice(0, 10) ?? '—'}</TableCell>
                     )}

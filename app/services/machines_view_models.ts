@@ -13,8 +13,9 @@ type IndexFilters = { q?: string; status?: string }
 /**
  * Run minutes over the last 30 days, grouped by machine — a single join of
  * production_job_stages to production_jobs (on job_id), summing completed
- * stage durations for jobs pinned to a machine. Avoids N+1 per-machine
- * queries.
+ * stage durations for jobs pinned to a machine. Force-done jobs use their
+ * configured minutes, matching their billed machine cost; ordinary jobs use
+ * elapsed stage timestamps. Avoids N+1 per-machine queries.
  */
 async function getRunMinutes30dByMachine(): Promise<Map<number, number>> {
   const since = DateTime.now().minus({ days: 30 }).toSQL()
@@ -22,14 +23,20 @@ async function getRunMinutes30dByMachine(): Promise<Map<number, number>> {
     .from('production_job_stages as s')
     .innerJoin('production_jobs as j', 's.job_id', 'j.id')
     .whereNotNull('j.machine_id')
-    .whereNotNull('s.started_at')
-    .whereNotNull('s.completed_at')
-    .where('s.completed_at', '>=', since)
+    .where('j.status', 'completed')
+    .where('j.completed_at', '>=', since)
     .groupBy('j.machine_id')
     .select('j.machine_id as machineId')
     .select(
       db.raw(
-        'COALESCE(SUM(EXTRACT(EPOCH FROM (s.completed_at - s.started_at)) / 60), 0) as minutes'
+        `COALESCE(SUM(
+          CASE
+            WHEN j.completion_time_basis = 'forced_configured' THEN s.estimated_duration_min
+            WHEN s.started_at IS NOT NULL AND s.completed_at IS NOT NULL
+              THEN EXTRACT(EPOCH FROM (s.completed_at - s.started_at)) / 60
+            ELSE 0
+          END
+        ), 0) as minutes`
       )
     )
   const byMachine = new Map<number, number>()

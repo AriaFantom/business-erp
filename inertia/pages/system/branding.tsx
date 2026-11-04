@@ -1,4 +1,4 @@
-import { useRef, useState, type ChangeEvent, type ReactElement } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type ReactElement } from 'react'
 import { router, useForm, usePage } from '@inertiajs/react'
 import { Layers, Trash2, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -12,156 +12,190 @@ import {
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import type { InertiaProps } from '@/types'
 
 type Branding = { name: string; iconUrl: string | null }
+type Props = { branding: Branding; currency: string; currencyOptions: string[] }
 
-export default function DashboardBranding({ branding }: { branding: Branding }) {
-  const { user } = usePage<InertiaProps>().props
+export default function ApplicationSettings({ branding, currency, currencyOptions }: Props) {
+  const { user } = usePage<InertiaProps<Props>>().props
   const fileInput = useRef<HTMLInputElement>(null)
-  const [uploading, setUploading] = useState(false)
-  const [uploadError, setUploadError] = useState<string | null>(null)
-  const [removeOpen, setRemoveOpen] = useState(false)
-  const { data, setData, post, processing, errors } = useForm({ name: branding.name })
+  const [previewUrl, setPreviewUrl] = useState<string | null>(branding.iconUrl)
+  const [currencyConfirmOpen, setCurrencyConfirmOpen] = useState(false)
+  const { data, setData, post, processing, errors } = useForm<{
+    name: string
+    currency: string
+    icon: File | null
+    removeIcon: boolean
+  }>({ name: branding.name, currency, icon: null, removeIcon: false })
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl?.startsWith('blob:')) URL.revokeObjectURL(previewUrl)
+    }
+  }, [previewUrl])
 
   if (!user?.isOwner) return null
 
-  const upload = (event: ChangeEvent<HTMLInputElement>) => {
-    const icon = event.target.files?.[0]
+  const chooseIcon = (event: ChangeEvent<HTMLInputElement>) => {
+    const icon = event.target.files?.[0] ?? null
     if (!icon) return
-    setUploading(true)
-    setUploadError(null)
-    router.post(
-      '/system/branding/icon',
-      { icon },
-      {
-        forceFormData: true,
-        preserveScroll: true,
-        preserveState: false,
-        onSuccess: () => router.flushAll(),
-        onError: (validation) =>
-          setUploadError((validation.icon as string | undefined) ?? 'Upload failed.'),
-        onFinish: () => {
-          setUploading(false)
-          if (fileInput.current) fileInput.current.value = ''
-        },
-      }
-    )
+    if (previewUrl?.startsWith('blob:')) URL.revokeObjectURL(previewUrl)
+    setPreviewUrl(URL.createObjectURL(icon))
+    setData((current) => ({ ...current, icon, removeIcon: false }))
   }
 
+  const removeIcon = () => {
+    if (previewUrl?.startsWith('blob:')) URL.revokeObjectURL(previewUrl)
+    setPreviewUrl(null)
+    setData((current) => ({ ...current, icon: null, removeIcon: true }))
+    if (fileInput.current) fileInput.current.value = ''
+  }
+
+  const save = () => {
+    post('/system/settings', {
+      forceFormData: true,
+      preserveScroll: true,
+      preserveState: false,
+      onSuccess: () => router.flushAll(),
+    })
+  }
+
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault()
+    if (data.currency !== currency) setCurrencyConfirmOpen(true)
+    else save()
+  }
+
+  const changed =
+    data.name.trim() !== branding.name ||
+    data.currency !== currency ||
+    data.icon !== null ||
+    data.removeIcon
+
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-8">
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-8">
       <div>
-        <h1 className="text-2xl font-semibold">Dashboard branding</h1>
+        <h1 className="text-2xl font-semibold">Settings</h1>
         <p className="text-sm text-muted-foreground">
-          Set the name and icon shown at the top of the application.
+          Manage the application identity and display currency.
         </p>
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Dashboard name</CardTitle>
-          <CardDescription>Shown to everyone in the navigation sidebar.</CardDescription>
-        </CardHeader>
-        <form
-          onSubmit={(event) => {
-            event.preventDefault()
-            post('/system/branding', {
-              preserveScroll: true,
-              preserveState: false,
-              onSuccess: () => router.flushAll(),
-            })
-          }}
-        >
-          <CardContent className="space-y-2">
-            <Label htmlFor="dashboard-name">Name</Label>
-            <Input
-              id="dashboard-name"
-              value={data.name}
-              onChange={(event) => setData('name', event.target.value)}
-              maxLength={80}
-              aria-invalid={Boolean(errors.name)}
-            />
-            {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
+
+      <form onSubmit={submit}>
+        <Card>
+          <CardHeader>
+            <CardTitle>Application settings</CardTitle>
+            <CardDescription>
+              The name and icon appear throughout the dashboard and invitation emails.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-6 md:grid-cols-[1fr_auto]">
+            <div className="flex flex-col gap-5">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="dashboard-name">Business name</Label>
+                <Input
+                  id="dashboard-name"
+                  value={data.name}
+                  onChange={(event) => setData('name', event.target.value)}
+                  maxLength={80}
+                  aria-invalid={Boolean(errors.name)}
+                />
+                {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="currency">Currency</Label>
+                <Select value={data.currency} onValueChange={(value) => setData('currency', value)}>
+                  <SelectTrigger id="currency" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {currencyOptions.map((code) => (
+                        <SelectItem key={code} value={code}>
+                          {code}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  This changes labels only. Existing amounts are not converted.
+                </p>
+                {errors.currency && <p className="text-sm text-destructive">{errors.currency}</p>}
+              </div>
+            </div>
+
+            <div className="flex min-w-48 flex-col gap-3">
+              <Label>Business icon</Label>
+              <div className="flex items-center gap-4 md:flex-col md:items-start">
+                <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-sidebar-primary text-sidebar-primary-foreground">
+                  {previewUrl ? (
+                    <img
+                      src={previewUrl}
+                      alt="Business icon preview"
+                      className="size-full object-cover"
+                    />
+                  ) : (
+                    <Layers className="size-9" />
+                  )}
+                </div>
+                <input
+                  ref={fileInput}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={chooseIcon}
+                  aria-label="Choose business icon"
+                />
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => fileInput.current?.click()}
+                  >
+                    <Upload data-icon="inline-start" /> {previewUrl ? 'Replace' : 'Upload'}
+                  </Button>
+                  {previewUrl && (
+                    <Button type="button" variant="ghost" onClick={removeIcon}>
+                      <Trash2 data-icon="inline-start" /> Remove
+                    </Button>
+                  )}
+                </div>
+              </div>
+              {errors.icon && <p className="text-sm text-destructive">{errors.icon}</p>}
+              <p className="text-xs text-muted-foreground">JPG, PNG, or WebP up to 2 MB.</p>
+            </div>
           </CardContent>
           <CardFooter className="justify-end">
-            <Button
-              type="submit"
-              disabled={processing || !data.name.trim() || data.name.trim() === branding.name}
-            >
-              {processing ? 'Saving…' : 'Save name'}
+            <Button type="submit" disabled={processing || !changed || !data.name.trim()}>
+              {processing ? 'Saving…' : 'Save settings'}
             </Button>
           </CardFooter>
-        </form>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>Dashboard icon</CardTitle>
-          <CardDescription>
-            JPG, PNG, or WebP up to 2 MB. A square image works best.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex items-center gap-5">
-          <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-sidebar-primary text-sidebar-primary-foreground">
-            {branding.iconUrl ? (
-              <img
-                src={branding.iconUrl}
-                alt="Current dashboard icon"
-                className="size-full object-cover"
-              />
-            ) : (
-              <Layers className="size-8" />
-            )}
-          </div>
-          <div className="space-y-2">
-            <input
-              ref={fileInput}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="hidden"
-              onChange={upload}
-              aria-label="Choose dashboard icon"
-            />
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                disabled={uploading}
-                onClick={() => fileInput.current?.click()}
-              >
-                <Upload data-icon="inline-start" />{' '}
-                {uploading ? 'Uploading…' : branding.iconUrl ? 'Replace icon' : 'Upload icon'}
-              </Button>
-              {branding.iconUrl && (
-                <Button variant="ghost" disabled={uploading} onClick={() => setRemoveOpen(true)}>
-                  <Trash2 data-icon="inline-start" /> Remove
-                </Button>
-              )}
-            </div>
-            {uploadError && <p className="text-sm text-destructive">{uploadError}</p>}
-          </div>
-        </CardContent>
-      </Card>
+        </Card>
+      </form>
+
       <ConfirmDialog
-        open={removeOpen}
-        onOpenChange={setRemoveOpen}
-        title="Remove dashboard icon?"
-        description="The default icon will be shown until you upload another one."
-        confirmLabel="Remove icon"
-        onConfirm={() =>
-          router.post(
-            '/system/branding/icon/delete',
-            {},
-            {
-              preserveScroll: true,
-              preserveState: false,
-              onSuccess: () => router.flushAll(),
-            }
-          )
-        }
+        open={currencyConfirmOpen}
+        onOpenChange={setCurrencyConfirmOpen}
+        title={`Change currency to ${data.currency}?`}
+        description="All existing numbers will keep their current values and will be relabelled with the new currency. No exchange-rate conversion will be performed."
+        confirmLabel="Change currency"
+        onConfirm={save}
       />
     </div>
   )
 }
 
-DashboardBranding.layout = (page: ReactElement) => <DashboardLayout>{page}</DashboardLayout>
+ApplicationSettings.layout = (page: ReactElement) => <DashboardLayout>{page}</DashboardLayout>

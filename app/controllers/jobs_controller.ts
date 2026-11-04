@@ -5,6 +5,7 @@ import {
   consumeMaterialValidator,
   createJobValidator,
   failJobValidator,
+  forceDoneJobValidator,
   startJobValidator,
 } from '#validators/jobs'
 import {
@@ -17,6 +18,7 @@ import {
   confirmJob,
   createJob,
   failJob,
+  forceDoneJob,
   pauseJob,
   recordConsumption,
   recordExpense,
@@ -25,6 +27,7 @@ import {
   startJob,
 } from '#services/job_costing'
 import { DomainError } from '#services/domain_errors'
+import ProductionJob from '#models/production_job'
 
 export default class JobsController {
   async index({ request, inertia, bouncer }: HttpContext) {
@@ -104,6 +107,7 @@ export default class JobsController {
         itemId: payload.itemId,
         qtyConsumed: payload.qtyConsumed,
         qtyWasted: payload.qtyWasted,
+        unit: payload.unit,
         reason: payload.reason,
         actor: auth.user!,
       })
@@ -176,6 +180,31 @@ export default class JobsController {
         actor: auth.user!,
       })
       session.flash('success', 'Job confirmed.')
+    } catch (err) {
+      return this._domain(err, response, session)
+    }
+    return response.redirect().back()
+  }
+
+  async forceDone({ params, request, auth, bouncer, response, session }: HttpContext) {
+    await bouncer.authorize('jobs.complete' as never)
+    const jobId = Number(params.id)
+    const current = await ProductionJob.findOrFail(jobId)
+    if (current.status === 'draft') {
+      await bouncer.authorize('jobs.create' as never)
+    }
+    const payload = await request.validateUsing(forceDoneJobValidator)
+    try {
+      await forceDoneJob({
+        jobId,
+        producedQty: payload.producedQty,
+        machineId: payload.machineId ?? null,
+        workerIds: payload.workerIds ?? [],
+        stages: payload.stages,
+        consumptions: payload.consumptions,
+        actor: auth.user!,
+      })
+      session.flash('success', 'Job completed using its full configured duration.')
     } catch (err) {
       return this._domain(err, response, session)
     }

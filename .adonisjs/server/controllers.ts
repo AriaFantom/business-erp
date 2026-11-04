@@ -9,6 +9,7 @@ export const controllers = {
   },
   Components: () => import('#controllers/components_controller'),
   Customers: () => import('#controllers/customers_controller'),
+  DashboardBranding: () => import('#controllers/dashboard_branding_controller'),
   Dashboard: () => import('#controllers/dashboard_controller'),
   Inventory: () => import('#controllers/inventory_controller'),
   Invitations: () => import('#controllers/invitations_controller'),

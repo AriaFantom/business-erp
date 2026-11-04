@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/table'
 import { EmptyState } from '@/components/empty-state'
 import DashboardLayout from '@/layouts/dashboard-layout'
+import { formatMoney, useCurrency } from '@/lib/currency'
 
 type CustomerOpt = { id: number; name: string }
 type ProductOpt = {
@@ -86,6 +87,7 @@ function computeCustomUnitPrice(cost?: number, profitPct?: number): number {
 }
 
 export default function QuotationNew({ customers, products, materials, components }: PageProps) {
+  const currency = useCurrency()
   const { data, setData, post, processing, errors } = useForm({
     customerId: '',
     validUntil: new Date(Date.now() + 14 * 86400_000).toISOString().slice(0, 10),
@@ -419,7 +421,7 @@ export default function QuotationNew({ customers, products, materials, component
                                               className="h-8 w-20 text-xs"
                                             />
                                             <span className="w-16 text-right text-xs text-muted-foreground">
-                                              ₹{lineCost.toFixed(2)}
+                                              {formatMoney(lineCost, currency)}
                                             </span>
                                             <Button
                                               type="button"
@@ -453,7 +455,7 @@ export default function QuotationNew({ customers, products, materials, component
                             {isCustom ? (
                               <div className="flex flex-col gap-0.5">
                                 <span className="text-sm tabular-nums">
-                                  ₹{ln.unitCost?.toFixed(2) ?? '0.00'}
+                                  {formatMoney(ln.unitCost ?? 0, currency)}
                                 </span>
                                 <span className="text-[10px] text-muted-foreground">from BOM</span>
                               </div>
@@ -510,7 +512,7 @@ export default function QuotationNew({ customers, products, materials, component
                             />
                           </TableCell>
                           <TableCell className="align-top text-right tabular-nums">
-                            ₹{lto.toFixed(2)}
+                            {formatMoney(lto, currency)}
                           </TableCell>
                           <TableCell className="align-top">
                             <Button
@@ -534,15 +536,17 @@ export default function QuotationNew({ customers, products, materials, component
                 <div className="flex w-full max-w-xs flex-col gap-1 rounded bg-muted/40 p-4 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Subtotal</span>
-                    <span className="tabular-nums">₹{subtotals.subtotal.toFixed(2)}</span>
+                    <span className="tabular-nums">
+                      {formatMoney(subtotals.subtotal, currency)}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Tax</span>
-                    <span className="tabular-nums">₹{subtotals.tax.toFixed(2)}</span>
+                    <span className="tabular-nums">{formatMoney(subtotals.tax, currency)}</span>
                   </div>
                   <div className="mt-1 flex justify-between border-t pt-2 text-base font-semibold">
                     <span>Total</span>
-                    <span className="tabular-nums">₹{subtotals.total.toFixed(2)}</span>
+                    <span className="tabular-nums">{formatMoney(subtotals.total, currency)}</span>
                   </div>
                 </div>
               </div>

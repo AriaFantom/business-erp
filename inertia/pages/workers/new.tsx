@@ -15,8 +15,10 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import DashboardLayout from '@/layouts/dashboard-layout'
+import { formatMoney, useCurrency } from '@/lib/currency'
 
 export default function WorkerNew() {
+  const currency = useCurrency()
   const form = useForm({
     name: '',
     phone: '',
@@ -156,7 +158,7 @@ export default function WorkerNew() {
                 </div>
                 <p className="text-xs text-muted-foreground sm:col-span-2">
                   Job cost uses the derived hourly rate
-                  {derivedRate ? ` — currently ${derivedRate} / hour` : ''}.
+                  {derivedRate ? ` — currently ${formatMoney(derivedRate, currency)} / hour` : ''}.
                 </p>
               </div>
             ) : (

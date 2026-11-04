@@ -10,6 +10,12 @@ export function hasPermission(user: SidebarUser | undefined, key?: string): bool
   return user.isOwner || user.permissions.includes(key)
 }
 
+function hasAnyPermission(user: SidebarUser | undefined, keys?: string[]): boolean {
+  if (!keys?.length) return true
+  if (!user) return false
+  return user.isOwner || keys.some((key) => user.permissions.includes(key))
+}
+
 /**
  * Module gate — independent of permissions. When `enabledModules` is undefined
  * (e.g. before shared props hydrate) we don't hide anything.
@@ -29,7 +35,11 @@ export function isVisible(
     return item.children.some((c) => isVisible(c, user, enabledModules))
   }
   if (item.ownerOnly && !user?.isOwner) return false
-  return hasPermission(user, item.permission) && isModuleEnabled(enabledModules, item.module)
+  return (
+    hasPermission(user, item.permission) &&
+    hasAnyPermission(user, item.anyPermission) &&
+    isModuleEnabled(enabledModules, item.module)
+  )
 }
 
 export function isActive(itemUrl: string, currentUrl: string): boolean {

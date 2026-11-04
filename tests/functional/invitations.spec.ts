@@ -7,6 +7,8 @@ import Invitation from '#models/invitation'
 import Role from '#models/role'
 import User from '#models/user'
 import AuditEvent from '#models/audit_event'
+import AppSetting from '#models/app_setting'
+import InvitationNotification from '#mails/invitation_notification'
 import RoleSeeder from '../../database/seeders/role_seeder.js'
 import { issueInvitationToken } from '#services/invitation_token'
 import { getInvitationsViewModel } from '#services/dashboard_view_models'
@@ -101,6 +103,25 @@ test.group('Invitations and email identity', (group) => {
     assert.equal(invitation.status, 'accepted')
     const afterAcceptance = await getInvitationsViewModel(owner)
     assert.isFalse(afterAcceptance.pendingInvitations.some((item) => item.id === invitation.id))
+  })
+
+  test('invitation email uses the configured dashboard name', async ({ assert }) => {
+    const { owner, role } = await fixture()
+    await AppSetting.create({
+      key: 'dashboard_branding',
+      value: { name: 'Priyanshu Manufacturing', iconKey: null },
+      updatedBy: owner.id,
+    })
+    const invitation = await pendingInvite('branded@example.com', role.id, owner.id)
+    invitation.$setRelated('role', role)
+    const notification = new InvitationNotification(invitation)
+    await notification.buildWithContents()
+
+    assert.equal(
+      notification.message.nodeMailerMessage.subject,
+      'You have been invited to Priyanshu Manufacturing'
+    )
+    notification.message.assertHtmlIncludes('Priyanshu Manufacturing')
   })
 
   test('failed delivery is recorded and can be retried', async ({ client, assert }) => {

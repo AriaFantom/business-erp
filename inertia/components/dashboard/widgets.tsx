@@ -22,6 +22,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart'
+import { formatMoney, useCurrency } from '@/lib/currency'
 
 export type DashboardData = {
   salesVsPurchase: { month: string; sales: number; purchase: number }[]
@@ -52,8 +53,8 @@ const PALETTE = [
 
 const CHART_H = '!aspect-auto h-[240px] w-full'
 
-function fmtINR(n: number): string {
-  return `₹${Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
+function fmtMoney(n: number, currency: string): string {
+  return formatMoney(n, currency, { maximumFractionDigits: 0, minimumFractionDigits: 0 })
 }
 
 function fmtMonth(key: string): string {
@@ -86,6 +87,7 @@ function Empty({ label }: { label: string }) {
 }
 
 export function TopCustomersWidget({ data }: { data: DashboardData }) {
+  const currency = useCurrency()
   if (!data.topCustomers.length) return <Empty label="No customer sales in this range" />
   const config = { total: { label: 'Spend', color: PALETTE[0] } } satisfies ChartConfig
   const rows = data.topCustomers.map((c) => ({ name: c.name, total: c.total }))
@@ -93,7 +95,12 @@ export function TopCustomersWidget({ data }: { data: DashboardData }) {
     <ChartContainer config={config} className={CHART_H}>
       <BarChart data={rows} layout="vertical" margin={{ left: 8, right: 16 }}>
         <CartesianGrid horizontal={false} />
-        <XAxis type="number" tickFormatter={(v) => fmtINR(v)} tickLine={false} axisLine={false} />
+        <XAxis
+          type="number"
+          tickFormatter={(v) => fmtMoney(v, currency)}
+          tickLine={false}
+          axisLine={false}
+        />
         <YAxis
           type="category"
           dataKey="name"
@@ -102,7 +109,9 @@ export function TopCustomersWidget({ data }: { data: DashboardData }) {
           axisLine={false}
           tick={{ fontSize: 11 }}
         />
-        <ChartTooltip content={<ChartTooltipContent formatter={(v) => fmtINR(Number(v))} />} />
+        <ChartTooltip
+          content={<ChartTooltipContent formatter={(v) => fmtMoney(Number(v), currency)} />}
+        />
         <Bar dataKey="total" fill="var(--color-total)" radius={4} />
       </BarChart>
     </ChartContainer>
@@ -110,6 +119,7 @@ export function TopCustomersWidget({ data }: { data: DashboardData }) {
 }
 
 export function TopProductsWidget({ data }: { data: DashboardData }) {
+  const currency = useCurrency()
   if (!data.topProducts.length) return <Empty label="No products sold in this range" />
   const config = { qty: { label: 'Qty sold', color: PALETTE[1] } } satisfies ChartConfig
   const rows = data.topProducts.map((p) => ({ name: p.name, qty: p.qty, revenue: p.revenue }))
@@ -135,7 +145,8 @@ export function TopProductsWidget({ data }: { data: DashboardData }) {
                 <div className="flex w-full justify-between gap-3">
                   <span className="text-muted-foreground">{item?.payload?.name}</span>
                   <span className="font-mono">
-                    {Number(value).toLocaleString()} · {fmtINR(item?.payload?.revenue ?? 0)}
+                    {Number(value).toLocaleString()} ·{' '}
+                    {fmtMoney(item?.payload?.revenue ?? 0, currency)}
                   </span>
                 </div>
               )}
@@ -149,6 +160,7 @@ export function TopProductsWidget({ data }: { data: DashboardData }) {
 }
 
 export function SalesVsPurchaseWidget({ data }: { data: DashboardData }) {
+  const currency = useCurrency()
   if (!data.salesVsPurchase.length) return <Empty label="No sales/purchase data in this range" />
   const config = {
     sales: { label: 'Sales', color: PALETTE[1] },
@@ -160,8 +172,15 @@ export function SalesVsPurchaseWidget({ data }: { data: DashboardData }) {
       <LineChart data={rows} margin={{ left: 8, right: 12 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
-        <YAxis tickFormatter={(v) => fmtINR(v)} tickLine={false} axisLine={false} width={56} />
-        <ChartTooltip content={<ChartTooltipContent formatter={(v) => fmtINR(Number(v))} />} />
+        <YAxis
+          tickFormatter={(v) => fmtMoney(v, currency)}
+          tickLine={false}
+          axisLine={false}
+          width={56}
+        />
+        <ChartTooltip
+          content={<ChartTooltipContent formatter={(v) => fmtMoney(Number(v), currency)} />}
+        />
         <ChartLegend content={<ChartLegendContent />} />
         <Line dataKey="sales" stroke="var(--color-sales)" strokeWidth={2} dot={false} />
         <Line dataKey="purchase" stroke="var(--color-purchase)" strokeWidth={2} dot={false} />
@@ -171,6 +190,7 @@ export function SalesVsPurchaseWidget({ data }: { data: DashboardData }) {
 }
 
 export function ExpensesBySectorWidget({ data }: { data: DashboardData }) {
+  const currency = useCurrency()
   if (!data.expensesBySector.length) return <Empty label="No expenses in this range" />
   const config: ChartConfig = Object.fromEntries(
     data.expensesBySector.map((e, i) => [
@@ -187,7 +207,9 @@ export function ExpensesBySectorWidget({ data }: { data: DashboardData }) {
     <ChartContainer config={config} className={CHART_H}>
       <PieChart>
         <ChartTooltip
-          content={<ChartTooltipContent nameKey="kind" formatter={(v) => fmtINR(Number(v))} />}
+          content={
+            <ChartTooltipContent nameKey="kind" formatter={(v) => fmtMoney(Number(v), currency)} />
+          }
         />
         <Pie
           data={rows}
@@ -208,6 +230,7 @@ export function ExpensesBySectorWidget({ data }: { data: DashboardData }) {
 }
 
 export function ProfitTrendWidget({ data }: { data: DashboardData }) {
+  const currency = useCurrency()
   if (!data.profitTrend.length) return <Empty label="No profit data in this range" />
   const config = {
     profit: { label: 'Profit', color: PALETTE[0] },
@@ -220,8 +243,15 @@ export function ProfitTrendWidget({ data }: { data: DashboardData }) {
       <AreaChart data={rows} margin={{ left: 8, right: 12 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
-        <YAxis tickFormatter={(v) => fmtINR(v)} tickLine={false} axisLine={false} width={56} />
-        <ChartTooltip content={<ChartTooltipContent formatter={(v) => fmtINR(Number(v))} />} />
+        <YAxis
+          tickFormatter={(v) => fmtMoney(v, currency)}
+          tickLine={false}
+          axisLine={false}
+          width={56}
+        />
+        <ChartTooltip
+          content={<ChartTooltipContent formatter={(v) => fmtMoney(Number(v), currency)} />}
+        />
         <ChartLegend content={<ChartLegendContent />} />
         <defs>
           <linearGradient id="fillProfit" x1="0" y1="0" x2="0" y2="1">

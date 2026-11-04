@@ -7,6 +7,8 @@ import Expense from '#models/expense'
 import Inventory from '#models/inventory'
 import Product from '#models/product'
 import ProductRecipe from '#models/product_recipe'
+import Material from '#models/material'
+import Component from '#models/component'
 import Machine from '#models/machine'
 import Worker from '#models/worker'
 import JobWorker from '#models/job_worker'
@@ -18,6 +20,14 @@ import { audit } from '#services/audit'
 import { nextDocNumber } from '#services/numbering'
 import { nextStage, type StageLike } from '#services/stage_advancement'
 import { DomainError, InsufficientStockError, InvalidStateError } from '#services/domain_errors'
+import {
+  addQuantities,
+  compareQuantities,
+  convertConsumptionQuantity,
+  quantityToScaled,
+  scaledToQuantity,
+  subtractQuantities,
+} from '#services/quantity_units'
 
 const MAX_REPRINT_CHAIN = 50
 
@@ -196,20 +206,55 @@ export interface StartJobStageInput {
 export interface StartJobConsumptionInput {
   itemKind: 'material' | 'component'
   itemId: number
-  qtyConsumed: number
+  qtyConsumed: number | string
+  unit?: string
 }
 
-export async function startJob(input: {
+type StartJobInput = {
   jobId: number
   machineId?: number | null
   workerIds?: number[]
   stages: StartJobStageInput[]
   consumptions: StartJobConsumptionInput[]
   actor: User
-}): Promise<ProductionJob> {
-  if (input.stages.length === 0) {
+}
+
+async function storedUnitFor(
+  itemKind: 'material' | 'component',
+  itemId: number,
+  trx: TransactionClientContract
+): Promise<string> {
+  const item =
+    itemKind === 'material'
+      ? await Material.query({ client: trx }).where('id', itemId).firstOrFail()
+      : await Component.query({ client: trx }).where('id', itemId).firstOrFail()
+  return item.unit
+}
+
+function validateStages(stages: StartJobStageInput[]): void {
+  if (stages.length === 0) {
     throw new DomainError({ code: 'INVALID_INPUT', message: 'A job must have at least one stage.' })
   }
+  for (const stage of stages) {
+    if (
+      !Number.isInteger(stage.durationMinutes) ||
+      stage.durationMinutes < 1 ||
+      stage.durationMinutes > 20_160
+    ) {
+      throw new DomainError({
+        code: 'INVALID_DURATION',
+        message: 'Every stage duration must be a whole number from 1 minute through 14 days.',
+      })
+    }
+  }
+}
+
+async function startJobInTrx(
+  input: StartJobInput,
+  trx: TransactionClientContract,
+  lockedJob?: ProductionJob
+): Promise<ProductionJob> {
+  validateStages(input.stages)
   // De-duplicate so the same person can't be double-booked on one job (the
   // job_workers unique index would reject it anyway, less legibly).
   const workerIds = [...new Set(input.workerIds ?? [])]
@@ -226,134 +271,155 @@ export async function startJob(input: {
     })
   }
 
-  const result = await db.transaction(async (trx) => {
-    const job = await ProductionJob.query({ client: trx })
-      .where('id', input.jobId)
+  const job =
+    lockedJob ??
+    (await ProductionJob.query({ client: trx }).where('id', input.jobId).forUpdate().firstOrFail())
+  if (job.status !== 'draft') {
+    throw new InvalidStateError({ entity: 'job', from: job.status, to: 'in_progress' })
+  }
+
+  const machine = input.machineId
+    ? await Machine.query({ client: trx }).where('id', input.machineId).forUpdate().firstOrFail()
+    : null
+  if (machine && machine.status !== 'idle') {
+    throw new InvalidStateError({
+      entity: 'machine',
+      from: machine.status,
+      to: `assign job ${job.id}`,
+    })
+  }
+
+  // Lock every worker up-front so two concurrent starts can't claim the same
+  // person; an already-busy or deactivated worker fails the whole start.
+  const workers: Worker[] = []
+  for (const workerId of workerIds) {
+    const worker = await Worker.query({ client: trx })
+      .where('id', workerId)
       .forUpdate()
       .firstOrFail()
-    if (job.status !== 'draft') {
-      throw new InvalidStateError({ entity: 'job', from: job.status, to: 'in_progress' })
-    }
-
-    const machine = input.machineId
-      ? await Machine.query({ client: trx }).where('id', input.machineId).forUpdate().firstOrFail()
-      : null
-    if (machine && machine.status !== 'idle') {
+    if (worker.status !== 'idle') {
       throw new InvalidStateError({
-        entity: 'machine',
-        from: machine.status,
+        entity: 'worker',
+        from: worker.status,
         to: `assign job ${job.id}`,
       })
     }
+    workers.push(worker)
+  }
 
-    // Lock every worker up-front so two concurrent starts can't claim the same
-    // person; an already-busy or deactivated worker fails the whole start.
-    const workers: Worker[] = []
-    for (const workerId of workerIds) {
-      const worker = await Worker.query({ client: trx })
-        .where('id', workerId)
-        .forUpdate()
-        .firstOrFail()
-      if (worker.status !== 'idle') {
-        throw new InvalidStateError({
-          entity: 'worker',
-          from: worker.status,
-          to: `assign job ${job.id}`,
-        })
-      }
-      workers.push(worker)
+  // Insert all stages
+  const now = DateTime.now()
+  const stageRows: ProductionJobStage[] = []
+  for (let i = 0; i < input.stages.length; i++) {
+    const s = input.stages[i]
+    const row = new ProductionJobStage()
+    row.jobId = job.id
+    row.sequence = i + 1
+    row.name = s.name
+    row.estimatedDurationMin = s.durationMinutes
+    row.status = i === 0 ? 'in_progress' : 'pending'
+    if (i === 0) {
+      row.startedAt = now
+      row.autoCompleteAt = now.plus({ minutes: s.durationMinutes })
     }
+    row.useTransaction(trx)
+    await row.save()
+    stageRows.push(row)
+  }
 
-    // Insert all stages
-    const now = DateTime.now()
-    const stageRows: ProductionJobStage[] = []
-    for (let i = 0; i < input.stages.length; i++) {
-      const s = input.stages[i]
-      const row = new ProductionJobStage()
-      row.jobId = job.id
-      row.sequence = i + 1
-      row.name = s.name
-      row.estimatedDurationMin = s.durationMinutes
-      row.status = i === 0 ? 'in_progress' : 'pending'
-      if (i === 0) {
-        row.startedAt = now
-        row.autoCompleteAt = now.plus({ minutes: s.durationMinutes })
-      }
-      row.useTransaction(trx)
-      await row.save()
-      stageRows.push(row)
-    }
+  job.status = 'in_progress'
+  job.startedAt = now
+  job.machineId = machine?.id ?? null
+  job.currentStageId = stageRows[0].id
+  job.estimatedDurationMin = stageRows[0].estimatedDurationMin
+  job.autoCompleteAt = stageRows[0].autoCompleteAt
+  await job.save()
 
-    job.status = 'in_progress'
-    job.startedAt = now
-    job.machineId = machine?.id ?? null
-    job.currentStageId = stageRows[0].id
-    job.estimatedDurationMin = stageRows[0].estimatedDurationMin
-    job.autoCompleteAt = stageRows[0].autoCompleteAt
-    await job.save()
+  if (machine) {
+    machine.status = 'running'
+    machine.currentJobId = job.id
+    await machine.save()
+  }
 
-    if (machine) {
-      machine.status = 'running'
-      machine.currentJobId = job.id
-      await machine.save()
-    }
+  // Snapshot each worker's effective rate now, so a later pay change never
+  // rewrites the cost of work already done.
+  for (const worker of workers) {
+    const assignment = new JobWorker()
+    assignment.jobId = job.id
+    assignment.workerId = worker.id
+    assignment.assignedAt = now
+    assignment.minutesWorked = 0
+    assignment.hourlyRateAtAssign = String(effectiveHourlyRate(worker))
+    assignment.lineCost = '0'
+    assignment.useTransaction(trx)
+    await assignment.save()
 
-    // Snapshot each worker's effective rate now, so a later pay change never
-    // rewrites the cost of work already done.
-    for (const worker of workers) {
-      const assignment = new JobWorker()
-      assignment.jobId = job.id
-      assignment.workerId = worker.id
-      assignment.assignedAt = now
-      assignment.minutesWorked = 0
-      assignment.hourlyRateAtAssign = String(effectiveHourlyRate(worker))
-      assignment.lineCost = '0'
-      assignment.useTransaction(trx)
-      await assignment.save()
+    worker.status = 'working'
+    worker.currentJobId = job.id
+    await worker.save()
+  }
 
-      worker.status = 'working'
-      worker.currentJobId = job.id
-      await worker.save()
-    }
-
-    await audit({
-      actor: input.actor,
-      action: 'job.start',
-      targetType: 'job',
-      targetId: job.id,
-      payload: {
-        machineId: machine?.id ?? null,
-        workerIds,
-        stages: input.stages.map((s) => ({ name: s.name, durationMinutes: s.durationMinutes })),
-      },
-      trx,
-    })
-
-    // Merge duplicate (itemKind, itemId) rows so callers can submit a flat list.
-    const merged = new Map<string, StartJobConsumptionInput>()
-    for (const c of input.consumptions) {
-      const key = `${c.itemKind}:${c.itemId}`
-      const prior = merged.get(key)
-      if (prior) prior.qtyConsumed = round4(prior.qtyConsumed + c.qtyConsumed)
-      else merged.set(key, { ...c, qtyConsumed: round4(c.qtyConsumed) })
-    }
-    for (const c of merged.values()) {
-      if (c.qtyConsumed <= 0) continue
-      await recordConsumptionInTrx(
-        {
-          jobId: job.id,
-          itemKind: c.itemKind,
-          itemId: c.itemId,
-          qtyConsumed: c.qtyConsumed,
-          reason: 'consume',
-          actor: input.actor,
-        },
-        trx
-      )
-    }
-
-    return job
+  await audit({
+    actor: input.actor,
+    action: 'job.start',
+    targetType: 'job',
+    targetId: job.id,
+    payload: {
+      machineId: machine?.id ?? null,
+      workerIds,
+      stages: input.stages.map((s) => ({ name: s.name, durationMinutes: s.durationMinutes })),
+    },
+    trx,
   })
+
+  // Convert every entered unit to the catalog item's stored unit before
+  // merging duplicates, checking stock, costing, or writing a recipe.
+  const merged = new Map<
+    string,
+    StartJobConsumptionInput & {
+      storedUnit: string
+      entered: { quantity: string; unit: string }[]
+    }
+  >()
+  for (const c of input.consumptions) {
+    const storedUnit = await storedUnitFor(c.itemKind, c.itemId, trx)
+    const converted = convertConsumptionQuantity(c.qtyConsumed, c.unit, storedUnit)
+    const key = `${c.itemKind}:${c.itemId}`
+    const prior = merged.get(key)
+    if (prior) {
+      prior.qtyConsumed = addQuantities(prior.qtyConsumed, converted.storedQuantity)
+      prior.entered.push({ quantity: converted.enteredQuantity, unit: converted.enteredUnit })
+    } else {
+      merged.set(key, {
+        ...c,
+        qtyConsumed: converted.storedQuantity,
+        unit: storedUnit,
+        storedUnit,
+        entered: [{ quantity: converted.enteredQuantity, unit: converted.enteredUnit }],
+      })
+    }
+  }
+  for (const c of merged.values()) {
+    await recordConsumptionInTrx(
+      {
+        jobId: job.id,
+        itemKind: c.itemKind,
+        itemId: c.itemId,
+        qtyConsumed: c.qtyConsumed,
+        unit: c.storedUnit,
+        reason: 'consume',
+        actor: input.actor,
+        enteredQuantities: c.entered,
+      },
+      trx
+    )
+  }
+
+  return job
+}
+
+export async function startJob(input: StartJobInput): Promise<ProductionJob> {
+  const result = await db.transaction(async (trx) => startJobInTrx(input, trx))
 
   await invalidateSnapshotCache()
   return result
@@ -364,10 +430,12 @@ async function recordConsumptionInTrx(
     jobId: number
     itemKind: 'material' | 'component'
     itemId: number
-    qtyConsumed: number
-    qtyWasted?: number
+    qtyConsumed: number | string
+    qtyWasted?: number | string
+    unit?: string
     reason?: 'consume' | 'reprint' | 'waste'
     actor: User
+    enteredQuantities?: { quantity: string; unit: string }[]
   },
   trx: TransactionClientContract
 ): Promise<JobMaterialConsumption> {
@@ -383,6 +451,22 @@ async function recordConsumptionInTrx(
     })
   }
 
+  const storedUnit = await storedUnitFor(input.itemKind, input.itemId, trx)
+  const converted = convertConsumptionQuantity(input.qtyConsumed, input.unit, storedUnit)
+  const convertedWaste =
+    input.qtyWasted === undefined
+      ? '0'
+      : input.qtyWasted === 0 || input.qtyWasted === '0'
+        ? '0'
+        : convertConsumptionQuantity(input.qtyWasted, input.unit, storedUnit).storedQuantity
+  if (compareQuantities(convertedWaste, converted.storedQuantity) > 0) {
+    throw new DomainError({
+      code: 'INVALID_WASTE_QUANTITY',
+      field: 'qtyWasted',
+      message: 'Wasted quantity cannot exceed the consumed quantity.',
+    })
+  }
+
   // Capture avg cost at consume time so historical job costs stay stable
   // even if later purchases shift the average.
   const inv = await Inventory.query({ client: trx })
@@ -390,22 +474,22 @@ async function recordConsumptionInTrx(
     .where('itemId', input.itemId)
     .forUpdate()
     .first()
-  if (!inv || Number(inv.qty) < input.qtyConsumed) {
+  if (!inv || compareQuantities(inv.qty, converted.storedQuantity) < 0) {
     throw new InsufficientStockError({
       itemKind: input.itemKind,
       itemId: input.itemId,
       available: inv ? Number(inv.qty) : 0,
-      requested: input.qtyConsumed,
+      requested: Number(converted.storedQuantity),
     })
   }
   const unitCost = Number(inv.avgUnitCost)
-  const lineCost = round2(unitCost * input.qtyConsumed)
+  const lineCost = round2(unitCost * Number(converted.storedQuantity))
 
   // Outbound stock movement; the inventory service handles the lock release.
   await applyMovement({
     itemKind: input.itemKind,
     itemId: input.itemId,
-    qty: -input.qtyConsumed,
+    qty: scaledToQuantity(-quantityToScaled(converted.storedQuantity)),
     unitCost,
     reason: 'job_consume',
     referenceType: 'job',
@@ -419,8 +503,8 @@ async function recordConsumptionInTrx(
   consumption.jobId = input.jobId
   consumption.itemKind = input.itemKind
   consumption.itemId = input.itemId
-  consumption.qtyConsumed = String(input.qtyConsumed)
-  consumption.qtyWasted = String(input.qtyWasted ?? 0)
+  consumption.qtyConsumed = converted.storedQuantity
+  consumption.qtyWasted = convertedWaste
   consumption.unitCostAtConsume = String(unitCost)
   consumption.lineCost = String(lineCost)
   consumption.reason = input.reason ?? 'consume'
@@ -438,7 +522,11 @@ async function recordConsumptionInTrx(
     payload: {
       itemKind: input.itemKind,
       itemId: input.itemId,
-      qty: input.qtyConsumed,
+      entered: input.enteredQuantities ?? [
+        { quantity: converted.enteredQuantity, unit: converted.enteredUnit },
+      ],
+      convertedQuantity: converted.storedQuantity,
+      storedUnit,
       unitCost,
     },
     trx,
@@ -450,8 +538,9 @@ export async function recordConsumption(input: {
   jobId: number
   itemKind: 'material' | 'component'
   itemId: number
-  qtyConsumed: number
-  qtyWasted?: number
+  qtyConsumed: number | string
+  qtyWasted?: number | string
+  unit?: string
   reason?: 'consume' | 'reprint' | 'waste'
   actor: User
 }): Promise<JobMaterialConsumption> {
@@ -536,7 +625,8 @@ export async function completeJobInTrx(
   job: ProductionJob,
   producedQty: number,
   actor: User,
-  trx: TransactionClientContract
+  trx: TransactionClientContract,
+  options: { timeBasis?: 'elapsed' | 'forced_configured' } = {}
 ): Promise<ProductionJob> {
   if (!['in_progress', 'paused', 'awaiting_confirmation'].includes(job.status)) {
     throw new InvalidStateError({
@@ -565,9 +655,13 @@ export async function completeJobInTrx(
   // Close out any stage still running. Confirming a job early (straight from
   // in_progress) would otherwise leave the current stage with no completed_at,
   // and run-time — hence machine *and* labour cost — would compute as zero.
+  const timeBasis = options.timeBasis ?? 'elapsed'
   const openStages = await ProductionJobStage.query({ client: trx })
     .where('job_id', job.id)
-    .where('status', 'in_progress')
+    .whereIn(
+      'status',
+      timeBasis === 'forced_configured' ? ['pending', 'in_progress'] : ['in_progress']
+    )
     .forUpdate()
   for (const stage of openStages) {
     stage.status = 'completed'
@@ -581,12 +675,31 @@ export async function completeJobInTrx(
   job.completedAt = completedAt
   job.autoCompleteAt = null
   job.currentStageId = null
+  job.pausedAt = null
+  job.remainingSeconds = null
+  job.completionTimeBasis = timeBasis
 
   // Fold machine run time into the job's cost before totals/unit-cost are
   // (re)computed, so the finished-goods inbound valuation below reflects it.
   // machineId can be null (e.g. jobs created before machines were required,
   // or manually cleared) — minutes are still recorded, cost is just 0.
-  const runMinutes = await computeMachineRunMinutes(job.id, trx)
+  const configuredDuration =
+    timeBasis === 'forced_configured'
+      ? await trx
+          .from('production_job_stages')
+          .where('job_id', job.id)
+          .sum('estimated_duration_min as minutes')
+          .first()
+      : null
+  const runMinutes = configuredDuration
+    ? Number(configuredDuration.minutes ?? 0)
+    : await computeMachineRunMinutes(job.id, trx)
+  if (timeBasis === 'forced_configured' && runMinutes <= 0) {
+    throw new DomainError({
+      code: 'MISSING_CONFIGURED_DURATION',
+      message: 'Force done requires at least one configured production stage.',
+    })
+  }
   const machine = job.machineId
     ? await Machine.query({ client: trx }).where('id', job.machineId).first()
     : null
@@ -636,13 +749,85 @@ export async function completeJobInTrx(
     action: 'job.complete',
     targetType: 'job',
     targetId: job.id,
-    payload: { producedQty, unitCost: perUnitCost, auto: isSystemActor(actor) },
+    payload: {
+      producedQty,
+      unitCost: perUnitCost,
+      auto: isSystemActor(actor),
+      timeBasis,
+      billedMinutes: runMinutes,
+    },
     trx,
   })
 
   await upsertProductRecipeFromJob(refreshed, trx)
 
   return refreshed
+}
+
+export async function forceDoneJob(input: {
+  jobId: number
+  producedQty: number
+  machineId?: number | null
+  workerIds?: number[]
+  stages?: StartJobStageInput[]
+  consumptions?: StartJobConsumptionInput[]
+  actor: User
+}): Promise<ProductionJob> {
+  if (!Number.isInteger(input.producedQty) || input.producedQty <= 0) {
+    throw new DomainError({
+      code: 'INVALID_OUTPUT_QUANTITY',
+      field: 'producedQty',
+      message: 'Produced quantity must be a positive whole number.',
+    })
+  }
+
+  const result = await db.transaction(async (trx) => {
+    let job = await ProductionJob.query({ client: trx })
+      .where('id', input.jobId)
+      .forUpdate()
+      .firstOrFail()
+
+    if (!['draft', 'in_progress', 'paused', 'awaiting_confirmation'].includes(job.status)) {
+      throw new InvalidStateError({ entity: 'job', from: job.status, to: 'force_done' })
+    }
+    const fromStatus = job.status
+    if (job.status === 'draft') {
+      if (!input.stages || !input.consumptions) {
+        throw new DomainError({
+          code: 'MISSING_JOB_SETUP',
+          message: 'Draft jobs need stages, resources, and consumptions before Force done.',
+        })
+      }
+      job = await startJobInTrx(
+        {
+          jobId: input.jobId,
+          machineId: input.machineId ?? null,
+          workerIds: input.workerIds ?? [],
+          stages: input.stages,
+          consumptions: input.consumptions,
+          actor: input.actor,
+        },
+        trx,
+        job
+      )
+    }
+
+    const completed = await completeJobInTrx(job, input.producedQty, input.actor, trx, {
+      timeBasis: 'forced_configured',
+    })
+    await audit({
+      actor: input.actor,
+      action: 'job.force_done',
+      targetType: 'job',
+      targetId: job.id,
+      payload: { producedQty: input.producedQty, fromStatus },
+      trx,
+    })
+    return completed
+  })
+
+  await invalidateSnapshotCache()
+  return result
 }
 
 export async function completeJob(input: {
@@ -691,12 +876,12 @@ async function upsertProductRecipeFromJob(
   const consumptions = await JobMaterialConsumption.query({ client: trx }).where('job_id', job.id)
   if (consumptions.length === 0) return
 
-  const totals = new Map<string, { itemKind: string; itemId: number; qty: number }>()
+  const totals = new Map<string, { itemKind: string; itemId: number; qty: string }>()
   for (const c of consumptions) {
     const key = `${c.itemKind}:${c.itemId}`
     const row = totals.get(key)
-    if (row) row.qty += Number(c.qtyConsumed)
-    else totals.set(key, { itemKind: c.itemKind, itemId: c.itemId, qty: Number(c.qtyConsumed) })
+    if (row) row.qty = addQuantities(row.qty, c.qtyConsumed)
+    else totals.set(key, { itemKind: c.itemKind, itemId: c.itemId, qty: c.qtyConsumed })
   }
 
   const maxRow = await ProductRecipe.query({ client: trx })
@@ -711,13 +896,20 @@ async function upsertProductRecipeFromJob(
     .update({ is_current: false })
 
   for (const row of totals.values()) {
-    const qtyPerUnit = round4(row.qty / job.producedQty)
-    if (qtyPerUnit <= 0) continue
+    const totalScaled = quantityToScaled(row.qty)
+    const divisor = BigInt(job.producedQty)
+    const qtyPerUnitScaled = (totalScaled + divisor / 2n) / divisor
+    if (qtyPerUnitScaled <= 0n) {
+      throw new DomainError({
+        code: 'RECIPE_QUANTITY_PRECISION',
+        message: 'The learned per-unit recipe quantity is smaller than the supported precision.',
+      })
+    }
     const recipe = new ProductRecipe()
     recipe.productId = job.productId
     recipe.itemKind = row.itemKind
     recipe.itemId = row.itemId
-    recipe.qtyPerUnit = String(qtyPerUnit)
+    recipe.qtyPerUnit = scaledToQuantity(qtyPerUnitScaled)
     recipe.version = maxVersion + 1
     recipe.isCurrent = true
     recipe.learnedFromJobId = job.id
@@ -743,8 +935,11 @@ async function returnJobMaterials(
 
   let returnedLines = 0
   for (const c of consumptions) {
-    const returnable = Number(c.qtyConsumed) - Number(c.qtyWasted ?? 0) - Number(c.qtyReturned)
-    if (returnable <= 0) continue
+    const returnable = subtractQuantities(
+      subtractQuantities(c.qtyConsumed, c.qtyWasted ?? '0'),
+      c.qtyReturned
+    )
+    if (compareQuantities(returnable, 0) <= 0) continue
 
     await applyMovement({
       itemKind: c.itemKind as 'material' | 'component',
@@ -759,10 +954,12 @@ async function returnJobMaterials(
       trx,
     })
 
-    const qtyReturnedAfter = Number(c.qtyReturned) + returnable
-    c.qtyReturned = String(qtyReturnedAfter)
+    const qtyReturnedAfter = addQuantities(c.qtyReturned, returnable)
+    c.qtyReturned = qtyReturnedAfter
     c.lineCost = String(
-      round2(Number(c.unitCostAtConsume) * (Number(c.qtyConsumed) - qtyReturnedAfter))
+      round2(
+        Number(c.unitCostAtConsume) * Number(subtractQuantities(c.qtyConsumed, qtyReturnedAfter))
+      )
     )
     await c.save()
     returnedLines++

@@ -230,6 +230,7 @@ export async function getJobShowViewModel(jobId: number) {
       pausedAt: job.pausedAt?.toISO() ?? null,
       remainingSeconds: job.remainingSeconds,
       currentStageId: job.currentStageId,
+      completionTimeBasis: job.completionTimeBasis as 'elapsed' | 'forced_configured',
     },
     consumptions: consumptions.map((c) => {
       const item = c.itemKind === 'material' ? matById.get(c.itemId) : compById.get(c.itemId)
@@ -242,6 +243,7 @@ export async function getJobShowViewModel(jobId: number) {
         qtyConsumed: c.qtyConsumed,
         qtyWasted: c.qtyWasted,
         qtyReturned: c.qtyReturned,
+        unit: item?.unit ?? '',
         unitCostAtConsume: c.unitCostAtConsume,
         lineCost: c.lineCost,
         reason: c.reason,

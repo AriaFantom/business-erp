@@ -15,11 +15,18 @@ export type ScannedRoutes = {
     'system.roles': { paramsTuple?: []; params?: {} }
     'system.invitations': { paramsTuple?: []; params?: {} }
     'system.users': { paramsTuple?: []; params?: {} }
+    'settings.branding': { paramsTuple?: []; params?: {} }
+    'settings.branding.update': { paramsTuple?: []; params?: {} }
+    'settings.branding.icon.update': { paramsTuple?: []; params?: {} }
+    'settings.branding.icon.destroy': { paramsTuple?: []; params?: {} }
+    'settings.branding.icon.show': { paramsTuple?: []; params?: {} }
     'system.users.update_roles': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'system.users.update_access': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'invitations.store': { paramsTuple?: []; params?: {} }
     'invitations.resend': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'invitations.revoke': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'roles.store': { paramsTuple?: []; params?: {} }
+    'roles.reorder': { paramsTuple?: []; params?: {} }
     'roles.destroy': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'settings.modules': { paramsTuple?: []; params?: {} }
     'settings.modules.update': { paramsTuple?: []; params?: {} }
@@ -106,6 +113,7 @@ export type ScannedRoutes = {
     'jobs.consume': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.expense': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.confirm': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'jobs.forceDone': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.fail': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.cancel': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'machines.index': { paramsTuple?: []; params?: {} }
@@ -163,6 +171,8 @@ export type ScannedRoutes = {
     'system.roles': { paramsTuple?: []; params?: {} }
     'system.invitations': { paramsTuple?: []; params?: {} }
     'system.users': { paramsTuple?: []; params?: {} }
+    'settings.branding': { paramsTuple?: []; params?: {} }
+    'settings.branding.icon.show': { paramsTuple?: []; params?: {} }
     'settings.modules': { paramsTuple?: []; params?: {} }
     'profile.show': { paramsTuple?: []; params?: {} }
     'profile.avatar.show': { paramsTuple?: []; params?: {} }
@@ -220,6 +230,8 @@ export type ScannedRoutes = {
     'system.roles': { paramsTuple?: []; params?: {} }
     'system.invitations': { paramsTuple?: []; params?: {} }
     'system.users': { paramsTuple?: []; params?: {} }
+    'settings.branding': { paramsTuple?: []; params?: {} }
+    'settings.branding.icon.show': { paramsTuple?: []; params?: {} }
     'settings.modules': { paramsTuple?: []; params?: {} }
     'profile.show': { paramsTuple?: []; params?: {} }
     'profile.avatar.show': { paramsTuple?: []; params?: {} }
@@ -272,11 +284,16 @@ export type ScannedRoutes = {
     'session.store': { paramsTuple?: []; params?: {} }
     'invitation.store': { paramsTuple: [ParamValue]; params: {'token': ParamValue} }
     'session.destroy': { paramsTuple?: []; params?: {} }
+    'settings.branding.update': { paramsTuple?: []; params?: {} }
+    'settings.branding.icon.update': { paramsTuple?: []; params?: {} }
+    'settings.branding.icon.destroy': { paramsTuple?: []; params?: {} }
     'system.users.update_roles': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'system.users.update_access': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'invitations.store': { paramsTuple?: []; params?: {} }
     'invitations.resend': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'invitations.revoke': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'roles.store': { paramsTuple?: []; params?: {} }
+    'roles.reorder': { paramsTuple?: []; params?: {} }
     'roles.destroy': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'settings.modules.update': { paramsTuple?: []; params?: {} }
     'profile.update': { paramsTuple?: []; params?: {} }
@@ -336,6 +353,7 @@ export type ScannedRoutes = {
     'jobs.consume': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.expense': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.confirm': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'jobs.forceDone': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.fail': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'jobs.cancel': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'machines.store': { paramsTuple?: []; params?: {} }

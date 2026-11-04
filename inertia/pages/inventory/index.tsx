@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { formatMoney, useCurrency } from '@/lib/currency'
 import {
   Select,
   SelectContent,
@@ -215,6 +216,7 @@ export default function InventoryPage({
   adjustableItems,
   filters,
 }: PageProps) {
+  const currency = useCurrency()
   const lowCount = inventory.filter((r) => r.belowThreshold).length
   const stockCols = useColumnVisibility('inventory.stock')
   const moveCols = useColumnVisibility('inventory.movements')
@@ -383,7 +385,9 @@ export default function InventoryPage({
                       <TableCell className="text-right">{m.qty}</TableCell>
                     )}
                     {moveCols.isVisible('unitCost') && (
-                      <TableCell className="text-right">{m.unitCost}</TableCell>
+                      <TableCell className="text-right">
+                        {formatMoney(m.unitCost, currency, { maximumFractionDigits: 4 })}
+                      </TableCell>
                     )}
                     {moveCols.isVisible('reference') && (
                       <TableCell>

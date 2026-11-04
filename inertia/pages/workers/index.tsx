@@ -17,6 +17,7 @@ import { ExternalLink, HardHat, Loader2, UserCheck } from 'lucide-react'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
 import { EmptyState } from '@/components/empty-state'
+import { formatMoney, useCurrency } from '@/lib/currency'
 
 type WorkerStatus = 'idle' | 'working' | 'inactive'
 
@@ -57,6 +58,7 @@ function formatMinutes(totalMinutes: number): string {
 }
 
 export default function WorkersIndex({ workers, filters, counts }: PageProps) {
+  const currency = useCurrency()
   return (
     <div className="flex w-full flex-col gap-6 px-6 py-8">
       <Head title="Workers" />
@@ -147,7 +149,7 @@ export default function WorkersIndex({ workers, filters, counts }: PageProps) {
                       {w.effectiveHourlyRate}
                       {w.payType === 'monthly' && (
                         <div className="text-xs text-muted-foreground">
-                          {w.monthlySalary} / {w.standardMonthlyHours}h
+                          {formatMoney(w.monthlySalary, currency)} / {w.standardMonthlyHours}h
                         </div>
                       )}
                     </TableCell>

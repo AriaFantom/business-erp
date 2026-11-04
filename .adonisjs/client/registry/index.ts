@@ -72,11 +72,47 @@ const routes = {
     tokens: [{"old":"/system/users","type":0,"val":"system","end":""},{"old":"/system/users","type":0,"val":"users","end":""}],
     types: placeholder as Registry['system.users']['types'],
   },
+  'settings.branding': {
+    methods: ["GET","HEAD"],
+    pattern: '/system/branding',
+    tokens: [{"old":"/system/branding","type":0,"val":"system","end":""},{"old":"/system/branding","type":0,"val":"branding","end":""}],
+    types: placeholder as Registry['settings.branding']['types'],
+  },
+  'settings.branding.update': {
+    methods: ["POST"],
+    pattern: '/system/branding',
+    tokens: [{"old":"/system/branding","type":0,"val":"system","end":""},{"old":"/system/branding","type":0,"val":"branding","end":""}],
+    types: placeholder as Registry['settings.branding.update']['types'],
+  },
+  'settings.branding.icon.update': {
+    methods: ["POST"],
+    pattern: '/system/branding/icon',
+    tokens: [{"old":"/system/branding/icon","type":0,"val":"system","end":""},{"old":"/system/branding/icon","type":0,"val":"branding","end":""},{"old":"/system/branding/icon","type":0,"val":"icon","end":""}],
+    types: placeholder as Registry['settings.branding.icon.update']['types'],
+  },
+  'settings.branding.icon.destroy': {
+    methods: ["POST"],
+    pattern: '/system/branding/icon/delete',
+    tokens: [{"old":"/system/branding/icon/delete","type":0,"val":"system","end":""},{"old":"/system/branding/icon/delete","type":0,"val":"branding","end":""},{"old":"/system/branding/icon/delete","type":0,"val":"icon","end":""},{"old":"/system/branding/icon/delete","type":0,"val":"delete","end":""}],
+    types: placeholder as Registry['settings.branding.icon.destroy']['types'],
+  },
+  'settings.branding.icon.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/branding/icon',
+    tokens: [{"old":"/branding/icon","type":0,"val":"branding","end":""},{"old":"/branding/icon","type":0,"val":"icon","end":""}],
+    types: placeholder as Registry['settings.branding.icon.show']['types'],
+  },
   'system.users.update_roles': {
     methods: ["POST"],
     pattern: '/system/users/:id/roles',
     tokens: [{"old":"/system/users/:id/roles","type":0,"val":"system","end":""},{"old":"/system/users/:id/roles","type":0,"val":"users","end":""},{"old":"/system/users/:id/roles","type":1,"val":"id","end":""},{"old":"/system/users/:id/roles","type":0,"val":"roles","end":""}],
     types: placeholder as Registry['system.users.update_roles']['types'],
+  },
+  'system.users.update_access': {
+    methods: ["POST"],
+    pattern: '/system/users/:id/access',
+    tokens: [{"old":"/system/users/:id/access","type":0,"val":"system","end":""},{"old":"/system/users/:id/access","type":0,"val":"users","end":""},{"old":"/system/users/:id/access","type":1,"val":"id","end":""},{"old":"/system/users/:id/access","type":0,"val":"access","end":""}],
+    types: placeholder as Registry['system.users.update_access']['types'],
   },
   'invitations.store': {
     methods: ["POST"],
@@ -101,6 +137,12 @@ const routes = {
     pattern: '/roles',
     tokens: [{"old":"/roles","type":0,"val":"roles","end":""}],
     types: placeholder as Registry['roles.store']['types'],
+  },
+  'roles.reorder': {
+    methods: ["POST"],
+    pattern: '/roles/reorder',
+    tokens: [{"old":"/roles/reorder","type":0,"val":"roles","end":""},{"old":"/roles/reorder","type":0,"val":"reorder","end":""}],
+    types: placeholder as Registry['roles.reorder']['types'],
   },
   'roles.destroy': {
     methods: ["POST"],
@@ -617,6 +659,12 @@ const routes = {
     pattern: '/jobs/:id/confirm',
     tokens: [{"old":"/jobs/:id/confirm","type":0,"val":"jobs","end":""},{"old":"/jobs/:id/confirm","type":1,"val":"id","end":""},{"old":"/jobs/:id/confirm","type":0,"val":"confirm","end":""}],
     types: placeholder as Registry['jobs.confirm']['types'],
+  },
+  'jobs.forceDone': {
+    methods: ["POST"],
+    pattern: '/jobs/:id/force-done',
+    tokens: [{"old":"/jobs/:id/force-done","type":0,"val":"jobs","end":""},{"old":"/jobs/:id/force-done","type":1,"val":"id","end":""},{"old":"/jobs/:id/force-done","type":0,"val":"force-done","end":""}],
+    types: placeholder as Registry['jobs.forceDone']['types'],
   },
   'jobs.fail': {
     methods: ["POST"],

@@ -20,6 +20,7 @@ import { AvatarUploader } from '@/components/catalog/avatar-uploader'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { ProductImageGallery } from '@/components/catalog/product-image-gallery'
 import { DefaultPriceDialog } from '@/components/catalog/default-price-dialog'
+import { formatMoney, useCurrency } from '@/lib/currency'
 
 type GalleryImage = {
   id: number
@@ -64,7 +65,7 @@ type ProfitJobRow = {
   sellingPrice: number | null
   profitPerUnit: number | null
   profitPct: number | null
-  suggestedPinPrice: number
+  minimumProfitPrice: number
 }
 
 type ProfitAnalysis = {
@@ -85,6 +86,11 @@ type ProfitAnalysis = {
     setByUserName: string | null
   } | null
   autoComputedPrice: number | null
+  autoProfitPct: number | null
+  autoProfitFrom: 'product' | 'category' | 'global' | null
+  minimumProfitPrice: number | null
+  minimumProfitPct: number
+  minimumProfitFrom: 'category' | 'product' | 'global'
   jobs: ProfitJobRow[]
 }
 
@@ -103,100 +109,116 @@ function formatSize(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
-function formatMoney(n: number | null) {
-  if (n === null || !Number.isFinite(n)) return '—'
-  return `₹${n.toFixed(2)}`
-}
-
 function formatPct(n: number | null) {
   if (n === null || !Number.isFinite(n)) return '—'
   return `${n.toFixed(2)}%`
 }
 
-const ROUNDING_LABEL: Record<ProfitAnalysis['rounding'], string> = {
-  nearest_50_paise: 'nearest ₹0.50',
-  nearest_rupee: 'nearest ₹1',
-  none: 'no rounding',
+function roundingLabel(rounding: ProfitAnalysis['rounding'], currency: string): string {
+  if (rounding === 'nearest_50_paise') return `nearest ${formatMoney(0.5, currency)}`
+  if (rounding === 'nearest_rupee') return `nearest ${formatMoney(1, currency)}`
+  return 'no rounding'
 }
 
 function ProfitAnalysisCard({
   analysis,
   canEdit,
   onSetDefault,
+  onClearDefault,
 }: {
   analysis: ProfitAnalysis
   canEdit: boolean
   onSetDefault: (job: ProfitJobRow | null) => void
+  onClearDefault: () => void
 }) {
+  const currency = useCurrency()
   const {
-    sellingPrice,
     costBasis,
-    profitPerUnit,
-    profitPct,
-    profitPctUsed,
-    profitFrom,
     taxRatePct,
     taxFrom,
     rounding,
     jobs,
+    defaultSalePrice,
+    defaultSalePriceSource,
+    autoComputedPrice,
+    autoProfitPct,
+    autoProfitFrom,
+    minimumProfitPrice,
+    minimumProfitPct,
+    minimumProfitFrom,
   } = analysis
-
-  const profitToneClass =
-    profitPerUnit === null
-      ? 'text-muted-foreground'
-      : profitPerUnit >= 0
-        ? 'text-emerald-600 dark:text-emerald-400'
-        : 'text-red-600 dark:text-red-400'
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex-row items-center justify-between gap-4">
         <CardTitle>Profit analysis</CardTitle>
+        {canEdit && defaultSalePrice !== null && (
+          <Button variant="ghost" size="sm" onClick={onClearDefault}>
+            Clear default
+          </Button>
+        )}
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-lg border bg-muted/30 p-4">
             <div className="text-xs uppercase tracking-wide text-muted-foreground">
               Avg unit cost
             </div>
-            <div className="mt-1 text-2xl font-semibold tabular-nums">{formatMoney(costBasis)}</div>
+            <div className="mt-1 text-2xl font-semibold tabular-nums">
+              {formatMoney(costBasis, currency)}
+            </div>
             <div className="mt-1 text-xs text-muted-foreground">
               Weighted across last 5 completed jobs
             </div>
           </div>
           <div className="rounded-lg border bg-muted/30 p-4">
             <div className="text-xs uppercase tracking-wide text-muted-foreground">
-              Suggested selling price
+              Your saved default
             </div>
             <div className="mt-1 text-2xl font-semibold tabular-nums">
-              {formatMoney(sellingPrice)}
+              {formatMoney(defaultSalePrice, currency)}
             </div>
             <div className="mt-1 text-xs text-muted-foreground">
-              {profitPctUsed !== null
-                ? `Profit ${formatPct(profitPctUsed)} (${profitFrom ?? '—'})`
-                : profitFrom === 'manual'
-                  ? 'Manual override'
-                  : 'No basis yet'}
+              {defaultSalePriceSource?.jobNumber
+                ? `From #${defaultSalePriceSource.jobNumber}`
+                : defaultSalePrice === null
+                  ? 'Not set'
+                  : 'Set manually'}
             </div>
           </div>
-          <div className={`rounded-lg border bg-muted/30 p-4 ${profitToneClass}`}>
+          <div className="rounded-lg border bg-muted/30 p-4">
             <div className="text-xs uppercase tracking-wide text-muted-foreground">
-              Profit / unit
+              Backend-calculated price
             </div>
             <div className="mt-1 text-2xl font-semibold tabular-nums">
-              {formatMoney(profitPerUnit)}
+              {formatMoney(autoComputedPrice, currency)}
             </div>
             <div className="mt-1 text-xs text-muted-foreground">
-              {profitPct !== null ? `${formatPct(profitPct)} margin on cost` : '—'}
+              {autoComputedPrice !== null && autoProfitPct !== null
+                ? `${formatPct(autoProfitPct)} profit (${autoProfitFrom})`
+                : 'Not available yet'}
+            </div>
+          </div>
+          <div className="rounded-lg border bg-muted/30 p-4">
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">
+              Minimum profit target
+            </div>
+            <div className="mt-1 text-2xl font-semibold tabular-nums">
+              {formatMoney(minimumProfitPrice, currency)}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {minimumProfitPrice === null
+                ? 'Not available yet'
+                : `${formatPct(minimumProfitPct)} profit (${minimumProfitFrom})`}
             </div>
           </div>
         </div>
 
         <p className="text-xs text-muted-foreground">
-          Each row's selling price = that job's unit cost × (1 + profit %) using profit{' '}
-          {formatPct(profitPctUsed)} ({profitFrom ?? '—'}); tax {formatPct(taxRatePct)} ({taxFrom});
-          rounded to {ROUNDING_LABEL[rounding]}. Profit % stays constant; selling price moves with
-          batch cost.
+          Backend prices use the configured profit ({autoProfitFrom ?? '—'}) and round to{' '}
+          {roundingLabel(rounding, currency)}. Minimum targets use category profit first, then
+          product or global fallback, and always round upward to the next cent. Tax{' '}
+          {formatPct(taxRatePct)} ({taxFrom}) is separate; all prices shown here exclude tax.
         </p>
 
         {jobs.length === 0 ? (
@@ -212,7 +234,8 @@ function ProfitAnalysisCard({
                 <TableHead className="text-right">Produced</TableHead>
                 <TableHead className="text-right">Total cost</TableHead>
                 <TableHead className="text-right">Unit cost</TableHead>
-                <TableHead className="text-right">Selling price</TableHead>
+                <TableHead className="text-right">Backend price</TableHead>
+                <TableHead className="text-right">Minimum target</TableHead>
                 <TableHead className="text-right">Profit / unit</TableHead>
                 <TableHead className="text-right">Profit %</TableHead>
                 <TableHead className="text-right">Action</TableHead>
@@ -243,26 +266,31 @@ function ProfitAnalysisCard({
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{j.producedQty}</TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {formatMoney(j.totalCost)}
+                      {formatMoney(j.totalCost, currency)}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {formatMoney(j.unitCost)}
+                      {formatMoney(j.unitCost, currency)}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {formatMoney(j.sellingPrice)}
+                      {formatMoney(j.sellingPrice, currency)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatMoney(j.minimumProfitPrice, currency)}
                     </TableCell>
                     <TableCell className={`text-right tabular-nums ${rowTone}`}>
-                      {formatMoney(j.profitPerUnit)}
+                      {formatMoney(j.profitPerUnit, currency)}
                     </TableCell>
                     <TableCell className={`text-right tabular-nums ${rowTone}`}>
                       {formatPct(j.profitPct)}
                     </TableCell>
                     <TableCell className="text-right">
-                      {canEdit && (
-                        <Button variant="ghost" size="sm" onClick={() => onSetDefault(j)}>
+                      {defaultSalePriceSource?.jobId === j.id ? (
+                        <Badge variant="secondary">Default</Badge>
+                      ) : canEdit ? (
+                        <Button size="sm" onClick={() => onSetDefault(j)}>
                           Set as default
                         </Button>
-                      )}
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 )
@@ -541,97 +569,23 @@ export default function ProductShowPage({ product, images, files, profitAnalysis
           setDialogJob(job)
           setDialogOpen(true)
         }}
+        onClearDefault={() => {
+          if (!window.confirm('Clear the default sale price?')) return
+          router.post(
+            `/catalog/products/${product.id}/default-price/delete`,
+            {},
+            { preserveScroll: true }
+          )
+        }}
       />
-
-      <Card className="mt-4">
-        <CardHeader>
-          <CardTitle>Default sale price</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {profitAnalysis.defaultSalePrice !== null ? (
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <div className="text-2xl font-semibold">
-                  ₹{profitAnalysis.defaultSalePrice.toLocaleString()}
-                </div>
-                {profitAnalysis.defaultSalePriceSource && (
-                  <div className="text-xs text-muted-foreground">
-                    {profitAnalysis.defaultSalePriceSource.jobNumber
-                      ? `From #${profitAnalysis.defaultSalePriceSource.jobNumber}`
-                      : 'Set manually'}
-                    {profitAnalysis.defaultSalePriceSource.setByUserName
-                      ? ` · by ${profitAnalysis.defaultSalePriceSource.setByUserName}`
-                      : ''}
-                  </div>
-                )}
-                {profitAnalysis.autoComputedPrice !== null && (
-                  <div className="text-xs text-muted-foreground">
-                    Auto-calculated: ₹{profitAnalysis.autoComputedPrice.toLocaleString()}
-                  </div>
-                )}
-              </div>
-              {canEdit && (
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setDialogJob(null)
-                      setDialogOpen(true)
-                    }}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      if (!window.confirm('Clear the default sale price?')) return
-                      router.post(
-                        `/catalog/products/${product.id}/default-price/delete`,
-                        {},
-                        { preserveScroll: true }
-                      )
-                    }}
-                  >
-                    Clear
-                  </Button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="flex items-center justify-between gap-4">
-              <div className="text-sm text-muted-foreground">
-                No default set — sales surfaces use the auto-calculated price
-                {profitAnalysis.autoComputedPrice !== null
-                  ? ` (₹${profitAnalysis.autoComputedPrice.toLocaleString()})`
-                  : ''}
-                .
-              </div>
-              {canEdit && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setDialogJob(null)
-                    setDialogOpen(true)
-                  }}
-                >
-                  Set default
-                </Button>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       <DefaultPriceDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         productId={product.id}
-        initialPrice={dialogJob ? null : profitAnalysis.defaultSalePrice}
-        suggestedPrice={dialogJob?.suggestedPinPrice ?? null}
-        autoComputedPrice={profitAnalysis.autoComputedPrice}
+        initialPrice={null}
+        suggestedPrice={dialogJob?.minimumProfitPrice ?? null}
+        minimumProfitPrice={dialogJob?.minimumProfitPrice ?? profitAnalysis.minimumProfitPrice}
         sourceJob={dialogJob ? { id: dialogJob.id, number: dialogJob.number } : null}
       />
 

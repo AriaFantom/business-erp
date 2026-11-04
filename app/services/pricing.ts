@@ -14,6 +14,38 @@ function defaultProfitPctFallback(): number {
   return Number.isFinite(n) && n >= 0 ? n : 30
 }
 
+export type ProfitTarget = {
+  price: number | null
+  profitPct: number
+  profitFrom: 'category' | 'product' | 'global'
+}
+
+/** Category profit is the preferred minimum target; product/global are fallbacks. */
+export function computeMinimumProfitTarget(input: {
+  costPrice: number | null
+  product: Product
+  category: ProductCategory | null
+}): ProfitTarget {
+  let profitPct: number
+  let profitFrom: ProfitTarget['profitFrom']
+  if (input.category?.defaultProfitPct !== null && input.category?.defaultProfitPct !== undefined) {
+    profitPct = Number(input.category.defaultProfitPct)
+    profitFrom = 'category'
+  } else if (input.product.defaultProfitPct !== null) {
+    profitPct = Number(input.product.defaultProfitPct)
+    profitFrom = 'product'
+  } else {
+    profitPct = defaultProfitPctFallback()
+    profitFrom = 'global'
+  }
+  const raw = input.costPrice === null ? null : input.costPrice * (1 + profitPct / 100)
+  return {
+    price: raw === null ? null : Math.ceil((raw - Number.EPSILON) * 100) / 100,
+    profitPct,
+    profitFrom,
+  }
+}
+
 function applyRounding(price: number, rule: RoundingRule): number {
   switch (rule) {
     case 'nearest_rupee':

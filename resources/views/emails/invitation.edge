@@ -4,7 +4,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
-    <title>{{ brandName }} invitation</title>
+    <title>
+      {{ brandName }} invitation
+    </title>
   </head>
   <body
     style="
@@ -42,6 +44,15 @@
           >
             <tr>
               <td style="padding: 28px 32px 0 32px;">
+                @if(brandIconCid)
+                  <img
+                    src="cid:{{ brandIconCid }}"
+                    alt="{{ brandName }}"
+                    width="48"
+                    height="48"
+                    style="display: block; width: 48px; height: 48px; margin: 0 0 12px 0; border-radius: 10px; object-fit: cover;"
+                  />
+                @end
                 <p
                   style="
                     margin: 0;

@@ -19,6 +19,20 @@ export interface ApiDefinition {
     invitations: typeof routes['system.invitations']
     users: typeof routes['system.users'] & {
       updateRoles: typeof routes['system.users.update_roles']
+      updateAccess: typeof routes['system.users.update_access']
+    }
+  }
+  settings: {
+    branding: typeof routes['settings.branding'] & {
+      update: typeof routes['settings.branding.update']
+      icon: {
+        update: typeof routes['settings.branding.icon.update']
+        destroy: typeof routes['settings.branding.icon.destroy']
+        show: typeof routes['settings.branding.icon.show']
+      }
+    }
+    modules: typeof routes['settings.modules'] & {
+      update: typeof routes['settings.modules.update']
     }
   }
   invitations: {
@@ -28,12 +42,8 @@ export interface ApiDefinition {
   }
   roles: {
     store: typeof routes['roles.store']
+    reorder: typeof routes['roles.reorder']
     destroy: typeof routes['roles.destroy']
-  }
-  settings: {
-    modules: typeof routes['settings.modules'] & {
-      update: typeof routes['settings.modules.update']
-    }
   }
   profile: {
     show: typeof routes['profile.show']
@@ -164,6 +174,7 @@ export interface ApiDefinition {
     consume: typeof routes['jobs.consume']
     expense: typeof routes['jobs.expense']
     confirm: typeof routes['jobs.confirm']
+    forceDone: typeof routes['jobs.forceDone']
     fail: typeof routes['jobs.fail']
     cancel: typeof routes['jobs.cancel']
   }

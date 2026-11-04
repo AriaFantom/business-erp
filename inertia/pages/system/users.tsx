@@ -29,6 +29,12 @@ import {
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { userInitials } from '@/lib/user'
 import type { InertiaProps } from '@/types'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  InvitationsPanel,
+  type PendingInvitation,
+  type RoleOption,
+} from '@/pages/system/invitations'
 
 type UserRow = {
   id: number
@@ -49,9 +55,14 @@ type AssignableRole = {
 }
 
 type UsersPageProps = {
-  users: UserRow[]
-  assignableRoles: AssignableRole[]
-  currentUserId: number
+  users?: UserRow[]
+  assignableRoles?: AssignableRole[]
+  currentUserId?: number
+  roles?: RoleOption[]
+  pendingInvitations?: PendingInvitation[]
+  canViewUsers: boolean
+  canViewInvitations: boolean
+  initialTab: 'users' | 'invitations'
 }
 
 function fullNameOf(row: UserRow): string {
@@ -163,7 +174,16 @@ function EditRolesDialog({
   )
 }
 
-export default function SystemUsers({ users, assignableRoles, currentUserId }: UsersPageProps) {
+export default function SystemUsers({
+  users = [],
+  assignableRoles = [],
+  currentUserId = 0,
+  roles = [],
+  pendingInvitations = [],
+  canViewUsers,
+  canViewInvitations,
+  initialTab,
+}: UsersPageProps) {
   const { user: actor } = usePage<InertiaProps<UsersPageProps>>().props
   const [editing, setEditing] = useState<UserRow | null>(null)
   const [changingAccess, setChangingAccess] = useState<UserRow | null>(null)
@@ -194,125 +214,148 @@ export default function SystemUsers({ users, assignableRoles, currentUserId }: U
   return (
     <div className="flex w-full flex-col gap-6 px-6 py-8">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">User List</h1>
+        <h1 className="text-2xl font-semibold">Users & Invitations</h1>
         <p className="text-sm text-muted-foreground">
-          {users.length} user{users.length === 1 ? '' : 's'} in your scope.
+          Manage workspace access, roles, and outstanding invitations.
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Users</CardTitle>
-          <CardDescription>
-            {canAssign
-              ? 'You can change role assignments for users below your rank.'
-              : 'You can view users below your rank. Role editing requires the users.assignRole permission.'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {users.length === 0 ? (
-            <EmptyState
-              icon={Users}
-              title="No users in your scope"
-              description="Invite a teammate to give them access to the panel."
-              action={
-                <Button asChild variant="outline">
-                  <Link href="/system/invitations">Invite users</Link>
-                </Button>
-              }
-            />
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Roles</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">
-                    <span className="sr-only">Actions</span>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((row) => {
-                  const isSelf = row.id === currentUserId
-                  return (
-                    <TableRow key={row.id}>
-                      <TableCell>
-                        <div className="flex min-w-0 items-center gap-3">
-                          <Avatar className="h-9 w-9">
-                            <AvatarFallback>
-                              {userInitials(row.firstName, row.lastName, row.email)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex min-w-0 flex-col">
-                            <span className="truncate text-sm font-medium">
-                              {fullNameOf(row)}
-                              {isSelf && (
-                                <span className="ml-2 text-xs text-muted-foreground">(you)</span>
-                              )}
-                            </span>
-                            <span className="truncate text-xs text-muted-foreground">
-                              {row.email}
-                            </span>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {row.roles.length === 0 ? (
-                          <Badge variant="outline" className="text-muted-foreground">
-                            no role
-                          </Badge>
-                        ) : (
-                          <div className="flex flex-wrap gap-1">
-                            {row.roles.map((r) => (
-                              <Badge key={r.id} variant="outline">
-                                {r.displayName}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {row.isOwner ? (
-                          <Badge variant="secondary">Owner</Badge>
-                        ) : row.isActive ? (
-                          <Badge variant="outline">Active</Badge>
-                        ) : (
-                          <Badge variant="destructive">Revoked</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          {canAssign && row.editable && (
-                            <Button variant="outline" size="sm" onClick={() => setEditing(row)}>
-                              <ShieldCheck data-icon="inline-start" /> Change roles
-                            </Button>
-                          )}
-                          {row.accessEditable && (
-                            <Button
-                              variant={row.isActive ? 'destructive' : 'outline'}
-                              size="sm"
-                              onClick={() => setChangingAccess(row)}
-                            >
-                              {row.isActive ? (
-                                <UserRoundX data-icon="inline-start" />
+      <Tabs defaultValue={initialTab}>
+        <TabsList>
+          {canViewUsers && <TabsTrigger value="users">Users</TabsTrigger>}
+          {canViewInvitations && <TabsTrigger value="invitations">Invitations</TabsTrigger>}
+        </TabsList>
+        {canViewUsers && (
+          <TabsContent value="users" className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Users</CardTitle>
+                <CardDescription>
+                  {canAssign
+                    ? 'You can change role assignments for users below your rank.'
+                    : 'You can view users below your rank. Role editing requires the users.assignRole permission.'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {users.length === 0 ? (
+                  <EmptyState
+                    icon={Users}
+                    title="No users in your scope"
+                    description="Invite a teammate to give them access to the panel."
+                    action={
+                      canViewInvitations ? (
+                        <Button asChild variant="outline">
+                          <Link href="/system/users?tab=invitations">Invite users</Link>
+                        </Button>
+                      ) : undefined
+                    }
+                  />
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>User</TableHead>
+                        <TableHead>Roles</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">
+                          <span className="sr-only">Actions</span>
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {users.map((row) => {
+                        const isSelf = row.id === currentUserId
+                        return (
+                          <TableRow key={row.id}>
+                            <TableCell>
+                              <div className="flex min-w-0 items-center gap-3">
+                                <Avatar className="h-9 w-9">
+                                  <AvatarFallback>
+                                    {userInitials(row.firstName, row.lastName, row.email)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex min-w-0 flex-col">
+                                  <span className="truncate text-sm font-medium">
+                                    {fullNameOf(row)}
+                                    {isSelf && (
+                                      <span className="ml-2 text-xs text-muted-foreground">
+                                        (you)
+                                      </span>
+                                    )}
+                                  </span>
+                                  <span className="truncate text-xs text-muted-foreground">
+                                    {row.email}
+                                  </span>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {row.roles.length === 0 ? (
+                                <Badge variant="outline" className="text-muted-foreground">
+                                  no role
+                                </Badge>
                               ) : (
-                                <UserRoundCheck data-icon="inline-start" />
+                                <div className="flex flex-wrap gap-1">
+                                  {row.roles.map((r) => (
+                                    <Badge key={r.id} variant="outline">
+                                      {r.displayName}
+                                    </Badge>
+                                  ))}
+                                </div>
                               )}
-                              {row.isActive ? 'Revoke access' : 'Restore access'}
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                            </TableCell>
+                            <TableCell>
+                              {row.isOwner ? (
+                                <Badge variant="secondary">Owner</Badge>
+                              ) : row.isActive ? (
+                                <Badge variant="outline">Active</Badge>
+                              ) : (
+                                <Badge variant="destructive">Revoked</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                {canAssign && row.editable && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setEditing(row)}
+                                  >
+                                    <ShieldCheck data-icon="inline-start" /> Change roles
+                                  </Button>
+                                )}
+                                {row.accessEditable && (
+                                  <Button
+                                    variant={row.isActive ? 'destructive' : 'outline'}
+                                    size="sm"
+                                    onClick={() => setChangingAccess(row)}
+                                  >
+                                    {row.isActive ? (
+                                      <UserRoundX data-icon="inline-start" />
+                                    ) : (
+                                      <UserRoundCheck data-icon="inline-start" />
+                                    )}
+                                    {row.isActive ? 'Revoke access' : 'Restore access'}
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+        {canViewInvitations && (
+          <TabsContent value="invitations" className="mt-4">
+            <InvitationsPanel roles={roles} pendingInvitations={pendingInvitations} />
+          </TabsContent>
+        )}
+      </Tabs>
 
       {editing && (
         <EditRolesDialog

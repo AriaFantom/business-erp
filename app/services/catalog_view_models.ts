@@ -10,7 +10,7 @@ import Inventory from '#models/inventory'
 import StockMovement from '#models/stock_movement'
 import { token } from '#services/file_streaming'
 import { latestProductCost } from '#services/job_costing'
-import { computeUnitPrice } from '#services/pricing'
+import { computeMinimumProfitTarget, computeUnitPrice } from '#services/pricing'
 
 /**
  * Lean read-only projections for Inertia pages. These don't depend on the
@@ -319,6 +319,11 @@ export type ProductShowData = {
       setByUserName: string | null
     } | null
     autoComputedPrice: number | null
+    autoProfitPct: number | null
+    autoProfitFrom: 'product' | 'category' | 'global' | null
+    minimumProfitPrice: number | null
+    minimumProfitPct: number
+    minimumProfitFrom: 'category' | 'product' | 'global'
     jobs: Array<{
       id: number
       number: string
@@ -329,7 +334,7 @@ export type ProductShowData = {
       sellingPrice: number | null
       profitPerUnit: number | null
       profitPct: number | null
-      suggestedPinPrice: number
+      minimumProfitPrice: number
     }>
   }
 }
@@ -455,6 +460,11 @@ export async function getProductShowViewModel(id: number): Promise<ProductShowDa
     category: product.category ?? null,
   })
   const autoComputedPrice = costBasis !== null ? autoPriceBreakdown.unitPrice : null
+  const minimumTarget = computeMinimumProfitTarget({
+    costPrice: costBasis,
+    product,
+    category: product.category ?? null,
+  })
 
   const priceBreakdown = computeUnitPrice({
     costPrice: costBasis,
@@ -474,13 +484,17 @@ export async function getProductShowViewModel(id: number): Promise<ProductShowDa
     const totalCost = Number(j.totalCost)
     const rowBreakdown = computeUnitPrice({
       costPrice: unitCost,
-      product,
+      product: productWithoutPin,
       category: product.category ?? null,
     })
     const rowSellingPrice = rowBreakdown.unitPrice
     const rowProfit = round2(rowSellingPrice - unitCost)
     const rowProfitPct = unitCost > 0 ? round2((rowProfit / unitCost) * 100) : null
-    const suggestedPinPrice = Math.ceil((unitCost + 40) / 50) * 50
+    const jobMinimumTarget = computeMinimumProfitTarget({
+      costPrice: unitCost,
+      product,
+      category: product.category ?? null,
+    })
     return {
       id: j.id,
       number: j.number,
@@ -491,7 +505,7 @@ export async function getProductShowViewModel(id: number): Promise<ProductShowDa
       sellingPrice: rowSellingPrice,
       profitPerUnit: rowProfit,
       profitPct: rowProfitPct,
-      suggestedPinPrice,
+      minimumProfitPrice: jobMinimumTarget.price!,
     }
   })
 
@@ -526,6 +540,11 @@ export async function getProductShowViewModel(id: number): Promise<ProductShowDa
       defaultSalePrice: product.defaultSalePrice !== null ? Number(product.defaultSalePrice) : null,
       defaultSalePriceSource,
       autoComputedPrice,
+      autoProfitPct: autoPriceBreakdown.profitPctUsed,
+      autoProfitFrom: autoPriceBreakdown.basis.profitFrom as 'product' | 'category' | 'global',
+      minimumProfitPrice: minimumTarget.price,
+      minimumProfitPct: minimumTarget.profitPct,
+      minimumProfitFrom: minimumTarget.profitFrom,
       jobs,
     },
   }

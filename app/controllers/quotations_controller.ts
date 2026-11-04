@@ -19,6 +19,7 @@ import Quotation from '#models/quotation'
 import env from '#start/env'
 import { ensurePdf, streamPdf } from '#services/document_pdf/render'
 import { QuotationDocument } from '#services/document_pdf/quotation_document'
+import { getAppCurrency } from '#services/currency'
 
 export default class QuotationsController {
   async index({ request, inertia, bouncer }: HttpContext) {
@@ -129,8 +130,9 @@ export default class QuotationsController {
     const quotation = await Quotation.findOrFail(params.id)
     const vm = await getQuotationShowViewModel(quotation.id)
     const appName = env.get('APP_NAME')
+    const currency = await getAppCurrency()
     await ensurePdf('quotation', quotation, () =>
-      React.createElement(QuotationDocument, { ...vm, appName })
+      React.createElement(QuotationDocument, { ...vm, appName, currency })
     )
     await streamPdf(quotation.pdfKey!, response, `quotation-${quotation.number}.pdf`)
   }

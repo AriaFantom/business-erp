@@ -13,6 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import DashboardLayout from '@/layouts/dashboard-layout'
+import { formatMoney, useCurrency } from '@/lib/currency'
 
 type Row = {
   productId: number
@@ -26,6 +27,7 @@ type Row = {
 type PageProps = { rows: Row[]; from: string; to: string }
 
 export default function JobsReport({ rows, from, to }: PageProps) {
+  const currency = useCurrency()
   const [fromDate, setFromDate] = useState(from.slice(0, 10))
   const [toDate, setToDate] = useState(to.slice(0, 10))
 
@@ -89,8 +91,12 @@ export default function JobsReport({ rows, from, to }: PageProps) {
                     <TableCell className="font-medium">{r.productName}</TableCell>
                     <TableCell className="text-right">{r.jobsCompleted}</TableCell>
                     <TableCell className="text-right">{r.totalProduced}</TableCell>
-                    <TableCell className="text-right">₹{r.totalCost.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">₹{r.avgUnitCost.toFixed(4)}</TableCell>
+                    <TableCell className="text-right">
+                      {formatMoney(r.totalCost, currency)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatMoney(r.avgUnitCost, currency, { maximumFractionDigits: 4 })}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

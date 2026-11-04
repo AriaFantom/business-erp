@@ -13,6 +13,12 @@ import {
 } from '#services/inventory_service'
 import { InvalidStateError } from '#services/domain_errors'
 import { audit } from '#services/audit'
+import {
+  compareQuantities,
+  quantityToScaled,
+  scaledToQuantity,
+  subtractQuantities,
+} from '#services/quantity_units'
 
 /** Item kinds a stock take is allowed to hold lines for (machines are excluded). */
 type StockTakeItemKind = 'material' | 'component' | 'product'
@@ -103,7 +109,8 @@ export async function saveCounts(opts: {
     for (const c of opts.counts) {
       const item = byKey.get(`${c.itemKind}:${c.itemId}`)
       if (!item) continue
-      item.countedQty = c.countedQty === null ? null : c.countedQty.toFixed(3)
+      item.countedQty =
+        c.countedQty === null ? null : scaledToQuantity(quantityToScaled(c.countedQty))
       item.useTransaction(trx)
       await item.save()
     }
@@ -185,15 +192,15 @@ export async function completeStockTake(opts: {
         .where('itemId', item.itemId)
         .forUpdate()
         .first()
-      const currentQty = currentInv ? Number(currentInv.qty) : 0
-      const countedQty = Number(item.countedQty)
-      const delta = countedQty - currentQty
+      const currentQty = currentInv?.qty ?? '0'
+      const delta = subtractQuantities(item.countedQty, currentQty)
 
       // Ignore no-op counts (matches applyMovement's own zero-delta guard).
-      if (Math.abs(delta) < 0.0005) continue
+      if (compareQuantities(delta, 0) === 0) continue
 
       const unitCost = currentInv ? Number(currentInv.avgUnitCost) : Number(item.unitCost)
-      const reason: MovementReason = delta > 0 ? 'adjustment_increase' : 'adjustment_decrease'
+      const reason: MovementReason =
+        compareQuantities(delta, 0) > 0 ? 'adjustment_increase' : 'adjustment_decrease'
 
       await applyMovement({
         itemKind: item.itemKind as ItemKind,
@@ -209,7 +216,7 @@ export async function completeStockTake(opts: {
       })
 
       adjustedLines++
-      totalVarianceValue += delta * unitCost
+      totalVarianceValue += Number(delta) * unitCost
     }
 
     stockTake.status = 'completed'

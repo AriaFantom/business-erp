@@ -7,7 +7,6 @@ import {
   HardHat,
   LayoutDashboard,
   MonitorPlay,
-  Mail,
   Package,
   Cpu as MachineIcon,
   Receipt,
@@ -32,6 +31,8 @@ export type NavItem = {
   icon: LucideIcon
   /** When set, item is hidden unless `user.permissions` includes this key. */
   permission?: string
+  /** When set, item is visible when the user has at least one listed permission. */
+  anyPermission?: string[]
   ownerOnly?: boolean
   /** When set, item is hidden unless this module is enabled for the install. */
   module?: string
@@ -211,34 +212,28 @@ export const navItems: NavItem[] = [
     icon: Settings2,
     children: [
       {
+        title: 'Settings',
+        url: '/system/settings',
+        icon: Palette,
+        ownerOnly: true,
+      },
+      {
         title: 'Role Management',
         url: '/system/roles',
         icon: ShieldCheck,
         permission: 'roles.view',
       },
       {
-        title: 'User Invitation',
-        url: '/system/invitations',
-        icon: Mail,
-        permission: 'users.invite',
-      },
-      {
-        title: 'User List',
+        title: 'Users & Invitations',
         url: '/system/users',
         icon: Users,
-        permission: 'users.view',
+        anyPermission: ['users.view', 'users.invite'],
       },
       {
         title: 'Modules',
         url: '/system/modules',
         icon: SlidersHorizontal,
         permission: 'settings.view',
-      },
-      {
-        title: 'Dashboard branding',
-        url: '/system/branding',
-        icon: Palette,
-        ownerOnly: true,
       },
     ],
   },

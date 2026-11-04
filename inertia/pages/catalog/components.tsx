@@ -40,6 +40,7 @@ import { ColumnVisibilityMenu, type ColumnDef } from '@/components/data-table/co
 import { useColumnVisibility } from '@/hooks/use-column-visibility'
 import { EmptyState } from '@/components/empty-state'
 import { SkuField } from '@/components/catalog/sku-field'
+import { formatMoney, useCurrency } from '@/lib/currency'
 
 type Row = {
   id: number
@@ -67,6 +68,7 @@ type PageProps = {
 }
 
 function NewComponentDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
+  const currency = useCurrency()
   const [open, setOpen] = useState(false)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const { data, setData, post, processing, errors, reset, transform } = useForm({
@@ -163,7 +165,7 @@ function NewComponentDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field
-              label={`Default unit cost (per ${data.unit || 'unit'})`}
+              label={`Default unit cost (${currency}, per ${data.unit || 'unit'})`}
               error={errors.defaultUnitCost}
             >
               <Input
@@ -264,6 +266,7 @@ const COMPONENT_COLUMNS: ColumnDef[] = [
 ]
 
 export default function ComponentsPage({ components, suppliers, filters, counts }: PageProps) {
+  const currency = useCurrency()
   const { isVisible, toggle, reset } = useColumnVisibility('catalog.components')
   return (
     <div className="flex w-full flex-col gap-6 px-6 py-8">
@@ -373,7 +376,11 @@ export default function ComponentsPage({ components, suppliers, filters, counts 
                     )}
                     {isVisible('name') && <TableCell className="font-medium">{c.name}</TableCell>}
                     {isVisible('unit') && <TableCell>{c.unit}</TableCell>}
-                    {isVisible('cost') && <TableCell>{c.defaultUnitCost}</TableCell>}
+                    {isVisible('cost') && (
+                      <TableCell>
+                        {formatMoney(c.defaultUnitCost, currency, { maximumFractionDigits: 4 })}
+                      </TableCell>
+                    )}
                     {isVisible('reorder') && (
                       <TableCell>
                         {c.reorderThresholdQty ?? '—'} {c.unit}

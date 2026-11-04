@@ -1,6 +1,9 @@
 import { BaseMail } from '@adonisjs/mail'
 import { appUrl } from '#config/app'
 import type Invitation from '#models/invitation'
+import drive from '@adonisjs/drive/services/main'
+import logger from '@adonisjs/core/services/logger'
+import { getDashboardBranding } from '#services/dashboard_branding'
 
 export default class InvitationNotification extends BaseMail {
   subject: string
@@ -10,10 +13,29 @@ export default class InvitationNotification extends BaseMail {
     this.subject = invitation.type === 'setup' ? 'Set up your account' : 'You have been invited'
   }
 
-  prepare() {
+  async prepare() {
     const acceptUrl = new URL(`/invite/${this.invitation.token}`, appUrl).toString()
     const isSetup = this.invitation.type === 'setup'
     const roleName = this.invitation.role?.displayName ?? null
+    const branding = await getDashboardBranding()
+    let brandIconCid: string | null = null
+
+    this.subject = isSetup
+      ? `Set up your ${branding.name} account`
+      : `You have been invited to ${branding.name}`
+    this.message.subject(this.subject)
+
+    if (branding.iconKey) {
+      try {
+        const stream = await drive.use().getStream(branding.iconKey)
+        brandIconCid = 'dashboard-branding'
+        this.message.embedData(stream, brandIconCid, {
+          filename: branding.iconKey.split('/').at(-1) ?? 'dashboard-icon',
+        })
+      } catch (error) {
+        logger.warn({ error }, 'invitation_email: failed to embed dashboard icon')
+      }
+    }
 
     if (this.invitation.email) {
       this.message.to(this.invitation.email)
@@ -29,6 +51,8 @@ export default class InvitationNotification extends BaseMail {
       roleName,
       expiresAt: this.invitation.expiresAt.toFormat('LLL d, yyyy'),
       year: new Date().getFullYear(),
+      brandName: branding.name,
+      brandIconCid,
     })
   }
 }

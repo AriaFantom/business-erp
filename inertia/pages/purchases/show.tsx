@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/table'
 import { StatusBadge } from '@/components/status-badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
+import { formatMoney, useCurrency } from '@/lib/currency'
 
 type Purchase = {
   id: number
@@ -236,6 +237,7 @@ function ReturnItemsDialog({ purchaseId, items }: { purchaseId: number; items: I
 }
 
 function RecordPaymentDialog({ purchase }: { purchase: Purchase }) {
+  const currency = useCurrency()
   const [open, setOpen] = useState(false)
   const { data, setData, post, processing, reset } = useForm({
     amount: purchase.balanceDue,
@@ -266,7 +268,7 @@ function RecordPaymentDialog({ purchase }: { purchase: Purchase }) {
           }}
         >
           <div className="flex flex-col gap-1">
-            <Label>Amount (balance due: {purchase.balanceDue})</Label>
+            <Label>Amount (balance due: {formatMoney(purchase.balanceDue, currency)})</Label>
             <Input
               type="number"
               min={0.01}
@@ -322,6 +324,7 @@ function RecordPaymentDialog({ purchase }: { purchase: Purchase }) {
 }
 
 export default function PurchaseShow({ purchase, items, returns, payments }: PageProps) {
+  const currency = useCurrency()
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-8">
       <div className="flex items-end justify-between">
@@ -413,20 +416,32 @@ export default function PurchaseShow({ purchase, items, returns, payments }: Pag
                     <TableCell className="text-right">
                       {it.returnedQty > 0 ? it.returnedQty : '—'}
                     </TableCell>
-                    <TableCell className="text-right">{it.unitCost}</TableCell>
+                    <TableCell className="text-right">
+                      {formatMoney(it.unitCost, currency)}
+                    </TableCell>
                     {purchase.taxEntryMode === 'legacy_line' && (
                       <TableCell className="text-right">{it.taxRatePct}</TableCell>
                     )}
-                    <TableCell className="text-right">{it.lineSubtotal}</TableCell>
-                    <TableCell className="text-right">{it.allocatedShipping}</TableCell>
+                    <TableCell className="text-right">
+                      {formatMoney(it.lineSubtotal, currency)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatMoney(it.allocatedShipping, currency)}
+                    </TableCell>
                     {purchase.taxEntryMode === 'invoice_amount' && (
-                      <TableCell className="text-right">{it.allocatedTax}</TableCell>
+                      <TableCell className="text-right">
+                        {formatMoney(it.allocatedTax, currency)}
+                      </TableCell>
                     )}
-                    <TableCell className="text-right">{it.landedUnitCost}</TableCell>
+                    <TableCell className="text-right">
+                      {formatMoney(it.landedUnitCost, currency, { maximumFractionDigits: 4 })}
+                    </TableCell>
                     {purchase.taxEntryMode === 'legacy_line' && (
                       <TableCell className="text-right">{it.lineTax}</TableCell>
                     )}
-                    <TableCell className="text-right">{it.lineTotal}</TableCell>
+                    <TableCell className="text-right">
+                      {formatMoney(it.lineTotal, currency)}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -442,15 +457,15 @@ export default function PurchaseShow({ purchase, items, returns, payments }: Pag
         <CardContent>
           <dl className="grid grid-cols-2 gap-2 text-sm">
             <dt className="text-muted-foreground">Goods subtotal</dt>
-            <dd className="text-right">{purchase.subtotal}</dd>
+            <dd className="text-right">{formatMoney(purchase.subtotal, currency)}</dd>
             <dt className="text-muted-foreground">Shipping</dt>
-            <dd className="text-right">{purchase.shippingCharge}</dd>
+            <dd className="text-right">{formatMoney(purchase.shippingCharge, currency)}</dd>
             <dt className="text-muted-foreground">
               {purchase.taxEntryMode === 'invoice_amount' ? 'Invoice tax' : 'Legacy line tax'}
             </dt>
-            <dd className="text-right">{purchase.taxTotal}</dd>
+            <dd className="text-right">{formatMoney(purchase.taxTotal, currency)}</dd>
             <dt className="font-medium">Grand total</dt>
-            <dd className="text-right font-medium">{purchase.total}</dd>
+            <dd className="text-right font-medium">{formatMoney(purchase.total, currency)}</dd>
             {purchase.status === 'confirmed' && (
               <>
                 {Number(purchase.returnsTotal) > 0 && (
@@ -462,7 +477,9 @@ export default function PurchaseShow({ purchase, items, returns, payments }: Pag
                 <dt className="text-muted-foreground">Paid</dt>
                 <dd className="text-right">-{purchase.paidTotal}</dd>
                 <dt className="font-medium">Balance due</dt>
-                <dd className="text-right font-medium">{purchase.balanceDue}</dd>
+                <dd className="text-right font-medium">
+                  {formatMoney(purchase.balanceDue, currency)}
+                </dd>
               </>
             )}
           </dl>
@@ -491,7 +508,7 @@ export default function PurchaseShow({ purchase, items, returns, payments }: Pag
                   <TableRow key={p.id}>
                     <TableCell>{p.paidAt?.slice(0, 10) ?? '—'}</TableCell>
                     <TableCell className="capitalize">{p.method}</TableCell>
-                    <TableCell className="text-right">{p.amount}</TableCell>
+                    <TableCell className="text-right">{formatMoney(p.amount, currency)}</TableCell>
                     <TableCell className="text-muted-foreground">{p.reference ?? '—'}</TableCell>
                     <TableCell className="text-muted-foreground">{p.note ?? '—'}</TableCell>
                   </TableRow>
@@ -522,7 +539,7 @@ export default function PurchaseShow({ purchase, items, returns, payments }: Pag
                   <TableRow key={r.id}>
                     <TableCell className="font-mono text-sm">{r.number}</TableCell>
                     <TableCell>{r.createdAt?.slice(0, 10) ?? '—'}</TableCell>
-                    <TableCell className="text-right">{r.total}</TableCell>
+                    <TableCell className="text-right">{formatMoney(r.total, currency)}</TableCell>
                     <TableCell className="text-muted-foreground">{r.note ?? '—'}</TableCell>
                   </TableRow>
                 ))}

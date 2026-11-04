@@ -20,6 +20,7 @@ import { computeUnitPrice } from '#services/pricing'
 import { latestProductCost } from '#services/job_costing'
 import { withIdempotency } from '#services/idempotency'
 import { DomainError } from '#services/domain_errors'
+import { formatCurrency, getAppCurrency } from '#services/currency'
 
 export default class PosController {
   async index({ request, inertia, bouncer }: HttpContext) {
@@ -169,7 +170,10 @@ export default class PosController {
       if (replayed) {
         session.flash('success', 'Duplicate submission — showing the original order.')
       } else {
-        session.flash('success', `Order completed (${result.total.toFixed(2)}). Invoice ready.`)
+        session.flash(
+          'success',
+          `Order completed (${formatCurrency(result.total, await getAppCurrency())}). Invoice ready.`
+        )
       }
       return response.redirect(`/invoices/${result.invoiceId}`)
     } catch (err) {
@@ -210,7 +214,10 @@ export default class PosController {
         actor: auth.user!,
       })
       const variance = Number(cashSession.variance)
-      const varianceLabel = variance === 0 ? 'no variance' : `variance ${variance.toFixed(2)}`
+      const varianceLabel =
+        variance === 0
+          ? 'no variance'
+          : `variance ${formatCurrency(variance, await getAppCurrency())}`
       session.flash('success', `Cash session ${cashSession.number} closed (${varianceLabel}).`)
       return response.redirect().back()
     } catch (err) {

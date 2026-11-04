@@ -10,6 +10,8 @@ import {
 } from '~/components/ui/dialog'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
+import { Alert, AlertDescription, AlertTitle } from '~/components/ui/alert'
+import { formatMoney, useCurrency } from '~/lib/currency'
 
 type Props = {
   open: boolean
@@ -18,7 +20,7 @@ type Props = {
   initialPrice: number | null
   suggestedPrice: number | null
   sourceJob?: { id: number; number: string } | null
-  autoComputedPrice?: number | null
+  minimumProfitPrice?: number | null
 }
 
 export function DefaultPriceDialog({
@@ -28,9 +30,10 @@ export function DefaultPriceDialog({
   initialPrice,
   suggestedPrice,
   sourceJob,
-  autoComputedPrice,
+  minimumProfitPrice,
 }: Props) {
-  const seed = initialPrice ?? suggestedPrice ?? autoComputedPrice ?? 0
+  const currency = useCurrency()
+  const seed = initialPrice ?? suggestedPrice ?? minimumProfitPrice ?? 0
   const [price, setPrice] = useState<string>(String(seed))
 
   useEffect(() => {
@@ -57,9 +60,9 @@ export function DefaultPriceDialog({
         <DialogHeader>
           <DialogTitle>Set default sale price</DialogTitle>
         </DialogHeader>
-        <form onSubmit={submit} className="space-y-3">
-          <div className="space-y-1">
-            <Label htmlFor="default-price-input">Price (₹)</Label>
+        <form onSubmit={submit} className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="default-price-input">Price ({currency})</Label>
             <Input
               id="default-price-input"
               type="number"
@@ -73,11 +76,22 @@ export function DefaultPriceDialog({
           {sourceJob && (
             <p className="text-xs text-muted-foreground">Anchored to #{sourceJob.number}</p>
           )}
-          {autoComputedPrice !== null && autoComputedPrice !== undefined && (
+          {minimumProfitPrice !== null && minimumProfitPrice !== undefined && (
             <p className="text-xs text-muted-foreground">
-              Auto-calculated price: ₹{autoComputedPrice.toLocaleString()}
+              Minimum for configured profit: {formatMoney(minimumProfitPrice, currency)} excluding
+              tax
             </p>
           )}
+          {minimumProfitPrice !== null &&
+            minimumProfitPrice !== undefined &&
+            Number(price) < minimumProfitPrice && (
+              <Alert variant="destructive">
+                <AlertTitle>Below profit target</AlertTitle>
+                <AlertDescription>
+                  You can still save this price, but it is below the backend-calculated minimum.
+                </AlertDescription>
+              </Alert>
+            )}
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               Cancel

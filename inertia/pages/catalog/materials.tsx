@@ -40,6 +40,7 @@ import { ColumnVisibilityMenu, type ColumnDef } from '@/components/data-table/co
 import { useColumnVisibility } from '@/hooks/use-column-visibility'
 import { EmptyState } from '@/components/empty-state'
 import { SkuField } from '@/components/catalog/sku-field'
+import { formatMoney, useCurrency } from '@/lib/currency'
 
 type Row = {
   id: number
@@ -68,6 +69,7 @@ type PageProps = {
 }
 
 function NewMaterialDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
+  const currency = useCurrency()
   const [open, setOpen] = useState(false)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const { data, setData, post, processing, errors, reset, transform } = useForm({
@@ -178,7 +180,7 @@ function NewMaterialDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field
-              label={`Default unit cost (per ${data.unit || 'unit'})`}
+              label={`Default unit cost (${currency}, per ${data.unit || 'unit'})`}
               error={errors.defaultUnitCost}
             >
               <Input
@@ -281,6 +283,7 @@ const MATERIAL_COLUMNS: ColumnDef[] = [
 ]
 
 export default function MaterialsPage({ materials, suppliers, filters, counts }: PageProps) {
+  const currency = useCurrency()
   const { isVisible, toggle, reset } = useColumnVisibility('catalog.materials')
   const archivedHref = `/catalog/materials?status=archived${filters.type && filters.type !== 'all' ? `&type=${filters.type}` : ''}`
   const activeHref = `/catalog/materials?status=active${filters.type && filters.type !== 'all' ? `&type=${filters.type}` : ''}`
@@ -405,7 +408,11 @@ export default function MaterialsPage({ materials, suppliers, filters, counts }:
                     {isVisible('name') && <TableCell className="font-medium">{m.name}</TableCell>}
                     {isVisible('type') && <TableCell>{m.type}</TableCell>}
                     {isVisible('unit') && <TableCell>{m.unit}</TableCell>}
-                    {isVisible('cost') && <TableCell>{m.defaultUnitCost}</TableCell>}
+                    {isVisible('cost') && (
+                      <TableCell>
+                        {formatMoney(m.defaultUnitCost, currency, { maximumFractionDigits: 4 })}
+                      </TableCell>
+                    )}
                     {isVisible('reorder') && (
                       <TableCell>
                         {m.reorderThresholdG ?? '—'} {m.unit}

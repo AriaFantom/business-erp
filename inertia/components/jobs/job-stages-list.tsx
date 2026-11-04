@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge'
 import { JobCountdown } from './job-countdown'
+import { formatDuration } from './job-stages-repeater'
 
 export interface StageView {
   id: number
@@ -22,14 +23,16 @@ export function JobStagesList({
   serverNow?: string
 }) {
   return (
-    <ol className="space-y-2">
+    <ol className="flex flex-col gap-2">
       {stages.map((s) => (
         <li key={s.id} className="flex items-center justify-between rounded border p-3">
           <div className="flex items-center gap-3">
             <span className="text-muted-foreground font-mono text-sm">{s.sequence}.</span>
             <span className="font-medium">{s.name}</span>
             <Badge variant={badgeVariant(s.status)}>{s.status}</Badge>
-            <span className="text-muted-foreground text-sm">{s.estimatedDurationMin} min</span>
+            <span className="text-muted-foreground text-sm">
+              {formatDuration(s.estimatedDurationMin)}
+            </span>
           </div>
           {s.status === 'in_progress' ? (
             <JobCountdown

@@ -36,6 +36,7 @@ import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
 import { ColumnVisibilityMenu, type ColumnDef } from '@/components/data-table/column-visibility'
 import { useColumnVisibility } from '@/hooks/use-column-visibility'
+import { formatMoney, useCurrency } from '@/lib/currency'
 
 type JobRow = {
   id: number
@@ -175,6 +176,7 @@ const JOB_COLUMNS: ColumnDef[] = [
 ]
 
 export default function JobsIndex({ jobs, products, filters }: PageProps) {
+  const currency = useCurrency()
   const { isVisible, toggle, reset } = useColumnVisibility('jobs')
   const inProgress = jobs.filter((j) => j.status === 'in_progress').length
   const completed = jobs.filter((j) => j.status === 'completed').length
@@ -280,10 +282,14 @@ export default function JobsIndex({ jobs, products, filters }: PageProps) {
                       <TableCell className="text-right">{j.producedQty}</TableCell>
                     )}
                     {isVisible('totalCost') && (
-                      <TableCell className="text-right">{j.totalCost}</TableCell>
+                      <TableCell className="text-right">
+                        {formatMoney(j.totalCost, currency)}
+                      </TableCell>
                     )}
                     {isVisible('unitCost') && (
-                      <TableCell className="text-right">{j.unitCost}</TableCell>
+                      <TableCell className="text-right">
+                        {formatMoney(j.unitCost, currency, { maximumFractionDigits: 4 })}
+                      </TableCell>
                     )}
                     {isVisible('actions') && (
                       <TableCell className="text-right">

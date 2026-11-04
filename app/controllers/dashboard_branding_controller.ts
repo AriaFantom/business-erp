@@ -4,15 +4,36 @@ import {
   renameDashboard,
   replaceDashboardIcon,
   removeDashboardIcon,
+  saveApplicationSettings,
 } from '#services/dashboard_branding'
 import { dashboardIconValidator, renameDashboardValidator } from '#validators/dashboard_branding'
+import { updateApplicationSettingsValidator } from '#validators/dashboard_branding'
 import { IMMUTABLE_PRIVATE, streamStoredObject } from '#services/file_streaming'
+import { getAppCurrency, isSupportedCurrency, supportedCurrencyCodes } from '#services/currency'
 
 export default class DashboardBrandingController {
   async show({ bouncer, inertia }: HttpContext) {
     await bouncer.authorize('isOwner' as never)
     const { name, iconUrl } = await getDashboardBranding()
-    return inertia.render('system/branding', { branding: { name, iconUrl } })
+    const currency = await getAppCurrency()
+    return inertia.render('system/branding', {
+      branding: { name, iconUrl },
+      currency,
+      currencyOptions: supportedCurrencyCodes(),
+    } as never)
+  }
+
+  async update({ auth, bouncer, request, response, session }: HttpContext) {
+    await bouncer.authorize('isOwner' as never)
+    const payload = await request.validateUsing(updateApplicationSettingsValidator)
+    if (!isSupportedCurrency(payload.currency)) {
+      session.flash('errors', { currency: 'Choose a valid ISO currency.' })
+      return response.redirect().back()
+    }
+
+    await saveApplicationSettings(auth.user!, payload)
+    session.flash('success', 'Application settings updated.')
+    return response.redirect().toPath('/system/settings')
   }
 
   async updateName({ auth, bouncer, request, response, session }: HttpContext) {
@@ -20,7 +41,7 @@ export default class DashboardBrandingController {
     const { name } = await request.validateUsing(renameDashboardValidator)
     await renameDashboard(auth.user!, name)
     session.flash('success', 'Dashboard name updated.')
-    return response.redirect().toPath('/system/branding')
+    return response.redirect().toPath('/system/settings')
   }
 
   async icon({ response }: HttpContext) {
@@ -34,13 +55,13 @@ export default class DashboardBrandingController {
     const { icon } = await request.validateUsing(dashboardIconValidator)
     await replaceDashboardIcon(auth.user!, icon)
     session.flash('success', 'Dashboard icon updated.')
-    return response.redirect().toPath('/system/branding')
+    return response.redirect().toPath('/system/settings')
   }
 
   async destroyIcon({ auth, bouncer, response, session }: HttpContext) {
     await bouncer.authorize('isOwner' as never)
     await removeDashboardIcon(auth.user!)
     session.flash('success', 'Dashboard icon removed.')
-    return response.redirect().toPath('/system/branding')
+    return response.redirect().toPath('/system/settings')
   }
 }

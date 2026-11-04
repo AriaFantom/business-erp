@@ -17,6 +17,8 @@ import { EmptyState } from '@/components/empty-state'
 import { AnimatedBeam } from '@/components/ui/animated-beam'
 import { ConfirmPostButton } from '@/components/confirm-post-button'
 import { JobCountdown } from '@/components/jobs/job-countdown'
+import { ForceDoneDialog } from '@/components/jobs/force-done-dialog'
+import { formatMoney, useCurrency } from '@/lib/currency'
 import { StatCard } from '@/components/catalog/stat-card'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { cn } from '@/lib/utils'
@@ -121,6 +123,7 @@ function NodeCard({
 }
 
 function JobPipeline({ job, serverNow }: { job: RunningJob; serverNow: string }) {
+  const currency = useCurrency()
   const containerRef = useRef<HTMLDivElement>(null)
   const jobRef = useRef<HTMLDivElement>(null)
   const machineRef = useRef<HTMLDivElement>(null)
@@ -154,7 +157,7 @@ function JobPipeline({ job, serverNow }: { job: RunningJob; serverNow: string })
               innerRef={workerRefs.current[i]}
               icon={HardHat}
               title={w.name}
-              subtitle={`${w.payType} · ${w.hourlyRateAtAssign}/h`}
+              subtitle={`${w.payType} · ${formatMoney(w.hourlyRateAtAssign, currency)}/h`}
               tone="accent"
             />
           ))
@@ -264,6 +267,15 @@ function JobCard({ job, serverNow }: { job: RunningJob; serverNow: string }) {
               confirmTitle="Skip the current stage?"
             />
           )}
+          <ForceDoneDialog
+            jobId={job.id}
+            plannedQty={job.plannedQty}
+            configuredMinutes={job.stages.reduce(
+              (sum, stage) => sum + stage.estimatedDurationMin,
+              0
+            )}
+            size="sm"
+          />
           <Button asChild variant="outline" size="sm">
             <Link href={`/jobs/${job.id}`}>Open</Link>
           </Button>

@@ -17,6 +17,7 @@ import {
   returnPurchaseItems,
 } from '#services/purchase_service'
 import { DomainError } from '#services/domain_errors'
+import { formatCurrency, getAppCurrency } from '#services/currency'
 
 export default class PurchasesController {
   async index({ request, inertia, bouncer }: HttpContext) {
@@ -116,7 +117,10 @@ export default class PurchasesController {
         note: payload.note ?? null,
         actor: auth.user!,
       })
-      session.flash('success', `Payment of ${payload.amount.toFixed(2)} recorded.`)
+      session.flash(
+        'success',
+        `Payment of ${formatCurrency(payload.amount, await getAppCurrency())} recorded.`
+      )
     } catch (err) {
       if (err instanceof DomainError) {
         session.flash('error', err.message)

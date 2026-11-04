@@ -24,6 +24,7 @@ import {
 } from '#services/product_attachment_storage'
 import { qrPayload, renderQrSvg, renderQrPngBuffer } from '#services/product_qr'
 import { streamStoredObject, IMMUTABLE_PRIVATE, NO_STORE } from '#services/file_streaming'
+import { formatCurrency, getAppCurrency } from '#services/currency'
 
 export default class ProductsController {
   async index({ request, inertia, bouncer }: HttpContext) {
@@ -305,7 +306,10 @@ export default class ProductsController {
       targetId: product.id,
       payload: { price: payload.price, sourceJobId: payload.sourceJobId ?? null, previousPrice },
     })
-    session.flash('success', `Default price set to ₹${payload.price}.`)
+    session.flash(
+      'success',
+      `Default price set to ${formatCurrency(payload.price, await getAppCurrency())}.`
+    )
     return response.redirect().back()
   }
 

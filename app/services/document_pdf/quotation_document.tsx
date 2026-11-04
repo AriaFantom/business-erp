@@ -7,15 +7,13 @@ export type QuotationPdfData = {
     id: number
     number: string
     status: string
-    customer:
-      | {
-          id: number
-          name: string
-          email: string | null
-          phone: string | null
-          address: string | null
-        }
-      | null
+    customer: {
+      id: number
+      name: string
+      email: string | null
+      phone: string | null
+      address: string | null
+    } | null
     issuedAt: string | null
     validUntil: string | null
     subtotal: string
@@ -34,12 +32,17 @@ export type QuotationPdfData = {
     lineTotal: string
   }>
   appName?: string
+  currency?: string
 }
 
-function money(n: string | number): string {
+function money(n: string | number, currency: string): string {
   const v = Number(n)
   if (!Number.isFinite(v)) return String(n)
-  return `$${v.toFixed(2)}`
+  return new Intl.NumberFormat('en', {
+    style: 'currency',
+    currency,
+    currencyDisplay: 'code',
+  }).format(v)
 }
 
 function num(n: string | number, digits = 2): string {
@@ -52,7 +55,20 @@ function fmtDate(iso: string | null): string {
   if (!iso) return '—'
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso.slice(0, 10)
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ]
   return `${months[d.getUTCMonth()]} ${String(d.getUTCDate()).padStart(2, '0')}, ${d.getUTCFullYear()}`
 }
 
@@ -65,7 +81,7 @@ function MetaLine({ label, value }: { label: string; value: string }): React.JSX
   )
 }
 
-export function QuotationDocument({ quotation, items }: QuotationPdfData) {
+export function QuotationDocument({ quotation, items, currency = 'INR' }: QuotationPdfData) {
   const c = quotation.customer
   return (
     <Document title={`Quotation ${quotation.number}`}>
@@ -113,13 +129,13 @@ export function QuotationDocument({ quotation, items }: QuotationPdfData) {
                 <Text style={[styles.td, styles.colItem, styles.alignLeft]}>{it.description}</Text>
                 <Text style={[styles.td, styles.colQty, styles.alignCenter]}>{num(it.qty)}</Text>
                 <Text style={[styles.td, styles.colUnit, styles.alignRight]}>
-                  {money(it.unitPrice)}
+                  {money(it.unitPrice, currency)}
                 </Text>
                 <Text style={[styles.td, styles.colDisc, styles.alignRight]}>
                   {num(it.taxRatePct)}%
                 </Text>
                 <Text style={[styles.td, styles.colAmount, styles.alignRight]}>
-                  {money(it.lineTotal)}
+                  {money(it.lineTotal, currency)}
                 </Text>
               </View>
             ))}
@@ -135,13 +151,13 @@ export function QuotationDocument({ quotation, items }: QuotationPdfData) {
           <View style={styles.tr}>
             <Text style={[styles.td, styles.colSumLabel, styles.alignLeft]}>Subtotal</Text>
             <Text style={[styles.td, styles.colSumValue, styles.alignRight]}>
-              {money(quotation.subtotal)}
+              {money(quotation.subtotal, currency)}
             </Text>
           </View>
           <View style={styles.tr}>
             <Text style={[styles.td, styles.colSumLabel, styles.alignLeft]}>Tax</Text>
             <Text style={[styles.td, styles.colSumValue, styles.alignRight]}>
-              {money(quotation.taxTotal)}
+              {money(quotation.taxTotal, currency)}
             </Text>
           </View>
           <View style={styles.tr}>
@@ -149,7 +165,7 @@ export function QuotationDocument({ quotation, items }: QuotationPdfData) {
               Total
             </Text>
             <Text style={[styles.td, styles.colSumValue, styles.alignRight, styles.bold]}>
-              {money(quotation.total)}
+              {money(quotation.total, currency)}
             </Text>
           </View>
         </View>

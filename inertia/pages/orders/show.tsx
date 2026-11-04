@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/table'
 import { StatusBadge } from '@/components/status-badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
+import { formatMoney, useCurrency } from '@/lib/currency'
 
 type Order = {
   id: number
@@ -135,6 +136,7 @@ function ReturnDialog({
   items: Item[]
   invoice: Invoice | null
 }) {
+  const currency = useCurrency()
   const [open, setOpen] = useState(false)
   const returnable = items.filter((it) => it.qty - it.returnedQty > 0)
   const { data, setData, post, processing, transform, reset } = useForm<{
@@ -238,15 +240,15 @@ function ReturnDialog({
             <div className="rounded-md border p-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Credit note total</span>
-                <span>{returnTotal.toFixed(2)}</span>
+                <span>{formatMoney(returnTotal, currency)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Applied to invoice</span>
-                <span>{estCredit.toFixed(2)}</span>
+                <span>{formatMoney(estCredit, currency)}</span>
               </div>
               <div className="flex justify-between font-medium">
                 <span>Refund owed</span>
-                <span>{estRefund.toFixed(2)}</span>
+                <span>{formatMoney(estRefund, currency)}</span>
               </div>
             </div>
           )}
@@ -292,6 +294,7 @@ function ReturnDialog({
 }
 
 export default function OrderShow({ order, items, invoice, returns }: PageProps) {
+  const currency = useCurrency()
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-8">
       <div className="flex items-end justify-between">
@@ -364,11 +367,17 @@ export default function OrderShow({ order, items, invoice, returns }: PageProps)
                     <TableCell className="text-right">
                       {it.returnedQty > 0 ? it.returnedQty : '—'}
                     </TableCell>
-                    <TableCell className="text-right">{it.unitPrice}</TableCell>
+                    <TableCell className="text-right">
+                      {formatMoney(it.unitPrice, currency)}
+                    </TableCell>
                     <TableCell className="text-right">{it.taxRatePct}</TableCell>
-                    <TableCell className="text-right">{it.lineSubtotal}</TableCell>
+                    <TableCell className="text-right">
+                      {formatMoney(it.lineSubtotal, currency)}
+                    </TableCell>
                     <TableCell className="text-right">{it.lineTax}</TableCell>
-                    <TableCell className="text-right">{it.lineTotal}</TableCell>
+                    <TableCell className="text-right">
+                      {formatMoney(it.lineTotal, currency)}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -384,11 +393,11 @@ export default function OrderShow({ order, items, invoice, returns }: PageProps)
         <CardContent>
           <dl className="grid grid-cols-2 gap-2 text-sm">
             <dt className="text-muted-foreground">Subtotal</dt>
-            <dd className="text-right">{order.subtotal}</dd>
+            <dd className="text-right">{formatMoney(order.subtotal, currency)}</dd>
             <dt className="text-muted-foreground">Tax</dt>
-            <dd className="text-right">{order.taxTotal}</dd>
+            <dd className="text-right">{formatMoney(order.taxTotal, currency)}</dd>
             <dt className="font-medium">Total</dt>
-            <dd className="text-right font-medium">{order.total}</dd>
+            <dd className="text-right font-medium">{formatMoney(order.total, currency)}</dd>
           </dl>
           {order.note && <p className="mt-3 text-sm text-muted-foreground">{order.note}</p>}
         </CardContent>
@@ -404,8 +413,11 @@ export default function OrderShow({ order, items, invoice, returns }: PageProps)
               <div>
                 <div className="font-mono text-sm">{invoice.number}</div>
                 <div className="text-xs text-muted-foreground">
-                  {invoice.paidTotal} / {invoice.total} paid
-                  {Number(invoice.creditTotal) > 0 ? ` · ${invoice.creditTotal} credited` : ''}
+                  {formatMoney(invoice.paidTotal, currency)} /{' '}
+                  {formatMoney(invoice.total, currency)} paid
+                  {Number(invoice.creditTotal) > 0
+                    ? ` · ${formatMoney(invoice.creditTotal, currency)} credited`
+                    : ''}
                   {' · '}
                   {invoice.status}
                 </div>
@@ -443,7 +455,7 @@ export default function OrderShow({ order, items, invoice, returns }: PageProps)
                   <TableRow key={r.id}>
                     <TableCell className="font-mono text-sm">{r.number}</TableCell>
                     <TableCell>{r.createdAt?.slice(0, 10) ?? '—'}</TableCell>
-                    <TableCell className="text-right">{r.total}</TableCell>
+                    <TableCell className="text-right">{formatMoney(r.total, currency)}</TableCell>
                     <TableCell className="text-right">{r.creditApplied}</TableCell>
                     <TableCell className="text-right">{r.refundAmount}</TableCell>
                     <TableCell>{r.refundMethod ?? '—'}</TableCell>

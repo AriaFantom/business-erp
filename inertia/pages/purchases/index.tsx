@@ -37,6 +37,7 @@ import { StatCard } from '@/components/catalog/stat-card'
 import { CheckCircle2, ExternalLink, Truck, XCircle } from 'lucide-react'
 import { ColumnVisibilityMenu, type ColumnDef } from '@/components/data-table/column-visibility'
 import { useColumnVisibility } from '@/hooks/use-column-visibility'
+import { formatMoney, useCurrency } from '@/lib/currency'
 
 type PurchaseRow = {
   id: number
@@ -86,6 +87,7 @@ function NewPurchaseDialog({
   materials: ItemOpt[]
   components: ItemOpt[]
 }) {
+  const currency = useCurrency()
   const [open, setOpen] = useState(false)
   const { data, setData, post, processing, errors, reset } = useForm({
     supplierId: '',
@@ -318,16 +320,18 @@ function NewPurchaseDialog({
           <div className="rounded-lg border bg-muted/30 p-4">
             <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
               <dt className="text-muted-foreground">Goods subtotal</dt>
-              <dd className="text-right tabular-nums">{goodsSubtotal.toFixed(2)}</dd>
+              <dd className="text-right tabular-nums">{formatMoney(goodsSubtotal, currency)}</dd>
               <dt className="text-muted-foreground">Shipping</dt>
-              <dd className="text-right tabular-nums">{data.shippingCharge.toFixed(2)}</dd>
+              <dd className="text-right tabular-nums">
+                {formatMoney(data.shippingCharge, currency)}
+              </dd>
               <dt className="text-muted-foreground">Invoice tax</dt>
-              <dd className="text-right tabular-nums">{data.taxAmount.toFixed(2)}</dd>
+              <dd className="text-right tabular-nums">{formatMoney(data.taxAmount, currency)}</dd>
             </dl>
             <Separator className="my-3" />
             <div className="flex items-center justify-between font-medium">
               <span>Grand total</span>
-              <span className="tabular-nums">{grandTotal.toFixed(2)}</span>
+              <span className="tabular-nums">{formatMoney(grandTotal, currency)}</span>
             </div>
           </div>
 
@@ -381,6 +385,7 @@ export default function PurchasesIndex({
   components,
   filters,
 }: PageProps) {
+  const currency = useCurrency()
   const { isVisible, toggle, reset } = useColumnVisibility('purchases')
   return (
     <div className="flex w-full flex-col gap-6 px-6 py-8">
@@ -398,10 +403,12 @@ export default function PurchasesIndex({
         <StatCard
           label="Confirmed"
           value={purchases.filter((p) => p.status === 'confirmed').length}
-          hint={`Spent ₹${purchases
-            .filter((p) => p.status === 'confirmed')
-            .reduce((s, p) => s + Number(p.total || 0), 0)
-            .toFixed(2)}`}
+          hint={`Spent ${formatMoney(
+            purchases
+              .filter((p) => p.status === 'confirmed')
+              .reduce((s, p) => s + Number(p.total || 0), 0),
+            currency
+          )}`}
           icon={CheckCircle2}
         />
         <StatCard
@@ -493,7 +500,9 @@ export default function PurchasesIndex({
                     {isVisible('purchasedOn') && (
                       <TableCell>{p.purchasedAt?.slice(0, 10) ?? '—'}</TableCell>
                     )}
-                    {isVisible('total') && <TableCell className="text-right">{p.total}</TableCell>}
+                    {isVisible('total') && (
+                      <TableCell className="text-right">{formatMoney(p.total, currency)}</TableCell>
+                    )}
                     {isVisible('due') && (
                       <TableCell className="text-right tabular-nums">
                         {p.status === 'confirmed' && Number(p.balanceDue) > 0.005 ? (

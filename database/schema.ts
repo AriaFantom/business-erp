@@ -673,12 +673,14 @@ export class ProductionJobStageSchema extends BaseModel {
 }
 
 export class ProductionJobSchema extends BaseModel {
-  static $columns = ['autoCompleteAt', 'completedAt', 'createdAt', 'createdByUserId', 'currentStageId', 'estimatedDurationMin', 'id', 'labourMinutes', 'machineId', 'machineMinutes', 'note', 'number', 'parentJobId', 'pausedAt', 'plannedQty', 'producedQty', 'productId', 'remainingSeconds', 'startedAt', 'status', 'totalComponentCost', 'totalCost', 'totalExpense', 'totalLabourCost', 'totalMachineCost', 'totalMaterialCost', 'unitCost', 'updatedAt'] as const
+  static $columns = ['autoCompleteAt', 'completedAt', 'completionTimeBasis', 'createdAt', 'createdByUserId', 'currentStageId', 'estimatedDurationMin', 'id', 'labourMinutes', 'machineId', 'machineMinutes', 'note', 'number', 'parentJobId', 'pausedAt', 'plannedQty', 'producedQty', 'productId', 'remainingSeconds', 'startedAt', 'status', 'totalComponentCost', 'totalCost', 'totalExpense', 'totalLabourCost', 'totalMachineCost', 'totalMaterialCost', 'unitCost', 'updatedAt'] as const
   $columns = ProductionJobSchema.$columns
   @column.dateTime()
   declare autoCompleteAt: DateTime | null
   @column.dateTime()
   declare completedAt: DateTime | null
+  @column()
+  declare completionTimeBasis: string
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column()

@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { formatMoney, useCurrency } from '@/lib/currency'
 import {
   Select,
   SelectContent,
@@ -360,6 +361,7 @@ function EditDialog({ worker }: { worker: Worker }) {
 }
 
 export default function WorkerShow({ worker, assignments, payments }: PageProps) {
+  const currency = useCurrency()
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-8">
       <Head title={worker.name} />
@@ -425,14 +427,14 @@ export default function WorkerShow({ worker, assignments, payments }: PageProps)
               {worker.payType === 'monthly' ? (
                 <>
                   <dt className="text-muted-foreground">Monthly salary</dt>
-                  <dd className="text-right">{worker.monthlySalary}</dd>
+                  <dd className="text-right">{formatMoney(worker.monthlySalary, currency)}</dd>
                   <dt className="text-muted-foreground">Standard hours / month</dt>
                   <dd className="text-right">{worker.standardMonthlyHours}</dd>
                 </>
               ) : (
                 <>
                   <dt className="text-muted-foreground">Hourly rate</dt>
-                  <dd className="text-right">{worker.hourlyRate}</dd>
+                  <dd className="text-right">{formatMoney(worker.hourlyRate, currency)}</dd>
                 </>
               )}
               <dt className="font-medium">Effective hourly rate</dt>
@@ -520,7 +522,9 @@ export default function WorkerShow({ worker, assignments, payments }: PageProps)
                       {a.releasedAt?.slice(0, 16).replace('T', ' ') ?? '—'}
                     </TableCell>
                     <TableCell className="text-right">{formatMinutes(a.minutesWorked)}</TableCell>
-                    <TableCell className="text-right">{a.hourlyRateAtAssign}</TableCell>
+                    <TableCell className="text-right">
+                      {formatMoney(a.hourlyRateAtAssign, currency)}
+                    </TableCell>
                     <TableCell className="text-right">{a.lineCost}</TableCell>
                   </TableRow>
                 ))}
@@ -561,7 +565,7 @@ export default function WorkerShow({ worker, assignments, payments }: PageProps)
                         : '—'}
                     </TableCell>
                     <TableCell>{p.note ?? '—'}</TableCell>
-                    <TableCell className="text-right">{p.amount}</TableCell>
+                    <TableCell className="text-right">{formatMoney(p.amount, currency)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

@@ -16,9 +16,11 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { formatMoney, useCurrency } from '@/lib/currency'
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -37,6 +39,8 @@ import DashboardLayout from '@/layouts/dashboard-layout'
 import { JobStagesList } from '@/components/jobs/job-stages-list'
 import { JobStagesRepeater, type StageDraft } from '@/components/jobs/job-stages-repeater'
 import { JobProgress } from '@/components/jobs/job-progress'
+import { ForceDoneDialog } from '@/components/jobs/force-done-dialog'
+import { compatibleUnits, convertDisplayQuantity, formatQuantity } from '@/lib/quantity_units'
 
 type JobStatus =
   | 'draft'
@@ -77,6 +81,7 @@ type Job = {
   pausedAt: string | null
   remainingSeconds: number | null
   currentStageId: number | null
+  completionTimeBasis: 'elapsed' | 'forced_configured'
 }
 
 type Consumption = {
@@ -88,6 +93,7 @@ type Consumption = {
   qtyConsumed: string
   qtyWasted: string
   qtyReturned: string
+  unit: string
   unitCostAtConsume: string
   lineCost: string
   reason: string
@@ -220,8 +226,28 @@ function ConsumeDialog({ jobId, items }: { jobId: number; items: InventoryItem[]
     itemId: 0,
     qtyConsumed: 0,
     qtyWasted: 0,
+    unit: '',
     reason: 'consume',
   })
+  const selectedItem = items.find((it) => `${it.itemKind}:${it.itemId}` === target)
+  const unitOptions = selectedItem ? compatibleUnits(selectedItem.unit) : []
+  const selectedUnit = data.unit || selectedItem?.unit || ''
+  const availableInSelectedUnit = selectedItem
+    ? convertDisplayQuantity(Number(selectedItem.onHand), selectedItem.unit, selectedUnit)
+    : 0
+
+  const changeUnit = (nextUnit: string) => {
+    if (selectedUnit) {
+      setData((current) => ({
+        ...current,
+        unit: nextUnit,
+        qtyConsumed: convertDisplayQuantity(current.qtyConsumed, selectedUnit, nextUnit),
+        qtyWasted: convertDisplayQuantity(current.qtyWasted, selectedUnit, nextUnit),
+      }))
+    } else {
+      setData('unit', nextUnit)
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -252,66 +278,88 @@ function ConsumeDialog({ jobId, items }: { jobId: number; items: InventoryItem[]
               onValueChange={(v) => {
                 setTarget(v)
                 const [kind, id] = v.split(':')
+                const item = items.find((it) => `${it.itemKind}:${it.itemId}` === v)
                 setData('itemKind', kind)
                 setData('itemId', Number(id))
+                setData('unit', item?.unit ?? '')
               }}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Pick item" />
               </SelectTrigger>
               <SelectContent>
-                {items.map((it) => (
-                  <SelectItem
-                    key={`${it.itemKind}:${it.itemId}`}
-                    value={`${it.itemKind}:${it.itemId}`}
-                  >
-                    [{it.itemKind}] {it.name} — on hand {it.onHand} {it.unit}
-                  </SelectItem>
-                ))}
+                <SelectGroup>
+                  {items.map((it) => (
+                    <SelectItem
+                      key={`${it.itemKind}:${it.itemId}`}
+                      value={`${it.itemKind}:${it.itemId}`}
+                    >
+                      [{it.itemKind}] {it.name} — on hand {it.onHand} {it.unit}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
           </Field>
-          <Field
-            label={`Qty consumed${
-              target
-                ? ` (${items.find((it) => `${it.itemKind}:${it.itemId}` === target)?.unit ?? ''})`
-                : ''
-            }`}
-            error={errors.qtyConsumed}
-          >
-            <Input
-              type="number"
-              step="0.001"
-              placeholder="How much was used"
-              value={data.qtyConsumed}
-              onChange={(e) => setData('qtyConsumed', Number(e.target.value))}
-            />
-          </Field>
-          <Field
-            label={`Of which wasted${
-              target
-                ? ` (${items.find((it) => `${it.itemKind}:${it.itemId}` === target)?.unit ?? ''})`
-                : ''
-            }`}
-            error={errors.qtyWasted}
-          >
-            <Input
-              type="number"
-              step="0.001"
-              placeholder="0 if nothing was scrapped"
-              value={data.qtyWasted}
-              onChange={(e) => setData('qtyWasted', Number(e.target.value))}
-            />
-          </Field>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_120px]">
+            <Field label="Qty consumed" error={errors.qtyConsumed}>
+              <Input
+                type="number"
+                step="any"
+                min="0.000000001"
+                placeholder="How much was used"
+                value={data.qtyConsumed}
+                onChange={(e) => setData('qtyConsumed', Number(e.target.value))}
+              />
+            </Field>
+            <Field label="Of which wasted" error={errors.qtyWasted}>
+              <Input
+                type="number"
+                step="any"
+                min={0}
+                placeholder="0 if nothing was scrapped"
+                value={data.qtyWasted}
+                onChange={(e) => setData('qtyWasted', Number(e.target.value))}
+              />
+            </Field>
+            <Field label="Unit" error={errors.unit}>
+              <Select value={selectedUnit} onValueChange={changeUnit} disabled={!selectedItem}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Unit" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {unitOptions.map((unit) => (
+                      <SelectItem key={unit} value={unit}>
+                        {unit}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
+          {selectedItem && (
+            <p className="text-xs text-muted-foreground">
+              Available: {formatQuantity(availableInSelectedUnit)} {selectedUnit}.{' '}
+              {formatQuantity(data.qtyConsumed)} {selectedUnit} ={' '}
+              {formatQuantity(
+                convertDisplayQuantity(data.qtyConsumed, selectedUnit, selectedItem.unit)
+              )}{' '}
+              {selectedItem.unit} in stock records.
+            </p>
+          )}
           <Field label="Reason" error={errors.reason}>
             <Select value={data.reason} onValueChange={(v) => setData('reason', v)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="consume">consume</SelectItem>
-                <SelectItem value="reprint">reprint</SelectItem>
-                <SelectItem value="waste">waste</SelectItem>
+                <SelectGroup>
+                  <SelectItem value="consume">consume</SelectItem>
+                  <SelectItem value="reprint">reprint</SelectItem>
+                  <SelectItem value="waste">waste</SelectItem>
+                </SelectGroup>
               </SelectContent>
             </Select>
           </Field>
@@ -363,10 +411,12 @@ function ExpenseDialog({ jobId }: { jobId: number }) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="electricity">electricity</SelectItem>
-                <SelectItem value="labor">labor</SelectItem>
-                <SelectItem value="overhead">overhead</SelectItem>
-                <SelectItem value="other">other</SelectItem>
+                <SelectGroup>
+                  <SelectItem value="electricity">electricity</SelectItem>
+                  <SelectItem value="labor">labor</SelectItem>
+                  <SelectItem value="overhead">overhead</SelectItem>
+                  <SelectItem value="other">other</SelectItem>
+                </SelectGroup>
               </SelectContent>
             </Select>
           </Field>
@@ -501,6 +551,7 @@ type ConsumptionDraft = {
   key: string
   target: string
   qtyConsumed: number
+  unit: string
 }
 
 function StartForm({
@@ -536,14 +587,17 @@ function StartForm({
 
   const initialDrafts = useMemo<ConsumptionDraft[]>(() => {
     if (productRecipe.length === 0) {
-      return [{ key: cryptoKey(), target: '', qtyConsumed: 0 }]
+      return [{ key: cryptoKey(), target: '', qtyConsumed: 0, unit: '' }]
     }
     return productRecipe.map((r) => ({
       key: cryptoKey(),
       target: `${r.itemKind}:${r.itemId}`,
       qtyConsumed: round4(Number(r.qtyPerUnit) * plannedQty),
+      unit:
+        inventoryItems.find((it) => `${it.itemKind}:${it.itemId}` === `${r.itemKind}:${r.itemId}`)
+          ?.unit ?? '',
     }))
-  }, [productRecipe, plannedQty])
+  }, [productRecipe, plannedQty, inventoryItems])
 
   const [drafts, setDrafts] = useState<ConsumptionDraft[]>(initialDrafts)
   const [submitting, setSubmitting] = useState(false)
@@ -551,7 +605,7 @@ function StartForm({
   const updateDraft = (key: string, patch: Partial<ConsumptionDraft>) =>
     setDrafts((rows) => rows.map((r) => (r.key === key ? { ...r, ...patch } : r)))
   const addRow = () =>
-    setDrafts((rows) => [...rows, { key: cryptoKey(), target: '', qtyConsumed: 0 }])
+    setDrafts((rows) => [...rows, { key: cryptoKey(), target: '', qtyConsumed: 0, unit: '' }])
   const removeRow = (key: string) =>
     setDrafts((rows) => (rows.length === 1 ? rows : rows.filter((r) => r.key !== key)))
 
@@ -563,6 +617,7 @@ function StartForm({
         itemKind: kind as 'material' | 'component',
         itemId: Number(id),
         qtyConsumed: d.qtyConsumed,
+        unit: d.unit,
       }
     })
 
@@ -587,6 +642,23 @@ function StartForm({
   const unitFor = (target: string) =>
     inventoryItems.find((it) => `${it.itemKind}:${it.itemId}` === target)?.unit ?? ''
 
+  const changeDraftUnit = (row: ConsumptionDraft, nextUnit: string) => {
+    const currentUnit = row.unit || unitFor(row.target)
+    updateDraft(row.key, {
+      unit: nextUnit,
+      qtyConsumed: convertDisplayQuantity(row.qtyConsumed, currentUnit, nextUnit),
+    })
+  }
+
+  const setupPayload = {
+    machineId: machineId ? Number(machineId) : null,
+    workerIds: workerIds as unknown as FormDataConvertible,
+    stages: stages as unknown as FormDataConvertible,
+    consumptions: consumptions as unknown as FormDataConvertible,
+  }
+  const configuredMinutes = stages.reduce((sum, stage) => sum + stage.durationMinutes, 0)
+  const setupDisabled = submitting || (!machineId && workerIds.length === 0)
+
   return (
     <Card>
       <CardHeader>
@@ -601,11 +673,13 @@ function StartForm({
                   <SelectValue placeholder="No machine — hand work" />
                 </SelectTrigger>
                 <SelectContent>
-                  {idleMachines.map((m) => (
-                    <SelectItem key={m.id} value={String(m.id)}>
-                      {m.name}
-                    </SelectItem>
-                  ))}
+                  <SelectGroup>
+                    {idleMachines.map((m) => (
+                      <SelectItem key={m.id} value={String(m.id)}>
+                        {m.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </Field>
@@ -659,61 +733,112 @@ function StartForm({
               <span className="text-xs text-destructive">{serverErrors.consumptions}</span>
             )}
             {drafts.map((row, idx) => (
-              <div
-                key={row.key}
-                className="grid grid-cols-[1fr_140px_auto] items-end gap-2 rounded-md border p-3"
-              >
-                <Field
-                  label={idx === 0 ? 'Item' : ''}
-                  error={serverErrors[`consumptions.${idx}.itemId`]}
-                >
-                  <Select
-                    value={row.target}
-                    onValueChange={(v) => updateDraft(row.key, { target: v })}
+              <div key={row.key} className="flex flex-col gap-2">
+                <div className="grid grid-cols-1 items-end gap-2 rounded-md border p-3 sm:grid-cols-[1fr_140px_110px_auto]">
+                  <Field
+                    label={idx === 0 ? 'Item' : ''}
+                    error={serverErrors[`consumptions.${idx}.itemId`]}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pick item" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {inventoryItems.map((it) => (
-                        <SelectItem
-                          key={`${it.itemKind}:${it.itemId}`}
-                          value={`${it.itemKind}:${it.itemId}`}
-                        >
-                          [{it.itemKind}] {it.name} — on hand {it.onHand} {it.unit}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </Field>
-                <Field
-                  label={
-                    idx === 0
-                      ? `Qty${row.target ? ` (${unitFor(row.target)})` : ''}`
-                      : row.target
-                        ? `(${unitFor(row.target)})`
-                        : ''
-                  }
-                  error={serverErrors[`consumptions.${idx}.qtyConsumed`]}
-                >
-                  <Input
-                    type="number"
-                    step="0.001"
-                    min={0}
-                    placeholder="Qty"
-                    value={row.qtyConsumed}
-                    onChange={(e) => updateDraft(row.key, { qtyConsumed: Number(e.target.value) })}
-                  />
-                </Field>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => removeRow(row.key)}
-                  disabled={drafts.length === 1}
-                >
-                  Remove
-                </Button>
+                    <Select
+                      value={row.target}
+                      onValueChange={(v) => {
+                        const item = inventoryItems.find(
+                          (candidate) => `${candidate.itemKind}:${candidate.itemId}` === v
+                        )
+                        updateDraft(row.key, { target: v, unit: item?.unit ?? '' })
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pick item" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {inventoryItems.map((it) => (
+                            <SelectItem
+                              key={`${it.itemKind}:${it.itemId}`}
+                              value={`${it.itemKind}:${it.itemId}`}
+                            >
+                              [{it.itemKind}] {it.name} — on hand {it.onHand} {it.unit}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field
+                    label={idx === 0 ? 'Qty' : row.target ? 'Qty' : ''}
+                    error={serverErrors[`consumptions.${idx}.qtyConsumed`]}
+                  >
+                    <Input
+                      type="number"
+                      step="any"
+                      min={0}
+                      placeholder="Qty"
+                      value={row.qtyConsumed}
+                      onChange={(e) =>
+                        updateDraft(row.key, { qtyConsumed: Number(e.target.value) })
+                      }
+                    />
+                  </Field>
+                  <Field
+                    label={idx === 0 ? 'Unit' : ''}
+                    error={serverErrors[`consumptions.${idx}.unit`]}
+                  >
+                    <Select
+                      value={row.unit || unitFor(row.target)}
+                      onValueChange={(unit) => changeDraftUnit(row, unit)}
+                      disabled={!row.target}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Unit" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {compatibleUnits(unitFor(row.target)).map((unit) => (
+                            <SelectItem key={unit} value={unit}>
+                              {unit}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => removeRow(row.key)}
+                    disabled={drafts.length === 1}
+                  >
+                    Remove
+                  </Button>
+                </div>
+                {row.target && (
+                  <p className="px-3 text-xs text-muted-foreground">
+                    Available:{' '}
+                    {formatQuantity(
+                      convertDisplayQuantity(
+                        Number(
+                          inventoryItems.find(
+                            (item) => `${item.itemKind}:${item.itemId}` === row.target
+                          )?.onHand ?? 0
+                        ),
+                        unitFor(row.target),
+                        row.unit || unitFor(row.target)
+                      )
+                    )}{' '}
+                    {row.unit || unitFor(row.target)} · {formatQuantity(row.qtyConsumed)}{' '}
+                    {row.unit || unitFor(row.target)} ={' '}
+                    {formatQuantity(
+                      convertDisplayQuantity(
+                        row.qtyConsumed,
+                        row.unit || unitFor(row.target),
+                        unitFor(row.target)
+                      )
+                    )}{' '}
+                    {unitFor(row.target)} in stock records
+                  </p>
+                )}
               </div>
             ))}
             <p className="text-xs text-muted-foreground">
@@ -722,9 +847,18 @@ function StartForm({
           </div>
 
           <div className="flex flex-col gap-1">
-            <Button type="submit" disabled={submitting || (!machineId && workerIds.length === 0)}>
-              {submitting ? 'Starting…' : 'Start'}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button type="submit" disabled={setupDisabled}>
+                {submitting ? 'Starting…' : 'Start'}
+              </Button>
+              <ForceDoneDialog
+                jobId={jobId}
+                plannedQty={plannedQty}
+                configuredMinutes={configuredMinutes}
+                setup={setupPayload}
+                disabled={setupDisabled}
+              />
+            </div>
             {!machineId && workerIds.length === 0 && (
               <span className="text-xs text-muted-foreground">
                 Assign a machine, at least one worker, or both to start.
@@ -775,6 +909,7 @@ export default function JobShow({
   productRecipe,
   serverNow,
 }: PageProps) {
+  const currency = useCurrency()
   const isActive =
     job.status === 'in_progress' ||
     job.status === 'paused' ||
@@ -813,6 +948,14 @@ export default function JobShow({
             <>
               <ConsumeDialog jobId={job.id} items={inventoryItems} />
               <ExpenseDialog jobId={job.id} />
+              <ForceDoneDialog
+                jobId={job.id}
+                plannedQty={job.plannedQty}
+                configuredMinutes={stages.reduce(
+                  (sum, stage) => sum + stage.estimatedDurationMin,
+                  0
+                )}
+              />
             </>
           )}
           {(job.status === 'draft' || isActive) && (
@@ -898,23 +1041,33 @@ export default function JobShow({
           <CardContent>
             <dl className="grid grid-cols-2 gap-2 text-sm">
               <dt className="text-muted-foreground">Material cost</dt>
-              <dd className="text-right">{job.totalMaterialCost}</dd>
+              <dd className="text-right">{formatMoney(job.totalMaterialCost, currency)}</dd>
               <dt className="text-muted-foreground">Component cost</dt>
-              <dd className="text-right">{job.totalComponentCost}</dd>
+              <dd className="text-right">{formatMoney(job.totalComponentCost, currency)}</dd>
               <dt className="text-muted-foreground">Expenses</dt>
-              <dd className="text-right">{job.totalExpense}</dd>
+              <dd className="text-right">{formatMoney(job.totalExpense, currency)}</dd>
               <dt className="text-muted-foreground">Machine time</dt>
               <dd className="text-right">
-                {formatMinutes(job.machineMinutes)} · {job.totalMachineCost}
+                {formatMinutes(job.machineMinutes)} · {formatMoney(job.totalMachineCost, currency)}
               </dd>
               <dt className="text-muted-foreground">Labour time</dt>
               <dd className="text-right">
-                {formatMinutes(job.labourMinutes)} · {job.totalLabourCost}
+                {formatMinutes(job.labourMinutes)} · {formatMoney(job.totalLabourCost, currency)}
               </dd>
+              {job.status === 'completed' && (
+                <>
+                  <dt className="text-muted-foreground">Time costing</dt>
+                  <dd className="text-right">
+                    {job.completionTimeBasis === 'forced_configured'
+                      ? 'Full configured duration (Force done)'
+                      : 'Elapsed stage time'}
+                  </dd>
+                </>
+              )}
               <dt className="font-medium">Total</dt>
-              <dd className="text-right font-medium">{job.totalCost}</dd>
+              <dd className="text-right font-medium">{formatMoney(job.totalCost, currency)}</dd>
               <dt className="text-muted-foreground">Unit cost</dt>
-              <dd className="text-right">{job.unitCost}</dd>
+              <dd className="text-right">{formatMoney(job.unitCost, currency, { maximumFractionDigits: 4 })}</dd>
               <dt className="text-muted-foreground">Reprint chain cost</dt>
               <dd className="text-right">{job.chainCost}</dd>
             </dl>
@@ -951,7 +1104,7 @@ export default function JobShow({
               {job.estimatedDurationMin != null && (
                 <>
                   <dt className="text-muted-foreground">Est. duration</dt>
-                  <dd className="text-right">{job.estimatedDurationMin} min</dd>
+                  <dd className="text-right">{formatMinutes(job.estimatedDurationMin)}</dd>
                 </>
               )}
               {job.pausedAt && (
@@ -999,7 +1152,7 @@ export default function JobShow({
                     <TableCell className="capitalize">{w.payType}</TableCell>
                     <TableCell className="text-right">{w.hourlyRateAtAssign}</TableCell>
                     <TableCell className="text-right">{formatMinutes(w.minutesWorked)}</TableCell>
-                    <TableCell className="text-right">{w.lineCost}</TableCell>
+                    <TableCell className="text-right">{formatMoney(w.lineCost, currency)}</TableCell>
                     <TableCell>{w.releasedAt ? 'released' : 'on the job'}</TableCell>
                   </TableRow>
                 ))}
@@ -1039,11 +1192,17 @@ export default function JobShow({
                     </TableCell>
                     <TableCell>{c.itemKind}</TableCell>
                     <TableCell>{c.itemName}</TableCell>
-                    <TableCell className="text-right">{c.qtyConsumed}</TableCell>
-                    <TableCell className="text-right">{c.qtyWasted}</TableCell>
-                    <TableCell className="text-right">{c.qtyReturned}</TableCell>
-                    <TableCell className="text-right">{c.unitCostAtConsume}</TableCell>
-                    <TableCell className="text-right">{c.lineCost}</TableCell>
+                    <TableCell className="text-right">
+                      {c.qtyConsumed} {c.unit}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {c.qtyWasted} {c.unit}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {c.qtyReturned} {c.unit}
+                    </TableCell>
+                    <TableCell className="text-right">{formatMoney(c.unitCostAtConsume, currency, { maximumFractionDigits: 4 })}</TableCell>
+                    <TableCell className="text-right">{formatMoney(c.lineCost, currency)}</TableCell>
                     <TableCell>{c.reason}</TableCell>
                   </TableRow>
                 ))}
@@ -1076,7 +1235,7 @@ export default function JobShow({
                     <TableCell>{e.incurredAt?.slice(0, 10) ?? '—'}</TableCell>
                     <TableCell>{e.kind}</TableCell>
                     <TableCell>{e.description}</TableCell>
-                    <TableCell className="text-right">{e.amount}</TableCell>
+                    <TableCell className="text-right">{formatMoney(e.amount, currency)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

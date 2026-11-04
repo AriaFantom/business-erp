@@ -71,12 +71,12 @@ export interface Registry {
     methods: ["POST"]
     pattern: '/invite/:token'
     types: {
-      body: ExtractBody<InferInput<(typeof import('#validators/invitation').acceptInvitationValidator)>>
+      body: {}
       paramsTuple: [ParamValue]
       params: { token: ParamValue }
-      query: ExtractQuery<InferInput<(typeof import('#validators/invitation').acceptInvitationValidator)>>
+      query: {}
       response: ExtractResponse<Awaited<ReturnType<import('#controllers/auth/invitations_controller').default['store']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/auth/invitations_controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/auth/invitations_controller').default['store']>>>
     }
   }
   'session.destroy': {
@@ -139,28 +139,100 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/users_controller').default['index']>>>
     }
   }
+  'settings.branding': {
+    methods: ["GET","HEAD"]
+    pattern: '/system/branding'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/dashboard_branding_controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/dashboard_branding_controller').default['show']>>>
+    }
+  }
+  'settings.branding.update': {
+    methods: ["POST"]
+    pattern: '/system/branding'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/dashboard_branding').renameDashboardValidator)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#validators/dashboard_branding').renameDashboardValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/dashboard_branding_controller').default['updateName']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/dashboard_branding_controller').default['updateName']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'settings.branding.icon.update': {
+    methods: ["POST"]
+    pattern: '/system/branding/icon'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/dashboard_branding').dashboardIconValidator)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#validators/dashboard_branding').dashboardIconValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/dashboard_branding_controller').default['updateIcon']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/dashboard_branding_controller').default['updateIcon']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'settings.branding.icon.destroy': {
+    methods: ["POST"]
+    pattern: '/system/branding/icon/delete'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/dashboard_branding_controller').default['destroyIcon']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/dashboard_branding_controller').default['destroyIcon']>>>
+    }
+  }
+  'settings.branding.icon.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/branding/icon'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/dashboard_branding_controller').default['icon']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/dashboard_branding_controller').default['icon']>>>
+    }
+  }
   'system.users.update_roles': {
     methods: ["POST"]
     pattern: '/system/users/:id/roles'
     types: {
-      body: ExtractBody<InferInput<(typeof import('#validators/users').updateUserRolesValidator)>>
+      body: {}
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
-      query: ExtractQuery<InferInput<(typeof import('#validators/users').updateUserRolesValidator)>>
+      query: {}
       response: ExtractResponse<Awaited<ReturnType<import('#controllers/users_controller').default['updateRoles']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/users_controller').default['updateRoles']>>> | { status: 422; response: { errors: SimpleError[] } }
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/users_controller').default['updateRoles']>>>
+    }
+  }
+  'system.users.update_access': {
+    methods: ["POST"]
+    pattern: '/system/users/:id/access'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/users_controller').default['updateAccess']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/users_controller').default['updateAccess']>>>
     }
   }
   'invitations.store': {
     methods: ["POST"]
     pattern: '/invitations'
     types: {
-      body: ExtractBody<InferInput<(typeof import('#validators/invitation').createInvitationValidator)>>
+      body: {}
       paramsTuple: []
       params: {}
-      query: ExtractQuery<InferInput<(typeof import('#validators/invitation').createInvitationValidator)>>
+      query: {}
       response: ExtractResponse<Awaited<ReturnType<import('#controllers/invitations_controller').default['store']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/invitations_controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/invitations_controller').default['store']>>>
     }
   }
   'invitations.resend': {
@@ -191,12 +263,24 @@ export interface Registry {
     methods: ["POST"]
     pattern: '/roles'
     types: {
-      body: ExtractBody<InferInput<(typeof import('#validators/role').createRoleValidator)>>
+      body: {}
       paramsTuple: []
       params: {}
-      query: ExtractQuery<InferInput<(typeof import('#validators/role').createRoleValidator)>>
+      query: {}
       response: ExtractResponse<Awaited<ReturnType<import('#controllers/roles_controller').default['store']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/roles_controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/roles_controller').default['store']>>>
+    }
+  }
+  'roles.reorder': {
+    methods: ["POST"]
+    pattern: '/roles/reorder'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/roles_controller').default['reorder']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/roles_controller').default['reorder']>>>
     }
   }
   'roles.destroy': {
@@ -1229,6 +1313,18 @@ export interface Registry {
       query: ExtractQuery<InferInput<(typeof import('#validators/jobs').confirmJobValidator)>>
       response: ExtractResponse<Awaited<ReturnType<import('#controllers/jobs_controller').default['confirm']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/jobs_controller').default['confirm']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'jobs.forceDone': {
+    methods: ["POST"]
+    pattern: '/jobs/:id/force-done'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/jobs').forceDoneJobValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#validators/jobs').forceDoneJobValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/jobs_controller').default['forceDone']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/jobs_controller').default['forceDone']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
   'jobs.fail': {

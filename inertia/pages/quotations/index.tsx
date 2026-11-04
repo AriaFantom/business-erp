@@ -18,6 +18,7 @@ import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
 import { ColumnVisibilityMenu, type ColumnDef } from '@/components/data-table/column-visibility'
 import { useColumnVisibility } from '@/hooks/use-column-visibility'
+import { formatMoney, useCurrency } from '@/lib/currency'
 
 type QuotationRow = {
   id: number
@@ -51,6 +52,7 @@ const QUOTATION_COLUMNS: ColumnDef[] = [
 ]
 
 export default function QuotationsIndex({ quotations, customers, filters }: PageProps) {
+  const currency = useCurrency()
   const { isVisible, toggle, reset } = useColumnVisibility('quotations')
   const totalValue = quotations.reduce((s, q) => s + Number(q.total || 0), 0)
   const accepted = quotations.filter(
@@ -78,7 +80,7 @@ export default function QuotationsIndex({ quotations, customers, filters }: Page
         <StatCard
           label="Accepted / converted"
           value={accepted}
-          hint={`Pipeline value ₹${totalValue.toFixed(2)}`}
+          hint={`Pipeline value ${formatMoney(totalValue, currency)}`}
           icon={CheckCircle2}
         />
       </div>
@@ -171,7 +173,9 @@ export default function QuotationsIndex({ quotations, customers, filters }: Page
                     {isVisible('validUntil') && (
                       <TableCell>{q.validUntil?.slice(0, 10) ?? '—'}</TableCell>
                     )}
-                    {isVisible('total') && <TableCell className="text-right">{q.total}</TableCell>}
+                    {isVisible('total') && (
+                      <TableCell className="text-right">{formatMoney(q.total, currency)}</TableCell>
+                    )}
                     {isVisible('actions') && (
                       <TableCell className="text-right">
                         <Button asChild variant="ghost" size="icon" aria-label="Open quotation">

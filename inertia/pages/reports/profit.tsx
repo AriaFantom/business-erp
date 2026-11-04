@@ -24,6 +24,7 @@ import {
   type ChartConfig,
 } from '@/components/ui/chart'
 import DashboardLayout from '@/layouts/dashboard-layout'
+import { formatMoney, useCurrency } from '@/lib/currency'
 
 type TopProfitProduct = {
   productId: number
@@ -52,8 +53,6 @@ type Report = {
 
 type PageProps = { report: Report }
 
-const fmtINR = (n: number) => `₹${Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
-
 function fmtMonth(key: string): string {
   const [y, m] = key.split('-')
   const names = [
@@ -75,6 +74,8 @@ function fmtMonth(key: string): string {
 }
 
 export default function ProfitReport({ report }: PageProps) {
+  const currency = useCurrency()
+  const money = (value: number) => formatMoney(value, currency)
   const [from, setFrom] = useState(report.from.slice(0, 10))
   const [to, setTo] = useState(report.to.slice(0, 10))
 
@@ -131,12 +132,12 @@ export default function ProfitReport({ report }: PageProps) {
               <div>
                 <div className="text-lg font-semibold">{best.name}</div>
                 <div className="text-sm text-muted-foreground">
-                  Revenue {fmtINR(best.revenue)} · Cost {fmtINR(best.cost)} · Margin{' '}
+                  Revenue {money(best.revenue)} · Cost {money(best.cost)} · Margin{' '}
                   {best.marginPct.toFixed(1)}%
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-2xl font-semibold text-emerald-600">{fmtINR(best.profit)}</div>
+                <div className="text-2xl font-semibold text-emerald-600">{money(best.profit)}</div>
                 <div className="text-xs text-muted-foreground">profit in window</div>
               </div>
             </div>
@@ -157,19 +158,19 @@ export default function ProfitReport({ report }: PageProps) {
             <dt className="text-muted-foreground">Invoices</dt>
             <dd className="text-right">{report.invoiceCount}</dd>
             <dt className="text-muted-foreground">Revenue</dt>
-            <dd className="text-right">{fmtINR(report.revenue)}</dd>
+            <dd className="text-right">{money(report.revenue)}</dd>
             <dt className="text-muted-foreground">Cost of goods sold</dt>
-            <dd className="text-right">{fmtINR(report.cogs)}</dd>
+            <dd className="text-right">{money(report.cogs)}</dd>
             <dt className="text-muted-foreground">Gross profit</dt>
-            <dd className="text-right">{fmtINR(report.grossProfit)}</dd>
+            <dd className="text-right">{money(report.grossProfit)}</dd>
             <dt className="text-muted-foreground">Gross margin</dt>
             <dd className="text-right">{report.grossMarginPct.toFixed(1)}%</dd>
             <dt className="text-muted-foreground">Operating expenses</dt>
-            <dd className="text-right">{fmtINR(report.operatingExpenses)}</dd>
+            <dd className="text-right">{money(report.operatingExpenses)}</dd>
             <dt className="text-muted-foreground">Production cost (jobs completed)</dt>
-            <dd className="text-right">{fmtINR(report.productionCost)}</dd>
+            <dd className="text-right">{money(report.productionCost)}</dd>
             <dt className="font-medium">Net profit</dt>
-            <dd className="text-right font-medium">{fmtINR(report.profit)}</dd>
+            <dd className="text-right font-medium">{money(report.profit)}</dd>
           </dl>
         </CardContent>
       </Card>
@@ -190,13 +191,13 @@ export default function ProfitReport({ report }: PageProps) {
                 <CartesianGrid vertical={false} />
                 <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
                 <YAxis
-                  tickFormatter={(v) => fmtINR(v)}
+                  tickFormatter={(v) => money(v)}
                   tickLine={false}
                   axisLine={false}
                   width={64}
                 />
                 <ChartTooltip
-                  content={<ChartTooltipContent formatter={(v) => fmtINR(Number(v))} />}
+                  content={<ChartTooltipContent formatter={(v) => money(Number(v))} />}
                 />
                 <ChartLegend content={<ChartLegendContent />} />
                 <defs>
@@ -256,9 +257,9 @@ export default function ProfitReport({ report }: PageProps) {
                 {report.topProfitProducts.map((p) => (
                   <TableRow key={p.productId}>
                     <TableCell className="font-medium">{p.name}</TableCell>
-                    <TableCell className="text-right">{fmtINR(p.revenue)}</TableCell>
-                    <TableCell className="text-right">{fmtINR(p.cost)}</TableCell>
-                    <TableCell className="text-right font-medium">{fmtINR(p.profit)}</TableCell>
+                    <TableCell className="text-right">{money(p.revenue)}</TableCell>
+                    <TableCell className="text-right">{money(p.cost)}</TableCell>
+                    <TableCell className="text-right font-medium">{money(p.profit)}</TableCell>
                     <TableCell className="text-right">{p.marginPct.toFixed(1)}%</TableCell>
                   </TableRow>
                 ))}

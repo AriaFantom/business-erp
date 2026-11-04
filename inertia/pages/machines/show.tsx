@@ -17,6 +17,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { formatMoney, useCurrency } from '@/lib/currency'
 import {
   Select,
   SelectContent,
@@ -294,6 +295,7 @@ function PostAction({
 }
 
 export default function MachineShow() {
+  const currency = useCurrency()
   const { props } = usePage<{ machine: MachineDetail; jobs: JobRow[]; expenses: ExpenseRow[] }>()
   const { machine, jobs, expenses } = props
   const isRetired = machine.status === 'retired'
@@ -385,7 +387,9 @@ export default function MachineShow() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Hourly rate</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold tabular-nums">{machine.hourlyRate}</p>
+            <p className="text-2xl font-semibold tabular-nums">
+              {formatMoney(machine.hourlyRate, currency)}
+            </p>
             <p className="text-xs text-muted-foreground">Folded into job cost from run time</p>
           </CardContent>
         </Card>
@@ -493,7 +497,7 @@ export default function MachineShow() {
                       {j.completedAt?.slice(0, 19).replace('T', ' ') ?? '—'}
                     </TableCell>
                     <TableCell className="text-right font-mono tabular-nums">
-                      {j.totalCost}
+                      {formatMoney(j.totalCost, currency)}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -531,7 +535,9 @@ export default function MachineShow() {
                     </TableCell>
                     <TableCell>{e.kind}</TableCell>
                     <TableCell>{e.description}</TableCell>
-                    <TableCell className="text-right font-mono tabular-nums">{e.amount}</TableCell>
+                    <TableCell className="text-right font-mono tabular-nums">
+                      {formatMoney(e.amount, currency)}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

@@ -8,6 +8,7 @@ import Invoice from '#models/invoice'
 import env from '#start/env'
 import { ensurePdf, streamPdf } from '#services/document_pdf/render'
 import { InvoiceDocument } from '#services/document_pdf/invoice_document'
+import { getAppCurrency } from '#services/currency'
 
 export default class InvoicesController {
   async index({ request, inertia, bouncer }: HttpContext) {
@@ -77,8 +78,9 @@ export default class InvoicesController {
     const invoice = await Invoice.findOrFail(params.id)
     const vm = await getInvoiceShowViewModel(invoice.id)
     const appName = env.get('APP_NAME')
+    const currency = await getAppCurrency()
     await ensurePdf('invoice', invoice, () =>
-      React.createElement(InvoiceDocument, { ...vm, appName })
+      React.createElement(InvoiceDocument, { ...vm, appName, currency })
     )
     await streamPdf(invoice.pdfKey!, response, `invoice-${invoice.number}.pdf`)
   }

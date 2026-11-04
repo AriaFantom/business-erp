@@ -13,8 +13,9 @@ export const consumeMaterialValidator = vine.compile(
   vine.object({
     itemKind: vine.enum(['material', 'component']),
     itemId: vine.number().positive(),
-    qtyConsumed: vine.number().min(0.001).max(999_999_999),
-    qtyWasted: vine.number().min(0).max(999_999_999).optional(),
+    qtyConsumed: vine.number().positive().max(99_999_999_999).decimal([0, 9]),
+    qtyWasted: vine.number().min(0).max(99_999_999_999).decimal([0, 9]).optional(),
+    unit: vine.string().trim().minLength(1).maxLength(16).optional(),
     reason: vine.enum(['consume', 'reprint', 'waste']).optional(),
   })
 )
@@ -53,6 +54,7 @@ export const startJobValidator = vine.compile(
           name: vine.string().trim().minLength(1).maxLength(80),
           durationMinutes: vine
             .number()
+            .withoutDecimals()
             .min(1)
             .max(60 * 24 * 14), // up to 14 days
         })
@@ -64,7 +66,8 @@ export const startJobValidator = vine.compile(
         vine.object({
           itemKind: vine.enum(['material', 'component']),
           itemId: vine.number().positive(),
-          qtyConsumed: vine.number().min(0.001).max(999_999_999),
+          qtyConsumed: vine.number().positive().max(99_999_999_999).decimal([0, 9]),
+          unit: vine.string().trim().minLength(1).maxLength(16).optional(),
         })
       )
       .minLength(1)
@@ -75,5 +78,39 @@ export const startJobValidator = vine.compile(
 export const confirmJobValidator = vine.compile(
   vine.object({
     producedQty: vine.number().min(0).max(1_000_000),
+  })
+)
+
+export const forceDoneJobValidator = vine.compile(
+  vine.object({
+    producedQty: vine.number().positive().max(1_000_000).withoutDecimals(),
+    machineId: vine.number().positive().nullable().optional(),
+    workerIds: vine.array(vine.number().positive()).distinct().maxLength(50).optional(),
+    stages: vine
+      .array(
+        vine.object({
+          name: vine.string().trim().minLength(1).maxLength(80),
+          durationMinutes: vine
+            .number()
+            .withoutDecimals()
+            .min(1)
+            .max(60 * 24 * 14),
+        })
+      )
+      .minLength(1)
+      .maxLength(20)
+      .optional(),
+    consumptions: vine
+      .array(
+        vine.object({
+          itemKind: vine.enum(['material', 'component']),
+          itemId: vine.number().positive(),
+          qtyConsumed: vine.number().positive().max(99_999_999_999).decimal([0, 9]),
+          unit: vine.string().trim().minLength(1).maxLength(16).optional(),
+        })
+      )
+      .minLength(1)
+      .maxLength(50)
+      .optional(),
   })
 )

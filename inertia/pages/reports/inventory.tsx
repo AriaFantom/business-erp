@@ -17,6 +17,7 @@ import {
   type ChartConfig,
 } from '@/components/ui/chart'
 import DashboardLayout from '@/layouts/dashboard-layout'
+import { formatMoney, useCurrency } from '@/lib/currency'
 
 type StockMovementPoint = {
   ts: number
@@ -69,6 +70,7 @@ function MovementTooltip({ active, payload }: any) {
 }
 
 export default function InventoryReport({ report }: PageProps) {
+  const currency = useCurrency()
   return (
     <div className="flex w-full flex-col gap-6 px-6 py-8">
       <div>
@@ -85,11 +87,13 @@ export default function InventoryReport({ report }: PageProps) {
         <CardContent>
           <dl className="grid grid-cols-2 gap-2 text-sm">
             <dt className="text-muted-foreground">Materials</dt>
-            <dd className="text-right">₹{report.byKind.material.toFixed(2)}</dd>
+            <dd className="text-right">{formatMoney(report.byKind.material, currency)}</dd>
             <dt className="text-muted-foreground">Components</dt>
-            <dd className="text-right">₹{report.byKind.component.toFixed(2)}</dd>
+            <dd className="text-right">{formatMoney(report.byKind.component, currency)}</dd>
             <dt className="font-medium">Total</dt>
-            <dd className="text-right font-medium">₹{report.totalValuation.toFixed(2)}</dd>
+            <dd className="text-right font-medium">
+              {formatMoney(report.totalValuation, currency)}
+            </dd>
           </dl>
         </CardContent>
       </Card>

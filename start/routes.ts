@@ -59,9 +59,19 @@ router
     // System area: nav links from the sidebar resolve here. Each route is
     // gated server-side by the same permission as its sidebar nav item.
     router.get('system/roles', [RolesController, 'index']).as('system.roles')
-    router.get('system/invitations', [InvitationsController, 'index']).as('system.invitations')
+    router
+      .get('system/invitations', ({ response }) =>
+        response.redirect().toPath('/system/users?tab=invitations')
+      )
+      .as('system.invitations')
     router.get('system/users', [UsersController, 'index']).as('system.users')
-    router.get('system/branding', [DashboardBrandingController, 'show']).as('settings.branding')
+    router.get('system/settings', [DashboardBrandingController, 'show']).as('settings.application')
+    router
+      .post('system/settings', [DashboardBrandingController, 'update'])
+      .as('settings.application.update')
+    router
+      .get('system/branding', ({ response }) => response.redirect().toPath('/system/settings'))
+      .as('settings.branding')
     router
       .post('system/branding', [DashboardBrandingController, 'updateName'])
       .as('settings.branding.update')
@@ -302,6 +312,7 @@ router
         router.post('jobs/:id/consumptions', [JobsController, 'consume']).as('jobs.consume')
         router.post('jobs/:id/expenses', [JobsController, 'addExpense']).as('jobs.expense')
         router.post('jobs/:id/confirm', [JobsController, 'confirm']).as('jobs.confirm')
+        router.post('jobs/:id/force-done', [JobsController, 'forceDone']).as('jobs.forceDone')
         router.post('jobs/:id/fail', [JobsController, 'fail']).as('jobs.fail')
         router.post('jobs/:id/cancel', [JobsController, 'cancel']).as('jobs.cancel')
       })

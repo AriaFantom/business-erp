@@ -14,6 +14,7 @@ import {
 import { StatusBadge } from '@/components/status-badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { Download } from 'lucide-react'
+import { formatMoney, useCurrency } from '@/lib/currency'
 
 type Quotation = {
   id: number
@@ -96,6 +97,7 @@ function PostAction({
 }
 
 export default function QuotationShow({ quotation, items }: PageProps) {
+  const currency = useCurrency()
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-8">
       <div className="flex items-end justify-between">
@@ -171,7 +173,7 @@ export default function QuotationShow({ quotation, items }: PageProps) {
                     </div>
                     <div>
                       <span className="text-xs text-muted-foreground">Unit price</span>
-                      <p>₹{Number(it.unitPrice).toFixed(2)}</p>
+                      <p>{formatMoney(it.unitPrice, currency)}</p>
                     </div>
                     <div>
                       <span className="text-xs text-muted-foreground">Tax %</span>
@@ -179,7 +181,7 @@ export default function QuotationShow({ quotation, items }: PageProps) {
                     </div>
                     <div>
                       <span className="text-xs text-muted-foreground">Line total</span>
-                      <p className="font-medium">₹{Number(it.lineTotal).toFixed(2)}</p>
+                      <p className="font-medium">{formatMoney(it.lineTotal, currency)}</p>
                     </div>
                   </div>
 
@@ -209,10 +211,10 @@ export default function QuotationShow({ quotation, items }: PageProps) {
                                   {Number(bom.qty).toFixed(4)}
                                 </TableCell>
                                 <TableCell className="text-right text-xs">
-                                  ₹{Number(bom.unitCostAtTime).toFixed(2)}
+                                  {formatMoney(bom.unitCostAtTime, currency)}
                                 </TableCell>
                                 <TableCell className="text-right text-xs">
-                                  ₹{lineCost.toFixed(2)}
+                                  {formatMoney(lineCost, currency)}
                                 </TableCell>
                               </TableRow>
                             )
@@ -222,10 +224,13 @@ export default function QuotationShow({ quotation, items }: PageProps) {
                       <div className="mt-1 flex justify-between text-xs">
                         <span className="text-muted-foreground">Cost basis</span>
                         <span className="tabular-nums">
-                          ₹
-                          {it.boms
-                            .reduce((s, b) => s + Number(b.qty) * Number(b.unitCostAtTime), 0)
-                            .toFixed(2)}
+                          {formatMoney(
+                            it.boms.reduce(
+                              (s, b) => s + Number(b.qty) * Number(b.unitCostAtTime),
+                              0
+                            ),
+                            currency
+                          )}
                         </span>
                       </div>
                       {it.profitPctUsed && (
@@ -252,11 +257,11 @@ export default function QuotationShow({ quotation, items }: PageProps) {
         <CardContent>
           <dl className="grid grid-cols-2 gap-2 text-sm">
             <dt className="text-muted-foreground">Subtotal</dt>
-            <dd className="text-right">{quotation.subtotal}</dd>
+            <dd className="text-right">{formatMoney(quotation.subtotal, currency)}</dd>
             <dt className="text-muted-foreground">Tax</dt>
-            <dd className="text-right">{quotation.taxTotal}</dd>
+            <dd className="text-right">{formatMoney(quotation.taxTotal, currency)}</dd>
             <dt className="font-medium">Total</dt>
-            <dd className="text-right font-medium">{quotation.total}</dd>
+            <dd className="text-right font-medium">{formatMoney(quotation.total, currency)}</dd>
           </dl>
           {quotation.note && <p className="mt-3 text-sm text-muted-foreground">{quotation.note}</p>}
         </CardContent>

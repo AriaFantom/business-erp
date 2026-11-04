@@ -23,6 +23,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import DashboardLayout from '@/layouts/dashboard-layout'
+import { formatMoney, useCurrency } from '@/lib/currency'
 
 type CustomerOpt = { id: number; name: string }
 type ProductOpt = {
@@ -47,6 +48,7 @@ type LineDraft = {
 }
 
 export default function OrderNew({ customers, products }: PageProps) {
+  const currency = useCurrency()
   const { data, setData, post, processing, errors } = useForm({
     customerId: '',
     note: '',
@@ -96,7 +98,7 @@ export default function OrderNew({ customers, products }: PageProps) {
     0
   )
   const total = subtotal + tax
-  const money = (n: number) => `₹${n.toFixed(2)}`
+  const money = (n: number) => formatMoney(n, currency)
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()

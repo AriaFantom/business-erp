@@ -30,6 +30,56 @@ test.group('Dashboard branding', (group) => {
     assert.isNotNull(await AuditEvent.query().where('action', 'settings.branding.rename').first())
   })
 
+  test('owner can save branding and currency together', async ({ client, assert }) => {
+    const owner = await User.create({
+      email: 'settings-owner@example.test',
+      password: 'password123',
+      isOwner: true,
+    })
+    const response = await client
+      .post('/system/settings')
+      .loginAs(owner)
+      .withCsrfToken()
+      .redirects(0)
+      .json({ name: 'Workshop Control', currency: 'USD', removeIcon: false })
+    response.assertStatus(302)
+    const branding = await AppSetting.findByOrFail('key', 'dashboard_branding')
+    const currency = await AppSetting.findByOrFail('key', 'app_currency')
+    assert.equal(branding.value.name, 'Workshop Control')
+    assert.equal(currency.value, 'USD')
+    assert.isNotNull(
+      await AuditEvent.query().where('action', 'settings.application.update').first()
+    )
+  })
+
+  test('invalid currencies are rejected without changing settings', async ({ client, assert }) => {
+    const owner = await User.create({
+      email: 'currency-owner@example.test',
+      password: 'password123',
+      isOwner: true,
+    })
+    const response = await client
+      .post('/system/settings')
+      .loginAs(owner)
+      .withCsrfToken()
+      .redirects(0)
+      .json({ name: 'Workshop', currency: 'ZZZ' })
+    response.assertStatus(302)
+    assert.isNull(await AppSetting.findBy('key', 'dashboard_branding'))
+    assert.isNull(await AppSetting.findBy('key', 'app_currency'))
+  })
+
+  test('legacy branding page redirects to settings', async ({ client }) => {
+    const owner = await User.create({
+      email: 'legacy-settings-owner@example.test',
+      password: 'password123',
+      isOwner: true,
+    })
+    const response = await client.get('/system/branding').loginAs(owner).redirects(0)
+    response.assertStatus(302)
+    response.assertHeader('location', '/system/settings')
+  })
+
   test('non-owner cannot change branding', async ({ client, assert }) => {
     const user = await User.create({
       email: 'branding-user@example.test',

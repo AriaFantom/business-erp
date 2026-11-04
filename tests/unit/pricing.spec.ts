@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { computeUnitPrice } from '#services/pricing'
+import { computeMinimumProfitTarget, computeUnitPrice } from '#services/pricing'
 
 function makeProduct(overrides: Record<string, any> = {}): any {
   return {
@@ -42,5 +42,35 @@ test.group('computeUnitPrice — default sale price', () => {
     })
     assert.equal(result.basis.profitFrom, 'product')
     assert.equal(result.profitPctUsed, 30)
+  })
+})
+
+test.group('computeMinimumProfitTarget', () => {
+  test('prefers an explicit category profit including zero', ({ assert }) => {
+    const result = computeMinimumProfitTarget({
+      costPrice: 100,
+      product: makeProduct({ defaultProfitPct: '30' }),
+      category: { defaultProfitPct: '0' } as any,
+    })
+    assert.deepEqual(result, { price: 100, profitPct: 0, profitFrom: 'category' })
+  })
+
+  test('rounds upward to the next cent without understating the target', ({ assert }) => {
+    const result = computeMinimumProfitTarget({
+      costPrice: 10.01,
+      product: makeProduct({ defaultProfitPct: '25' }),
+      category: null,
+    })
+    assert.equal(result.price, 12.52)
+    assert.equal(result.profitFrom, 'product')
+  })
+
+  test('returns no price before a cost basis exists', ({ assert }) => {
+    const result = computeMinimumProfitTarget({
+      costPrice: null,
+      product: makeProduct(),
+      category: null,
+    })
+    assert.isNull(result.price)
   })
 })

@@ -27,6 +27,7 @@ import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { EmptyState } from '@/components/empty-state'
+import { formatMoney, useCurrency } from '@/lib/currency'
 
 type Row = {
   id: number
@@ -184,6 +185,7 @@ function Field({
 }
 
 function CreditLimitDialog({ customer }: { customer: Row }) {
+  const currency = useCurrency()
   const [open, setOpen] = useState(false)
   const { data, setData, post, processing, transform } = useForm({
     creditLimit: customer.creditLimit ?? '',
@@ -193,7 +195,7 @@ function CreditLimitDialog({ customer }: { customer: Row }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="ghost" size="sm" title="Set credit limit">
-          {customer.creditLimit ? Number(customer.creditLimit).toFixed(2) : 'No limit'}
+          {customer.creditLimit ? formatMoney(customer.creditLimit, currency) : 'No limit'}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-sm">

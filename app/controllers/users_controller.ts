@@ -1,7 +1,11 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import User from '#models/user'
 import { updateUserRolesValidator, updateUserAccessValidator } from '#validators/users'
-import { ensureRolesAssignable, getUsersViewModel } from '#services/dashboard_view_models'
+import {
+  ensureRolesAssignable,
+  getInvitationsViewModel,
+  getUsersViewModel,
+} from '#services/dashboard_view_models'
 import { streamStoredObject, IMMUTABLE_PRIVATE } from '#services/file_streaming'
 import {
   assignedRoleIds,
@@ -17,13 +21,34 @@ class UserAccessError extends Error {}
 
 export default class UsersController {
   /** GET /system/users — list users in actor's scope */
-  async index({ inertia, auth, bouncer }: HttpContext) {
-    // Anyone with `users.view` (or owner) gets to see the page; the data
-    // returned is already scoped to what the actor is allowed to see.
-    await bouncer.authorize('users.view' as never)
+  async index({ inertia, auth, request, response }: HttpContext) {
+    const actor = auth.user!
+    const permissions = actor.isOwner
+      ? new Set(['users.view', 'users.invite'])
+      : new Set(await actor.getPermissions())
+    const canViewUsers = actor.isOwner || permissions.has('users.view')
+    const canViewInvitations = actor.isOwner || permissions.has('users.invite')
+    if (!canViewUsers && !canViewInvitations) return response.forbidden('Not authorized')
 
-    const data = await getUsersViewModel(auth.user!)
-    return inertia.render('system/users', data)
+    const [usersData, invitationsData] = await Promise.all([
+      canViewUsers ? getUsersViewModel(actor) : null,
+      canViewInvitations ? getInvitationsViewModel(actor) : null,
+    ])
+    const requestedTab = request.input('tab')
+    const initialTab =
+      requestedTab === 'invitations' && canViewInvitations
+        ? 'invitations'
+        : canViewUsers
+          ? 'users'
+          : 'invitations'
+
+    return inertia.render('system/users', {
+      canViewUsers,
+      canViewInvitations,
+      initialTab,
+      ...(usersData ?? {}),
+      ...(invitationsData ?? {}),
+    })
   }
 
   /** GET /users/:id/avatar — stream a user's avatar (self, or with users.view) */

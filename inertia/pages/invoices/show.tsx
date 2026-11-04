@@ -32,6 +32,7 @@ import {
 import { StatusBadge } from '@/components/status-badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { Download } from 'lucide-react'
+import { formatMoney, useCurrency } from '@/lib/currency'
 
 type Invoice = {
   id: number
@@ -125,6 +126,7 @@ function PostAction({
 }
 
 function PaymentDialog({ invoiceId, due }: { invoiceId: number; due: number }) {
+  const currency = useCurrency()
   const [open, setOpen] = useState(false)
   const { data, setData, post, processing, errors, reset } = useForm({
     amount: due,
@@ -155,7 +157,7 @@ function PaymentDialog({ invoiceId, due }: { invoiceId: number; due: number }) {
             })
           }}
         >
-          <Field label={`Amount (due ₹${due.toFixed(2)})`} error={errors.amount}>
+          <Field label={`Amount (due ${formatMoney(due, currency)})`} error={errors.amount}>
             <Input
               type="number"
               step="0.01"
@@ -221,6 +223,7 @@ function Field({
 }
 
 export default function InvoiceShow({ invoice, items, payments, creditNotes }: PageProps) {
+  const currency = useCurrency()
   const due = Math.max(
     0,
     Number(invoice.total) - Number(invoice.paidTotal) - Number(invoice.creditTotal)
@@ -298,11 +301,17 @@ export default function InvoiceShow({ invoice, items, payments, creditNotes }: P
                 <TableRow key={it.id}>
                   <TableCell>{it.description}</TableCell>
                   <TableCell className="text-right">{it.qty}</TableCell>
-                  <TableCell className="text-right">{it.unitPrice}</TableCell>
+                  <TableCell className="text-right">
+                    {formatMoney(it.unitPrice, currency)}
+                  </TableCell>
                   <TableCell className="text-right">{it.taxRatePct}</TableCell>
-                  <TableCell className="text-right">{it.lineSubtotal}</TableCell>
-                  <TableCell className="text-right">{it.lineTax}</TableCell>
-                  <TableCell className="text-right">{it.lineTotal}</TableCell>
+                  <TableCell className="text-right">
+                    {formatMoney(it.lineSubtotal, currency)}
+                  </TableCell>
+                  <TableCell className="text-right">{formatMoney(it.lineTax, currency)}</TableCell>
+                  <TableCell className="text-right">
+                    {formatMoney(it.lineTotal, currency)}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -318,17 +327,17 @@ export default function InvoiceShow({ invoice, items, payments, creditNotes }: P
           <CardContent>
             <dl className="grid grid-cols-2 gap-2 text-sm">
               <dt className="text-muted-foreground">Subtotal</dt>
-              <dd className="text-right">{invoice.subtotal}</dd>
+              <dd className="text-right">{formatMoney(invoice.subtotal, currency)}</dd>
               <dt className="text-muted-foreground">Tax</dt>
-              <dd className="text-right">{invoice.taxTotal}</dd>
+              <dd className="text-right">{formatMoney(invoice.taxTotal, currency)}</dd>
               <dt className="font-medium">Total</dt>
-              <dd className="text-right font-medium">{invoice.total}</dd>
+              <dd className="text-right font-medium">{formatMoney(invoice.total, currency)}</dd>
               <dt className="text-muted-foreground">Paid</dt>
-              <dd className="text-right">{invoice.paidTotal}</dd>
+              <dd className="text-right">{formatMoney(invoice.paidTotal, currency)}</dd>
               <dt className="text-muted-foreground">Credit notes</dt>
-              <dd className="text-right">{invoice.creditTotal}</dd>
+              <dd className="text-right">{formatMoney(invoice.creditTotal, currency)}</dd>
               <dt className="font-medium">Due</dt>
-              <dd className="text-right font-medium">{due.toFixed(2)}</dd>
+              <dd className="text-right font-medium">{formatMoney(due, currency)}</dd>
             </dl>
           </CardContent>
         </Card>
@@ -355,7 +364,9 @@ export default function InvoiceShow({ invoice, items, payments, creditNotes }: P
                     <TableRow key={p.id}>
                       <TableCell>{p.paidAt?.slice(0, 10) ?? '—'}</TableCell>
                       <TableCell>{p.method}</TableCell>
-                      <TableCell className="text-right">{p.amount}</TableCell>
+                      <TableCell className="text-right">
+                        {formatMoney(p.amount, currency)}
+                      </TableCell>
                       <TableCell>{p.reference ?? '—'}</TableCell>
                     </TableRow>
                   ))}
@@ -388,9 +399,13 @@ export default function InvoiceShow({ invoice, items, payments, creditNotes }: P
                   <TableRow key={cn.id}>
                     <TableCell className="font-mono text-sm">{cn.number}</TableCell>
                     <TableCell>{cn.createdAt?.slice(0, 10) ?? '—'}</TableCell>
-                    <TableCell className="text-right">{cn.total}</TableCell>
-                    <TableCell className="text-right">{cn.creditApplied}</TableCell>
-                    <TableCell className="text-right">{cn.refundAmount}</TableCell>
+                    <TableCell className="text-right">{formatMoney(cn.total, currency)}</TableCell>
+                    <TableCell className="text-right">
+                      {formatMoney(cn.creditApplied, currency)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatMoney(cn.refundAmount, currency)}
+                    </TableCell>
                     <TableCell>{cn.refundMethod ?? '—'}</TableCell>
                   </TableRow>
                 ))}

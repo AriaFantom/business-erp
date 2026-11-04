@@ -14,15 +14,13 @@ export type InvoicePdfData = {
     taxTotal: string
     total: string
     paidTotal: string
-    customer:
-      | {
-          id: number
-          name: string
-          email: string | null
-          phone: string | null
-          address: string | null
-        }
-      | null
+    customer: {
+      id: number
+      name: string
+      email: string | null
+      phone: string | null
+      address: string | null
+    } | null
     replacesInvoiceId: number | null
   }
   items: Array<{
@@ -43,18 +41,23 @@ export type InvoicePdfData = {
     reference: string | null
   }>
   appName?: string
+  currency?: string
 }
 
-function money(n: string | number): string {
+function money(n: string | number, currency: string): string {
   const v = Number(n)
   if (!Number.isFinite(v)) return String(n)
-  return `$${v.toFixed(2)}`
+  return new Intl.NumberFormat('en', {
+    style: 'currency',
+    currency,
+    currencyDisplay: 'code',
+  }).format(v)
 }
 
-function moneyNeg(n: string | number): string {
+function moneyNeg(n: string | number, currency: string): string {
   const v = Number(n)
   if (!Number.isFinite(v)) return String(n)
-  return `-$${v.toFixed(2)}`
+  return money(-v, currency)
 }
 
 function num(n: string | number, digits = 2): string {
@@ -67,7 +70,20 @@ function fmtDate(iso: string | null): string {
   if (!iso) return '—'
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso.slice(0, 10)
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ]
   return `${months[d.getUTCMonth()]} ${String(d.getUTCDate()).padStart(2, '0')}, ${d.getUTCFullYear()}`
 }
 
@@ -80,7 +96,7 @@ function MetaLine({ label, value }: { label: string; value: string }): React.JSX
   )
 }
 
-export function InvoiceDocument({ invoice, items, payments }: InvoicePdfData) {
+export function InvoiceDocument({ invoice, items, payments, currency = 'INR' }: InvoicePdfData) {
   const c = invoice.customer
   const balance = Math.max(0, Number(invoice.total) - Number(invoice.paidTotal))
   return (
@@ -92,9 +108,7 @@ export function InvoiceDocument({ invoice, items, payments }: InvoicePdfData) {
           <View style={styles.metaBlock}>
             <MetaLine label="Invoice #:" value={invoice.number} />
             <MetaLine label="Date:" value={fmtDate(invoice.issuedAt)} />
-            {invoice.dueAt ? (
-              <MetaLine label="Due Date:" value={fmtDate(invoice.dueAt)} />
-            ) : null}
+            {invoice.dueAt ? <MetaLine label="Due Date:" value={fmtDate(invoice.dueAt)} /> : null}
             {invoice.replacesInvoiceId ? (
               <MetaLine label="Replaces #:" value={String(invoice.replacesInvoiceId)} />
             ) : null}
@@ -132,13 +146,13 @@ export function InvoiceDocument({ invoice, items, payments }: InvoicePdfData) {
                 <Text style={[styles.td, styles.colItem, styles.alignLeft]}>{it.description}</Text>
                 <Text style={[styles.td, styles.colQty, styles.alignCenter]}>{num(it.qty)}</Text>
                 <Text style={[styles.td, styles.colUnit, styles.alignRight]}>
-                  {money(it.unitPrice)}
+                  {money(it.unitPrice, currency)}
                 </Text>
                 <Text style={[styles.td, styles.colDisc, styles.alignRight]}>
                   {num(it.taxRatePct)}%
                 </Text>
                 <Text style={[styles.td, styles.colAmount, styles.alignRight]}>
-                  {money(it.lineTotal)}
+                  {money(it.lineTotal, currency)}
                 </Text>
               </View>
             ))}
@@ -154,13 +168,13 @@ export function InvoiceDocument({ invoice, items, payments }: InvoicePdfData) {
           <View style={styles.tr}>
             <Text style={[styles.td, styles.colSumLabel, styles.alignLeft]}>Subtotal</Text>
             <Text style={[styles.td, styles.colSumValue, styles.alignRight]}>
-              {money(invoice.subtotal)}
+              {money(invoice.subtotal, currency)}
             </Text>
           </View>
           <View style={styles.tr}>
             <Text style={[styles.td, styles.colSumLabel, styles.alignLeft]}>Tax</Text>
             <Text style={[styles.td, styles.colSumValue, styles.alignRight]}>
-              {money(invoice.taxTotal)}
+              {money(invoice.taxTotal, currency)}
             </Text>
           </View>
           <View style={styles.tr}>
@@ -168,14 +182,14 @@ export function InvoiceDocument({ invoice, items, payments }: InvoicePdfData) {
               Total
             </Text>
             <Text style={[styles.td, styles.colSumValue, styles.alignRight, styles.bold]}>
-              {money(invoice.total)}
+              {money(invoice.total, currency)}
             </Text>
           </View>
           {Number(invoice.paidTotal) > 0 ? (
             <View style={styles.tr}>
               <Text style={[styles.td, styles.colSumLabel, styles.alignLeft]}>Paid Amount</Text>
               <Text style={[styles.td, styles.colSumValue, styles.alignRight]}>
-                {moneyNeg(invoice.paidTotal)}
+                {moneyNeg(invoice.paidTotal, currency)}
               </Text>
             </View>
           ) : null}
@@ -184,7 +198,7 @@ export function InvoiceDocument({ invoice, items, payments }: InvoicePdfData) {
               Balance Due
             </Text>
             <Text style={[styles.td, styles.colSumValue, styles.alignRight, styles.bold]}>
-              {money(balance)}
+              {money(balance, currency)}
             </Text>
           </View>
         </View>
@@ -209,7 +223,7 @@ export function InvoiceDocument({ invoice, items, payments }: InvoicePdfData) {
                   </Text>
                   <Text style={[styles.td, styles.colPayMethod, styles.alignLeft]}>{p.method}</Text>
                   <Text style={[styles.td, styles.colPayAmount, styles.alignRight]}>
-                    {money(p.amount)}
+                    {money(p.amount, currency)}
                   </Text>
                   <Text style={[styles.td, styles.colPayRef, styles.alignLeft]}>
                     {p.reference ?? '—'}

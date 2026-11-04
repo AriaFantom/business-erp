@@ -28,6 +28,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Tag, CheckCircle2, XCircle } from 'lucide-react'
 import { ColumnVisibilityMenu, type ColumnDef } from '@/components/data-table/column-visibility'
 import { useColumnVisibility } from '@/hooks/use-column-visibility'
+import { formatMoney, useCurrency } from '@/lib/currency'
 import { EmptyState } from '@/components/empty-state'
 
 type Row = {
@@ -172,10 +173,6 @@ function RestoreAction({ path, name }: { path: string; name: string }) {
   )
 }
 
-function formatMoney(n: number): string {
-  return `₹${n.toFixed(2)}`
-}
-
 const CATEGORY_COLUMNS: ColumnDef[] = [
   { key: 'name', label: 'Name', required: true },
   { key: 'profit', label: 'Default profit %' },
@@ -187,6 +184,7 @@ const CATEGORY_COLUMNS: ColumnDef[] = [
 ]
 
 export default function CategoriesPage({ categories, filters, counts }: PageProps) {
+  const currency = useCurrency()
   const { isVisible, toggle, reset } = useColumnVisibility('catalog.categories')
   return (
     <div className="flex w-full flex-col gap-6 px-6 py-8">
@@ -289,7 +287,7 @@ export default function CategoriesPage({ categories, filters, counts }: PageProp
                     {isVisible('sales') && (
                       <TableCell className="text-right tabular-nums">
                         <div className="flex flex-col items-end">
-                          <span>{formatMoney(c.totalSales)}</span>
+                          <span>{formatMoney(c.totalSales, currency)}</span>
                           {c.totalUnitsSold > 0 && (
                             <span className="text-xs text-muted-foreground">
                               {c.totalUnitsSold} units

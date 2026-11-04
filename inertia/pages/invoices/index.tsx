@@ -17,6 +17,7 @@ import { EmptyState } from '@/components/empty-state'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
+import { formatMoney, useCurrency } from '@/lib/currency'
 
 type InvoiceRow = {
   id: number
@@ -52,7 +53,7 @@ type PageProps = {
   aging: Aging
 }
 
-function AgingStrip({ aging }: { aging: Aging }) {
+function AgingStrip({ aging, currency }: { aging: Aging; currency: string }) {
   const buckets = [
     { label: 'Current', value: aging.current },
     { label: '1–30 days', value: aging.d1_30 },
@@ -75,7 +76,7 @@ function AgingStrip({ aging }: { aging: Aging }) {
                   i >= 3 && b.value > 0 ? 'text-destructive' : ''
                 }`}
               >
-                ₹{b.value.toFixed(2)}
+                {formatMoney(b.value, currency)}
               </p>
             </div>
           ))}
@@ -86,6 +87,7 @@ function AgingStrip({ aging }: { aging: Aging }) {
 }
 
 export default function InvoicesIndex({ invoices, customers, filters, aging }: PageProps) {
+  const currency = useCurrency()
   const outstanding = invoices
     .filter((i: InvoiceRow) => i.status === 'unpaid' || i.status === 'partial')
     .reduce((s, i) => s + (Number(i.total) - Number(i.paidTotal)), 0)
@@ -101,14 +103,14 @@ export default function InvoicesIndex({ invoices, customers, filters, aging }: P
         <StatCard
           label="Total invoices"
           value={invoices.length}
-          hint={`Billed ₹${totalBilled.toFixed(2)}`}
+          hint={`Billed ${formatMoney(totalBilled, currency)}`}
           icon={Receipt}
         />
         <StatCard label="Paid" value={paid} icon={CheckCircle2} />
-        <StatCard label="Outstanding" value={`₹${outstanding.toFixed(2)}`} icon={Wallet} />
+        <StatCard label="Outstanding" value={formatMoney(outstanding, currency)} icon={Wallet} />
       </div>
 
-      <AgingStrip aging={aging} />
+      <AgingStrip aging={aging} currency={currency} />
 
       <ListToolbar
         basePath="/invoices"
@@ -184,7 +186,7 @@ export default function InvoicesIndex({ invoices, customers, filters, aging }: P
                         )}
                       </span>
                     </TableCell>
-                    <TableCell className="text-right">{i.total}</TableCell>
+                    <TableCell className="text-right">{formatMoney(i.total, currency)}</TableCell>
                     <TableCell className="text-right">{i.paidTotal}</TableCell>
                     <TableCell className="text-right">
                       <Button asChild variant="ghost" size="icon" aria-label="Open invoice">

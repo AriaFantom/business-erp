@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Trash2, Plus, Timer } from 'lucide-react'
+import { Trash2, Plus } from 'lucide-react'
 
 export interface StageDraft {
   name: string
@@ -16,7 +16,7 @@ const PRESETS: { label: string; minutes: number }[] = [
   { label: '4 hrs', minutes: 240 },
 ]
 
-function humanize(minutes: number): string {
+export function formatDuration(minutes: number): string {
   if (!Number.isFinite(minutes) || minutes <= 0) return '—'
   const h = Math.floor(minutes / 60)
   const m = minutes % 60
@@ -39,7 +39,7 @@ export function JobStagesRepeater({
   const add = () => onChange([...value, { name: `Stage ${value.length + 1}`, durationMinutes: 30 }])
 
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-3">
       <div>
         <Label>Stages</Label>
         <p className="text-muted-foreground mt-1 text-xs">
@@ -47,10 +47,10 @@ export function JobStagesRepeater({
         </p>
       </div>
 
-      <div className="space-y-3">
+      <div className="flex flex-col gap-3">
         {value.map((row, i) => (
           <div key={i} className="bg-muted/30 rounded-md border p-3">
-            <div className="flex items-end gap-3">
+            <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[1fr_120px_120px_auto]">
               <div className="flex-1">
                 <Label htmlFor={`stage-name-${i}`} className="text-xs">
                   Stage {i + 1} name
@@ -63,25 +63,52 @@ export function JobStagesRepeater({
                   className="mt-1"
                 />
               </div>
-              <div className="w-40">
-                <Label htmlFor={`stage-duration-${i}`} className="text-xs">
-                  Duration (minutes)
+              <div>
+                <Label htmlFor={`stage-hours-${i}`} className="text-xs">
+                  Hours
                 </Label>
-                <div className="relative mt-1">
-                  <Timer className="text-muted-foreground pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2" />
-                  <Input
-                    id={`stage-duration-${i}`}
-                    type="number"
-                    min={1}
-                    step={1}
-                    value={row.durationMinutes}
-                    onChange={(e) =>
-                      update(i, { durationMinutes: Math.max(0, Number(e.target.value) || 0) })
-                    }
-                    placeholder="e.g. 30"
-                    className="pl-8"
-                  />
-                </div>
+                <Input
+                  id={`stage-hours-${i}`}
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={336}
+                  step={1}
+                  value={Math.floor(row.durationMinutes / 60)}
+                  onChange={(e) => {
+                    const hours = Math.min(
+                      336,
+                      Math.max(0, Math.trunc(Number(e.target.value) || 0))
+                    )
+                    update(i, {
+                      durationMinutes: hours * 60 + (hours === 336 ? 0 : row.durationMinutes % 60),
+                    })
+                  }}
+                />
+              </div>
+              <div>
+                <Label htmlFor={`stage-minutes-${i}`} className="text-xs">
+                  Minutes
+                </Label>
+                <Input
+                  id={`stage-minutes-${i}`}
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={59}
+                  step={1}
+                  value={row.durationMinutes % 60}
+                  onChange={(e) => {
+                    const hours = Math.floor(row.durationMinutes / 60)
+                    const minutes =
+                      hours === 336
+                        ? 0
+                        : Math.min(59, Math.max(0, Math.trunc(Number(e.target.value) || 0)))
+                    update(i, {
+                      durationMinutes: Math.floor(row.durationMinutes / 60) * 60 + minutes,
+                    })
+                  }}
+                />
               </div>
               {value.length > 1 ? (
                 <Button
@@ -91,13 +118,13 @@ export function JobStagesRepeater({
                   onClick={() => remove(i)}
                   aria-label="Remove stage"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 />
                 </Button>
               ) : null}
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <span className="text-muted-foreground text-xs">
-                = {humanize(row.durationMinutes)}
+                Total: {formatDuration(row.durationMinutes)}
               </span>
               <span className="text-muted-foreground/60 text-xs">·</span>
               {PRESETS.map((p) => (
@@ -118,7 +145,7 @@ export function JobStagesRepeater({
       </div>
 
       <Button type="button" variant="outline" size="sm" onClick={add}>
-        <Plus className="mr-1 h-4 w-4" /> Add stage
+        <Plus data-icon="inline-start" /> Add stage
       </Button>
     </div>
   )

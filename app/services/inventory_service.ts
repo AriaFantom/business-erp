@@ -8,6 +8,12 @@ import type User from '#models/user'
 import { InsufficientStockError } from '#services/domain_errors'
 import { audit } from '#services/audit'
 import { assertModulesEnabled } from '#services/modules/module_service'
+import {
+  addQuantities,
+  compareQuantities,
+  quantityToScaled,
+  scaledToQuantity,
+} from '#services/quantity_units'
 
 export type ItemKind = 'material' | 'component' | 'product' | 'machine'
 
@@ -26,7 +32,7 @@ export type MovementInput = {
   itemKind: ItemKind
   itemId: number
   /** Signed: positive = inbound, negative = outbound. */
-  qty: number
+  qty: number | string
   unitCost: number
   reason: MovementReason
   referenceType?: string | null
@@ -94,26 +100,27 @@ export async function applyMovement(input: MovementInput): Promise<StockMovement
 
   const { trx, actor } = input
 
-  if (input.qty === 0) {
+  const movementScaled = quantityToScaled(input.qty)
+  if (movementScaled === 0n) {
     throw new Error('applyMovement: qty must not be zero')
   }
 
   const inv = await lockInventory(input.itemKind, input.itemId, trx)
   const oldQty = Number(inv.qty)
   const oldAvg = Number(inv.avgUnitCost)
-  const newQty = oldQty + input.qty
+  const newQtyText = addQuantities(inv.qty, input.qty)
 
   // Outbound movements always leave the ledger at the current weighted-average
   // cost — that is the COGS basis, regardless of what the caller passed
   // (e.g. POS passes the sale price, which belongs on the order line, not here).
-  const movementUnitCost = input.qty < 0 ? oldAvg : input.unitCost
+  const movementUnitCost = movementScaled < 0n ? oldAvg : input.unitCost
 
-  if (newQty < 0) {
+  if (compareQuantities(newQtyText, 0) < 0) {
     throw new InsufficientStockError({
       itemKind: input.itemKind,
       itemId: input.itemId,
       available: oldQty,
-      requested: -input.qty,
+      requested: Number(scaledToQuantity(-movementScaled)),
     })
   }
 
@@ -121,22 +128,23 @@ export async function applyMovement(input: MovementInput): Promise<StockMovement
   // unit cost. Outbound movements consume at the *current* avg without
   // changing it.
   let newAvg = oldAvg
-  if (input.qty > 0 && input.unitCost > 0) {
-    newAvg = (oldQty * oldAvg + input.qty * input.unitCost) / (oldQty + input.qty)
-  } else if (newQty === 0) {
+  if (movementScaled > 0n && input.unitCost > 0) {
+    const movementQty = Number(input.qty)
+    newAvg = (oldQty * oldAvg + movementQty * input.unitCost) / (oldQty + movementQty)
+  } else if (compareQuantities(newQtyText, 0) === 0) {
     // Once stock drains to zero, reset the avg so the next inbound batch
     // sets a fresh baseline rather than carrying historical drift.
     newAvg = 0
   }
 
-  inv.qty = String(newQty)
+  inv.qty = newQtyText
   inv.avgUnitCost = newAvg.toFixed(4)
   await inv.save()
 
   const move = new StockMovement()
   move.itemKind = input.itemKind
   move.itemId = input.itemId
-  move.qty = String(input.qty)
+  move.qty = scaledToQuantity(movementScaled)
   move.unitCost = movementUnitCost.toFixed(4)
   move.reason = input.reason
   move.referenceType = input.referenceType ?? null
@@ -153,7 +161,7 @@ export async function applyMovement(input: MovementInput): Promise<StockMovement
     targetType: input.itemKind,
     targetId: input.itemId,
     payload: {
-      qty: input.qty,
+      qty: scaledToQuantity(movementScaled),
       unitCost: movementUnitCost,
       reference: input.referenceType ? { type: input.referenceType, id: input.referenceId } : null,
     },

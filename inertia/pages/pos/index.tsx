@@ -25,6 +25,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import PosLayout from '@/layouts/pos-layout'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
+import { formatMoney, useCurrency } from '@/lib/currency'
 
 type Product = {
   id: number
@@ -97,6 +98,7 @@ export default function PosPage({
   cashSession,
   canManageSession,
 }: PageProps) {
+  const currency = useCurrency()
   const { user } = usePage<InertiaProps<PageProps>>().props
   const canOverridePrice = hasPermission(user, 'orders.overridePrice')
   const [cart, setCart] = useState<CartLine[]>([])
@@ -284,9 +286,11 @@ export default function PosPage({
                         )}
                         <div className="mt-1 flex items-center justify-between text-[11px]">
                           <span className="text-muted-foreground">
-                            Cost ₹{p.unitCost.toFixed(2)}
+                            Cost {formatMoney(p.unitCost, currency)}
                           </span>
-                          <span className="font-semibold">₹{p.suggestedUnitPrice.toFixed(2)}</span>
+                          <span className="font-semibold">
+                            {formatMoney(p.suggestedUnitPrice, currency)}
+                          </span>
                         </div>
                         <div className="text-[10px] text-muted-foreground">
                           {p.taxRatePct.toFixed(1)}% tax
@@ -351,7 +355,7 @@ export default function PosPage({
                         <div className="flex flex-col">
                           <span className="line-clamp-1 text-sm font-medium">{l.name}</span>
                           <span className="font-mono text-[10px] text-muted-foreground">
-                            cost ₹{l.unitCost.toFixed(2)} · stock {l.stockQty}
+                            cost {formatMoney(l.unitCost, currency)} · stock {l.stockQty}
                           </span>
                         </div>
                         <Button
@@ -403,10 +407,11 @@ export default function PosPage({
                       </div>
                       <div className="flex justify-between text-[11px] text-muted-foreground">
                         <span>
-                          ₹{lineSubtotal.toFixed(2)} + tax ₹{lineTax.toFixed(2)}
+                          {formatMoney(lineSubtotal, currency)} + tax{' '}
+                          {formatMoney(lineTax, currency)}
                         </span>
                         <span className="font-semibold text-foreground">
-                          ₹{lineTotal.toFixed(2)}
+                          {formatMoney(lineTotal, currency)}
                         </span>
                       </div>
                     </div>
@@ -452,15 +457,15 @@ export default function PosPage({
             <div className="flex flex-col gap-1 rounded bg-muted/40 p-3 text-sm">
               <div className="flex justify-between">
                 <span>Subtotal</span>
-                <span>₹{totals.subtotal.toFixed(2)}</span>
+                <span>{formatMoney(totals.subtotal, currency)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Tax</span>
-                <span>₹{totals.tax.toFixed(2)}</span>
+                <span>{formatMoney(totals.tax, currency)}</span>
               </div>
               <div className="flex justify-between text-base font-semibold">
                 <span>Total</span>
-                <span>₹{totals.total.toFixed(2)}</span>
+                <span>{formatMoney(totals.total, currency)}</span>
               </div>
             </div>
 
@@ -476,7 +481,7 @@ export default function PosPage({
                 (paymentMethod === 'cash' && !cashSession)
               }
             >
-              {processing ? 'Processing…' : `Pay ₹${totals.total.toFixed(2)}`}
+              {processing ? 'Processing…' : `Pay ${formatMoney(totals.total, currency)}`}
             </Button>
           </div>
         </aside>
@@ -492,6 +497,7 @@ function CashSessionStrip({
   cashSession: CashSession | null
   canManageSession: boolean
 }) {
+  const currency = useCurrency()
   return (
     <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b bg-muted/30 px-4 py-2 text-sm">
       {cashSession ? (
@@ -503,7 +509,7 @@ function CashSessionStrip({
               {cashSession.openedAt ? new Date(cashSession.openedAt).toLocaleTimeString() : '—'}
             </span>
             <span className="text-muted-foreground">
-              Expected cash ₹{cashSession.summary.expectedCash.toFixed(2)}
+              Expected cash {formatMoney(cashSession.summary.expectedCash, currency)}
             </span>
           </div>
           {canManageSession && <CloseSessionDialog cashSession={cashSession} />}
@@ -576,6 +582,7 @@ function OpenSessionDialog() {
 }
 
 function CloseSessionDialog({ cashSession }: { cashSession: CashSession }) {
+  const currency = useCurrency()
   const [open, setOpen] = useState(false)
   const { data, setData, post, processing, errors, reset } = useForm({
     countedCash: cashSession.summary.expectedCash,
@@ -611,14 +618,14 @@ function CloseSessionDialog({ cashSession }: { cashSession: CashSession }) {
         >
           <div className="grid grid-cols-2 gap-y-1 rounded bg-muted/40 p-3 text-sm">
             <span className="text-muted-foreground">Opening float</span>
-            <span className="text-right">₹{cashSession.openingFloat.toFixed(2)}</span>
+            <span className="text-right">{formatMoney(cashSession.openingFloat, currency)}</span>
             <span className="text-muted-foreground">Cash sales</span>
-            <span className="text-right">₹{cashSales.toFixed(2)}</span>
+            <span className="text-right">{formatMoney(cashSales, currency)}</span>
             <span className="text-muted-foreground">Sales count</span>
             <span className="text-right">{cashSession.summary.salesCount}</span>
             <span className="font-medium">Expected cash</span>
             <span className="text-right font-medium">
-              ₹{cashSession.summary.expectedCash.toFixed(2)}
+              {formatMoney(cashSession.summary.expectedCash, currency)}
             </span>
           </div>
           <div className="flex flex-col gap-1">
@@ -645,7 +652,8 @@ function CloseSessionDialog({ cashSession }: { cashSession: CashSession }) {
                   : 'bg-destructive/10 text-destructive')
             }
           >
-            Variance: {variance > 0 ? '+' : ''}₹{variance.toFixed(2)}
+            Variance: {variance > 0 ? '+' : ''}
+            {formatMoney(variance, currency)}
           </div>
           <div className="flex flex-col gap-1">
             <Label>Note</Label>
