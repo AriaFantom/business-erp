@@ -16,7 +16,7 @@ import { suggestPriceFor } from '#services/pricing'
 import { convertQuotationToOrder } from '#services/order_service'
 import { DomainError } from '#services/domain_errors'
 import Quotation from '#models/quotation'
-import env from '#start/env'
+import { getDashboardBranding } from '#services/dashboard_branding'
 import { ensurePdf, streamPdf } from '#services/document_pdf/render'
 import { QuotationDocument } from '#services/document_pdf/quotation_document'
 import { getAppCurrency } from '#services/currency'
@@ -129,7 +129,8 @@ export default class QuotationsController {
     await bouncer.authorize('quotations.view' as never)
     const quotation = await Quotation.findOrFail(params.id)
     const vm = await getQuotationShowViewModel(quotation.id)
-    const appName = env.get('APP_NAME')
+    const branding = await getDashboardBranding()
+    const appName = branding.name
     const currency = await getAppCurrency()
     await ensurePdf('quotation', quotation, () =>
       React.createElement(QuotationDocument, { ...vm, appName, currency })

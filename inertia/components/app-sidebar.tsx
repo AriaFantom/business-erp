@@ -40,7 +40,7 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                   )}
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">{branding?.name ?? 'LayerDreams'}</span>
+                  <span className="truncate font-semibold">{branding?.name ?? 'BusinessERP'}</span>
                   <span className="truncate text-xs text-muted-foreground">Panel</span>
                 </div>
               </Link>

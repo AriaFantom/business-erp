@@ -5,7 +5,7 @@ import { getInvoiceShowViewModel, getInvoicesIndexViewModel } from '#services/or
 import { recordPayment, voidInvoice } from '#services/invoice_service'
 import { DomainError } from '#services/domain_errors'
 import Invoice from '#models/invoice'
-import env from '#start/env'
+import { getDashboardBranding } from '#services/dashboard_branding'
 import { ensurePdf, streamPdf } from '#services/document_pdf/render'
 import { InvoiceDocument } from '#services/document_pdf/invoice_document'
 import { getAppCurrency } from '#services/currency'
@@ -77,7 +77,8 @@ export default class InvoicesController {
     await bouncer.authorize('invoices.view' as never)
     const invoice = await Invoice.findOrFail(params.id)
     const vm = await getInvoiceShowViewModel(invoice.id)
-    const appName = env.get('APP_NAME')
+    const branding = await getDashboardBranding()
+    const appName = branding.name
     const currency = await getAppCurrency()
     await ensurePdf('invoice', invoice, () =>
       React.createElement(InvoiceDocument, { ...vm, appName, currency })

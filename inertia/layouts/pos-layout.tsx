@@ -50,7 +50,7 @@ export default function PosLayout({ children }: PropsWithChildren) {
               </div>
               <div className="flex flex-col leading-tight">
                 <span className="text-sm font-semibold">Point of Sale</span>
-                <span className="text-xs text-muted-foreground">LayerDreams</span>
+                <span className="text-xs text-muted-foreground">BusinessERP</span>
               </div>
               <div className="ml-auto flex items-center gap-1">
                 <FullscreenButton />

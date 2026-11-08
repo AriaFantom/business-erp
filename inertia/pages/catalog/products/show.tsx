@@ -1,5 +1,5 @@
 import { type ReactElement, useEffect, useRef, useState } from 'react'
-import { router } from '@inertiajs/react'
+import { router, usePage } from '@inertiajs/react'
 import { Link } from '@adonisjs/inertia/react'
 import { ArrowLeft, Download, Paperclip, Trash2, Upload } from 'lucide-react'
 import { toast } from 'sonner'
@@ -20,7 +20,9 @@ import { AvatarUploader } from '@/components/catalog/avatar-uploader'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { ProductImageGallery } from '@/components/catalog/product-image-gallery'
 import { DefaultPriceDialog } from '@/components/catalog/default-price-dialog'
+import { EditItemNameDialog } from '@/components/catalog/edit-item-name-dialog'
 import { formatMoney, useCurrency } from '@/lib/currency'
+import type { InertiaProps } from '@/types'
 
 type GalleryImage = {
   id: number
@@ -303,7 +305,15 @@ function ProfitAnalysisCard({
   )
 }
 
-function ProductHero({ product }: { product: Product }) {
+function ProductHero({
+  product,
+  onEditName,
+  canEdit,
+}: {
+  product: Product
+  onEditName: () => void
+  canEdit: boolean
+}) {
   return (
     <Card>
       <CardContent className="flex flex-col gap-6 p-6 sm:flex-row">
@@ -323,6 +333,17 @@ function ProductHero({ product }: { product: Product }) {
             <div>
               <h1 className="text-2xl font-semibold">{product.name}</h1>
               <p className="font-mono text-sm text-muted-foreground">{product.sku}</p>
+              {canEdit && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={onEditName}
+                >
+                  Edit name
+                </Button>
+              )}
             </div>
             {product.isActive ? (
               <Badge variant="outline">Active</Badge>
@@ -545,9 +566,11 @@ function FilesCard({ productId, initial }: { productId: number; initial: FileRow
 }
 
 export default function ProductShowPage({ product, images, files, profitAnalysis }: PageProps) {
+  const { user } = usePage<InertiaProps<PageProps>>().props
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [nameDialogOpen, setNameDialogOpen] = useState(false)
   const [dialogJob, setDialogJob] = useState<ProfitJobRow | null>(null)
-  const canEdit = true // TODO: derive from permissions prop when available
+  const canEdit = Boolean(user?.isOwner || user?.permissions?.includes('products.update'))
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-8">
@@ -560,7 +583,16 @@ export default function ProductShowPage({ product, images, files, profitAnalysis
         </Button>
       </div>
 
-      <ProductHero product={product} />
+      <ProductHero product={product} onEditName={() => setNameDialogOpen(true)} canEdit={canEdit} />
+
+      <EditItemNameDialog
+        kind="product"
+        id={product.id}
+        name={product.name}
+        sku={product.sku}
+        open={nameDialogOpen}
+        onOpenChange={setNameDialogOpen}
+      />
 
       <ProfitAnalysisCard
         analysis={profitAnalysis}

@@ -4,6 +4,7 @@ import type Invitation from '#models/invitation'
 import drive from '@adonisjs/drive/services/main'
 import logger from '@adonisjs/core/services/logger'
 import { getDashboardBranding } from '#services/dashboard_branding'
+import env from '#start/env'
 
 export default class InvitationNotification extends BaseMail {
   subject: string
@@ -24,6 +25,7 @@ export default class InvitationNotification extends BaseMail {
       ? `Set up your ${branding.name} account`
       : `You have been invited to ${branding.name}`
     this.message.subject(this.subject)
+    this.message.from(env.get('MAIL_FROM_ADDRESS'), branding.name)
 
     if (branding.iconKey) {
       try {

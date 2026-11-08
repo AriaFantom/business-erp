@@ -39,7 +39,7 @@ export function SkuField({ name, value, onChange, error, id = 'sku' }: Props) {
   }, [name, onChange])
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex min-w-0 flex-col gap-1">
       <Label htmlFor={id}>SKU</Label>
       <div className="flex items-center gap-2">
         <Input
@@ -51,7 +51,7 @@ export function SkuField({ name, value, onChange, error, id = 'sku' }: Props) {
             editedByHand.current = true
             onChange(e.target.value)
           }}
-          className="font-mono"
+          className="min-w-0 flex-1 font-mono"
         />
         <Button
           type="button"

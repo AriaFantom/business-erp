@@ -1,5 +1,5 @@
 import { type ReactElement, useState } from 'react'
-import { useForm } from '@inertiajs/react'
+import { useForm, usePage } from '@inertiajs/react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -40,7 +40,9 @@ import { ColumnVisibilityMenu, type ColumnDef } from '@/components/data-table/co
 import { useColumnVisibility } from '@/hooks/use-column-visibility'
 import { EmptyState } from '@/components/empty-state'
 import { SkuField } from '@/components/catalog/sku-field'
+import { EditItemNameDialog } from '@/components/catalog/edit-item-name-dialog'
 import { formatMoney, useCurrency } from '@/lib/currency'
+import type { InertiaProps } from '@/types'
 
 type Row = {
   id: number
@@ -91,7 +93,7 @@ function NewComponentDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
       <DialogTrigger asChild>
         <Button>New component</Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Create component</DialogTitle>
         </DialogHeader>
@@ -125,7 +127,7 @@ function NewComponentDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
           }}
         >
           <InlineImagePicker file={imageFile} onChange={setImageFile} />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 [&>*]:min-w-0">
             <SkuField
               id="component-sku"
               name={data.name}
@@ -141,7 +143,7 @@ function NewComponentDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
               />
             </Field>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 [&>*]:min-w-0">
             <Field label="Unit of measure" error={errors.unit}>
               <UnitPicker value={data.unit} onChange={(v) => setData('unit', v)} />
             </Field>
@@ -163,7 +165,7 @@ function NewComponentDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
               </Select>
             </Field>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 [&>*]:min-w-0">
             <Field
               label={`Default unit cost (${currency}, per ${data.unit || 'unit'})`}
               error={errors.defaultUnitCost}
@@ -209,7 +211,7 @@ function Field({
   children: React.ReactNode
 }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex min-w-0 flex-col gap-2 [&_[data-slot=select-trigger]]:w-full [&_input]:w-full">
       <Label>{label}</Label>
       {children}
       {error && <span className="text-xs text-destructive">{error}</span>}
@@ -267,6 +269,9 @@ const COMPONENT_COLUMNS: ColumnDef[] = [
 
 export default function ComponentsPage({ components, suppliers, filters, counts }: PageProps) {
   const currency = useCurrency()
+  const { user } = usePage<InertiaProps<PageProps>>().props
+  const canEdit = Boolean(user?.isOwner || user?.permissions?.includes('components.update'))
+  const [editing, setEditing] = useState<Row | null>(null)
   const { isVisible, toggle, reset } = useColumnVisibility('catalog.components')
   return (
     <div className="flex w-full flex-col gap-6 px-6 py-8">
@@ -401,6 +406,11 @@ export default function ComponentsPage({ components, suppliers, filters, counts 
                     {isVisible('actions') && (
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
+                          {canEdit && (
+                            <Button variant="outline" size="sm" onClick={() => setEditing(c)}>
+                              Edit name
+                            </Button>
+                          )}
                           {c.isActive ? (
                             <ArchiveAction
                               path={`/catalog/components/${c.id}/archive`}
@@ -422,6 +432,16 @@ export default function ComponentsPage({ components, suppliers, filters, counts 
           )}
         </CardContent>
       </Card>
+      {editing && (
+        <EditItemNameDialog
+          kind="component"
+          id={editing.id}
+          name={editing.name}
+          sku={editing.sku}
+          open
+          onOpenChange={(open) => !open && setEditing(null)}
+        />
+      )}
     </div>
   )
 }

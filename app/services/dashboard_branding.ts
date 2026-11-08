@@ -10,7 +10,7 @@ import { token } from '#services/file_streaming'
 import { APP_CURRENCY_KEY, DEFAULT_CURRENCY, isSupportedCurrency } from '#services/currency'
 
 const KEY = 'dashboard_branding'
-const DEFAULT_NAME = 'LayerDreams'
+const DEFAULT_NAME = 'BusinessERP'
 
 export type DashboardBranding = { name: string; iconKey: string | null; iconUrl: string | null }
 
@@ -161,7 +161,7 @@ export async function saveApplicationSettings(
         trx,
       })
 
-      if (beforeCurrency !== currency) {
+      if (beforeCurrency !== currency || beforeBranding.name !== input.name) {
         const invoicePdfs = await trx.from('invoices').whereNotNull('pdf_key').select('pdf_key')
         const quotationPdfs = await trx.from('quotations').whereNotNull('pdf_key').select('pdf_key')
         stalePdfKeys.push(

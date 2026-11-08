@@ -7,7 +7,7 @@ export type DocumentBranding = {
 
 const FAVICON_ATTRIBUTE = 'data-dashboard-favicon'
 
-let activeDashboardName = 'LayerDreams'
+let activeDashboardName = 'BusinessERP'
 
 export function setInitialDashboardName(name: string): void {
   activeDashboardName = name.trim() || activeDashboardName

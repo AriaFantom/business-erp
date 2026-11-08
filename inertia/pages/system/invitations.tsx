@@ -99,7 +99,7 @@ export function InvitationsPanel({ roles, pendingInvitations }: InvitationsPageP
           <CardTitle>Invite a teammate</CardTitle>
           <CardDescription>Send an invitation email to join the workspace.</CardDescription>
         </CardHeader>
-        <Form action="/invitations" method="post" resetOnSuccess>
+        <Form action="/invitations" method="post" resetOnSuccess className="flex flex-col gap-5">
           {({ errors, processing }) => (
             <>
               <CardContent className="flex flex-col gap-4">
@@ -134,7 +134,7 @@ export function InvitationsPanel({ roles, pendingInvitations }: InvitationsPageP
                   {errors.roleId && <p className="text-sm text-destructive">{errors.roleId}</p>}
                 </div>
               </CardContent>
-              <CardFooter className="flex flex-wrap items-center justify-between gap-3">
+              <CardFooter className="flex flex-col items-stretch gap-4 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
                 <span className="min-w-0 flex-1 text-xs text-muted-foreground">
                   {assignableRoles.length === 0
                     ? 'No roles below your rank — create one first.'
@@ -145,7 +145,7 @@ export function InvitationsPanel({ roles, pendingInvitations }: InvitationsPageP
                   disabled={processing || assignableRoles.length === 0}
                   className="shrink-0"
                 >
-                  <Send />
+                  <Send data-icon="inline-start" />
                   {processing ? 'Sending…' : 'Send invite'}
                 </Button>
               </CardFooter>

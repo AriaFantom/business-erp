@@ -188,6 +188,10 @@ export default function SystemUsers({
   const [editing, setEditing] = useState<UserRow | null>(null)
   const [changingAccess, setChangingAccess] = useState<UserRow | null>(null)
   const [accessProcessing, setAccessProcessing] = useState(false)
+  const [showRevoked, setShowRevoked] = useState(false)
+  const activeUsers = users.filter((row) => row.isActive)
+  const revokedUsers = users.filter((row) => !row.isActive)
+  const displayedUsers = showRevoked ? revokedUsers : activeUsers
 
   if (!actor) return null
 
@@ -229,19 +233,36 @@ export default function SystemUsers({
           <TabsContent value="users" className="mt-4">
             <Card>
               <CardHeader>
-                <CardTitle>Users</CardTitle>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <CardTitle>{showRevoked ? 'Revoked users' : 'Users'}</CardTitle>
+                  {(showRevoked || revokedUsers.length > 0) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowRevoked((value) => !value)}
+                    >
+                      {showRevoked ? 'Show active users' : `Revoked (${revokedUsers.length})`}
+                    </Button>
+                  )}
+                </div>
                 <CardDescription>
-                  {canAssign
-                    ? 'You can change role assignments for users below your rank.'
-                    : 'You can view users below your rank. Role editing requires the users.assignRole permission.'}
+                  {showRevoked
+                    ? 'These accounts are hidden from the active list. Restore access here when needed.'
+                    : canAssign
+                      ? 'You can change role assignments for users below your rank.'
+                      : 'You can view users below your rank. Role editing requires the users.assignRole permission.'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {users.length === 0 ? (
+                {displayedUsers.length === 0 ? (
                   <EmptyState
                     icon={Users}
                     title="No users in your scope"
-                    description="Invite a teammate to give them access to the panel."
+                    description={
+                      showRevoked
+                        ? 'No revoked users in your scope.'
+                        : 'Invite a teammate to give them access to the panel.'
+                    }
                     action={
                       canViewInvitations ? (
                         <Button asChild variant="outline">
@@ -263,7 +284,7 @@ export default function SystemUsers({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {users.map((row) => {
+                      {displayedUsers.map((row) => {
                         const isSelf = row.id === currentUserId
                         return (
                           <TableRow key={row.id}>

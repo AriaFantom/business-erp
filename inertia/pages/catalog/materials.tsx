@@ -95,7 +95,7 @@ function NewMaterialDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
       <DialogTrigger asChild>
         <Button>New material</Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Create material</DialogTitle>
         </DialogHeader>
@@ -128,7 +128,7 @@ function NewMaterialDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
           }}
         >
           <InlineImagePicker file={imageFile} onChange={setImageFile} />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 [&>*]:min-w-0">
             <SkuField
               id="material-sku"
               name={data.name}
@@ -144,7 +144,7 @@ function NewMaterialDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
               />
             </Field>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 [&>*]:min-w-0">
             <Field label="Type" error={errors.type}>
               <Select value={data.type} onValueChange={(v) => setData('type', v)}>
                 <SelectTrigger>
@@ -178,7 +178,7 @@ function NewMaterialDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
               </SelectContent>
             </Select>
           </Field>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 [&>*]:min-w-0">
             <Field
               label={`Default unit cost (${currency}, per ${data.unit || 'unit'})`}
               error={errors.defaultUnitCost}
@@ -225,7 +225,7 @@ function Field({
   children: React.ReactNode
 }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex min-w-0 flex-col gap-2 [&_[data-slot=select-trigger]]:w-full [&_input]:w-full">
       <Label>{label}</Label>
       {children}
       {error && <span className="text-xs text-destructive">{error}</span>}

@@ -23,7 +23,7 @@ export function UnitPicker({ value, onChange, placeholder }: Props) {
 
   if (!custom) {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex w-full items-center gap-2">
         <Input
           aria-label="Custom unit"
           autoFocus
@@ -58,7 +58,7 @@ export function UnitPicker({ value, onChange, placeholder }: Props) {
         }
       }}
     >
-      <SelectTrigger>
+      <SelectTrigger className="w-full min-w-0">
         <SelectValue placeholder={placeholder ?? 'Pick a unit'} />
       </SelectTrigger>
       <SelectContent>

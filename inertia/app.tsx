@@ -13,7 +13,7 @@ import {
   setInitialDashboardName,
 } from '@/lib/document-branding'
 
-const appName = import.meta.env.VITE_APP_NAME || 'LayerDreams Panel'
+const appName = import.meta.env.VITE_APP_NAME || 'BusinessERP'
 setInitialDashboardName(appName)
 
 createInertiaApp({

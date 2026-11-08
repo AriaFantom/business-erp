@@ -9,6 +9,7 @@ import User from '#models/user'
 import AuditEvent from '#models/audit_event'
 import AppSetting from '#models/app_setting'
 import InvitationNotification from '#mails/invitation_notification'
+import env from '#start/env'
 import RoleSeeder from '../../database/seeders/role_seeder.js'
 import { issueInvitationToken } from '#services/invitation_token'
 import { getInvitationsViewModel } from '#services/dashboard_view_models'
@@ -121,6 +122,7 @@ test.group('Invitations and email identity', (group) => {
       notification.message.nodeMailerMessage.subject,
       'You have been invited to Priyanshu Manufacturing'
     )
+    notification.message.assertFrom(env.get('MAIL_FROM_ADDRESS'), 'Priyanshu Manufacturing')
     notification.message.assertHtmlIncludes('Priyanshu Manufacturing')
   })
 
