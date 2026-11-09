@@ -71,4 +71,33 @@ test.group('safe catalog deletion', (group) => {
     )
     assert.isNotNull(await Material.find(used.id))
   })
+
+  test('lets the workspace owner delete an unused material without seeded role permissions', async ({
+    client,
+    assert,
+  }) => {
+    const owner = await User.create({
+      email: `delete-owner+${Date.now()}@example.com`,
+      password: 'Passw0rd!',
+      firstName: 'Delete',
+      lastName: 'Owner',
+      isOwner: true,
+    })
+    const material = await Material.create({
+      sku: `OWNER-DELETE-${Date.now()}`,
+      name: 'Owner deletable material',
+      type: 'other',
+      unit: 'g',
+      isActive: true,
+    })
+
+    const response = await client
+      .post(`/catalog/materials/${material.id}/delete`)
+      .loginAs(owner)
+      .withCsrfToken()
+      .redirects(0)
+
+    response.assertStatus(302)
+    assert.isNull(await Material.find(material.id))
+  })
 })

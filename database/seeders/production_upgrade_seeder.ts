@@ -21,10 +21,14 @@ export default class ProductionUpgradeSeeder extends BaseSeeder {
       })
     }
 
-    // Preserve existing permissions and add only the capabilities introduced
-    // with module management and labour. Custom roles remain untouched.
+    // Preserve existing permissions and add only capabilities introduced by
+    // production upgrades. Custom roles remain untouched.
     const additions: Record<string, string[]> = {
       owner: [
+        'materials.delete',
+        'components.delete',
+        'products.delete',
+        'machines.delete',
         'workers.view',
         'workers.create',
         'workers.update',
@@ -34,6 +38,10 @@ export default class ProductionUpgradeSeeder extends BaseSeeder {
         'settings.manageModules',
       ],
       admin: [
+        'materials.delete',
+        'components.delete',
+        'products.delete',
+        'machines.delete',
         'workers.view',
         'workers.create',
         'workers.update',

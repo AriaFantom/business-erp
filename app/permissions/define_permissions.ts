@@ -3,6 +3,7 @@ import { Access } from './access.js'
 import type { ActionConfig, PermissionDefinition, PermissionKeys, ResourceMap } from './types.js'
 
 interface Entity {
+  isOwner?: boolean
   getPermissions(): Promise<string[]>
 }
 
@@ -79,6 +80,7 @@ export class Permissions<T extends ResourceMap> {
     const out: Record<string, ReturnType<typeof Bouncer.ability>> = {}
     for (const key of this.#activeKeys) {
       out[key] = Bouncer.ability(async (user: Entity, scope?: string[]) => {
+        if (user.isOwner) return true
         const access = await this.createAccessFor(user)
         if (scope) access.scopeTo(scope)
         return access.allows(key as any)
