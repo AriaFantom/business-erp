@@ -455,32 +455,40 @@ export default function MaterialsPage({ materials, suppliers, filters, counts }:
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           {canEdit && (
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              aria-label={`Edit ${m.name}`}
-                              title="Edit name"
-                              onClick={() => setEditing(m)}
-                            >
-                              <Pencil />
-                            </Button>
+                            <>
+                              <AvatarUploader
+                                uploadPath={`/catalog/materials/${m.id}/image`}
+                                imageUrl={m.imageUrl}
+                                alt={m.name}
+                                actionTrigger
+                              />
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                aria-label={`Edit ${m.name}`}
+                                title="Edit name"
+                                onClick={() => setEditing(m)}
+                              >
+                                <Pencil />
+                              </Button>
+                            </>
                           )}
-                          {m.isActive ? (
+                          {(!canDelete || m.deleteBlocker) && m.isActive ? (
                             <ArchiveAction
                               path={`/catalog/materials/${m.id}/archive`}
                               name={m.name}
                             />
-                          ) : (
+                          ) : (!canDelete || m.deleteBlocker) && !m.isActive ? (
                             <RestoreAction
                               path={`/catalog/materials/${m.id}/restore`}
                               name={m.name}
                             />
-                          )}
-                          {canDelete && (
+                          ) : null}
+                          {canDelete && !m.deleteBlocker && (
                             <DeletePermanentlyAction
                               path={`/catalog/materials/${m.id}/delete`}
                               name={m.name}
-                              blockedReason={m.deleteBlocker}
+                              blockedReason={null}
                             />
                           )}
                         </div>

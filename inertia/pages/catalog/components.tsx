@@ -421,34 +421,42 @@ export default function ComponentsPage({ components, suppliers, filters, counts 
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           {canEdit && (
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              aria-label={`Edit ${c.name}`}
-                              title="Edit name"
-                              onClick={() => setEditing(c)}
-                            >
-                              <Pencil />
-                            </Button>
+                            <>
+                              <AvatarUploader
+                                uploadPath={`/catalog/components/${c.id}/image`}
+                                imageUrl={c.imageUrl}
+                                alt={c.name}
+                                actionTrigger
+                              />
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                aria-label={`Edit ${c.name}`}
+                                title="Edit name"
+                                onClick={() => setEditing(c)}
+                              >
+                                <Pencil />
+                              </Button>
+                            </>
                           )}
-                          {canDelete && (
+                          {canDelete && !c.deleteBlocker && (
                             <DeletePermanentlyAction
                               path={`/catalog/components/${c.id}/delete`}
                               name={c.name}
-                              blockedReason={c.deleteBlocker}
+                              blockedReason={null}
                             />
                           )}
-                          {c.isActive ? (
+                          {(!canDelete || c.deleteBlocker) && c.isActive ? (
                             <ArchiveAction
                               path={`/catalog/components/${c.id}/archive`}
                               name={c.name}
                             />
-                          ) : (
+                          ) : (!canDelete || c.deleteBlocker) && !c.isActive ? (
                             <RestoreAction
                               path={`/catalog/components/${c.id}/restore`}
                               name={c.name}
                             />
-                          )}
+                          ) : null}
                         </div>
                       </TableCell>
                     )}

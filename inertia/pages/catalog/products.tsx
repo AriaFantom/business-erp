@@ -17,8 +17,6 @@ import { AvatarUploader } from '@/components/catalog/avatar-uploader'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { ProductFilesDialog } from '@/components/catalog/product-files-dialog'
-import { ProductQrDialog } from '@/components/catalog/product-qr-dialog'
 import {
   NewProductDialog,
   type ProductCategoryOption,
@@ -301,12 +299,6 @@ export default function ProductsPage({ products, categories, filters, counts }: 
                               <ExternalLink />
                             </Link>
                           </Button>
-                          <ProductFilesDialog
-                            productId={p.id}
-                            productName={p.name}
-                            initialCount={p.attachmentCount}
-                          />
-                          <ProductQrDialog productId={p.id} productName={p.name} />
                           {p.isActive ? (
                             <ArchiveAction
                               path={`/catalog/products/${p.id}/archive`}

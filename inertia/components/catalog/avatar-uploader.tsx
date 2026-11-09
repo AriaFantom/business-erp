@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { router } from '@inertiajs/react'
-import { Plus, Loader2 } from 'lucide-react'
+import { ImagePlus, Loader2, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { InlineImagePicker } from '@/components/catalog/inline-image-picker'
 import { Button } from '@/components/ui/button'
@@ -21,9 +21,18 @@ type Props = {
   size?: number
   /** Max upload size in MB. Keep aligned with server validator. */
   maxMb?: number
+  /** Compact action button for table action columns. */
+  actionTrigger?: boolean
 }
 
-export function AvatarUploader({ uploadPath, imageUrl, alt, size = 40, maxMb = 15 }: Props) {
+export function AvatarUploader({
+  uploadPath,
+  imageUrl,
+  alt,
+  size = 40,
+  maxMb = 15,
+  actionTrigger = false,
+}: Props) {
   const [open, setOpen] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [busy, setBusy] = useState(false)
@@ -54,31 +63,45 @@ export function AvatarUploader({ uploadPath, imageUrl, alt, size = 40, maxMb = 1
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        disabled={busy}
-        aria-label={imageUrl ? `Replace image for ${alt}` : `Add image for ${alt}`}
-        title={imageUrl ? 'Replace image' : 'Add image'}
-        style={{ width: size, height: size }}
-        className="group relative shrink-0 overflow-hidden rounded border border-border bg-muted text-[10px] text-muted-foreground transition hover:border-primary disabled:cursor-wait disabled:opacity-60"
-      >
-        {imageUrl ? (
-          <img src={imageUrl} alt={alt} className="h-full w-full object-cover" loading="lazy" />
-        ) : null}
-        <span
-          className={
-            'absolute inset-0 flex items-center justify-center ' +
-            (imageUrl ? 'bg-foreground/40 opacity-0 transition group-hover:opacity-100' : '')
-          }
+      {actionTrigger ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={() => setOpen(true)}
+          disabled={busy}
+          aria-label={`${imageUrl ? 'Replace' : 'Add'} image for ${alt}`}
+          title={imageUrl ? 'Replace image' : 'Add image'}
         >
-          {busy ? (
-            <Loader2 className="animate-spin text-foreground" />
-          ) : (
-            <Plus className={imageUrl ? 'text-background' : ''} />
-          )}
-        </span>
-      </button>
+          {busy ? <Loader2 className="animate-spin" /> : <ImagePlus />}
+        </Button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          disabled={busy}
+          aria-label={imageUrl ? `Replace image for ${alt}` : `Add image for ${alt}`}
+          title={imageUrl ? 'Replace image' : 'Add image'}
+          style={{ width: size, height: size }}
+          className="group relative shrink-0 overflow-hidden rounded border border-border bg-muted text-[10px] text-muted-foreground transition hover:border-primary disabled:cursor-wait disabled:opacity-60"
+        >
+          {imageUrl ? (
+            <img src={imageUrl} alt={alt} className="h-full w-full object-cover" loading="lazy" />
+          ) : null}
+          <span
+            className={
+              'absolute inset-0 flex items-center justify-center ' +
+              (imageUrl ? 'bg-foreground/40 opacity-0 transition group-hover:opacity-100' : '')
+            }
+          >
+            {busy ? (
+              <Loader2 className="animate-spin text-foreground" />
+            ) : (
+              <Plus className={imageUrl ? 'text-background' : ''} />
+            )}
+          </span>
+        </button>
+      )}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
