@@ -32,18 +32,21 @@ export const permissions = definePermissions({
     create: 'Create materials',
     update: 'Edit materials',
     archive: 'Archive (deactivate) materials',
+    delete: 'Permanently delete unused materials',
   },
   components: {
     view: 'View components',
     create: 'Create components',
     update: 'Edit components',
     archive: 'Archive (deactivate) components',
+    delete: 'Permanently delete unused components',
   },
   products: {
     view: 'View products',
     create: 'Create products',
     update: 'Edit products',
     archive: 'Archive (deactivate) products',
+    delete: 'Permanently delete unused products',
   },
   productCategories: {
     view: 'View product categories',
@@ -88,6 +91,7 @@ export const permissions = definePermissions({
     create: 'Add a new machine',
     edit: 'Edit machine details and record expenses',
     retire: 'Retire a machine',
+    delete: 'Permanently delete unused machines',
   },
   workers: {
     view: 'View workers and their job history',

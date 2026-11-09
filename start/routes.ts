@@ -145,6 +145,9 @@ router
     router.post('catalog/materials', [MaterialsController, 'store']).as('materials.store')
     router.post('catalog/materials/:id', [MaterialsController, 'update']).as('materials.update')
     router
+      .post('catalog/materials/:id/delete', [MaterialsController, 'destroy'])
+      .as('materials.destroy')
+    router
       .post('catalog/materials/:id/archive', [MaterialsController, 'archive'])
       .as('materials.archive')
     router
@@ -163,6 +166,9 @@ router
     router.get('catalog/components', [ComponentsController, 'index']).as('components.index')
     router.post('catalog/components', [ComponentsController, 'store']).as('components.store')
     router.post('catalog/components/:id', [ComponentsController, 'update']).as('components.update')
+    router
+      .post('catalog/components/:id/delete', [ComponentsController, 'destroy'])
+      .as('components.destroy')
     router
       .post('catalog/components/:id/archive', [ComponentsController, 'archive'])
       .as('components.archive')
@@ -183,6 +189,9 @@ router
     router.post('catalog/products', [ProductsController, 'store']).as('products.store')
     router.get('catalog/products/:id', [ProductsController, 'show']).as('products.show')
     router.post('catalog/products/:id', [ProductsController, 'update']).as('products.update')
+    router
+      .post('catalog/products/:id/delete', [ProductsController, 'destroy'])
+      .as('products.destroy')
     router
       .post('catalog/products/:id/archive', [ProductsController, 'archive'])
       .as('products.archive')
@@ -326,6 +335,7 @@ router
         router.post('machines', [MachinesController, 'store']).as('machines.store')
         router.get('machines/:id', [MachinesController, 'show']).as('machines.show')
         router.post('machines/:id', [MachinesController, 'update']).as('machines.update')
+        router.post('machines/:id/delete', [MachinesController, 'destroy']).as('machines.destroy')
         router.post('machines/:id/retire', [MachinesController, 'retire']).as('machines.retire')
         router
           .post('machines/:id/maintenance', [MachinesController, 'toggleMaintenance'])

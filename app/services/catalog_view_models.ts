@@ -11,6 +11,7 @@ import StockMovement from '#models/stock_movement'
 import { token } from '#services/file_streaming'
 import { latestProductCost } from '#services/job_costing'
 import { computeMinimumProfitTarget, computeUnitPrice } from '#services/pricing'
+import { getDeletionBlockers } from '#services/catalog_deletion_service'
 
 /**
  * Lean read-only projections for Inertia pages. These don't depend on the
@@ -85,6 +86,7 @@ export type MaterialRow = {
   defaultSupplier: { id: number; name: string } | null
   imageUrl: string | null
   isActive: boolean
+  deleteBlocker: string | null
 }
 
 export async function getMaterialsViewModel(filters: ListFilters & { type?: string } = {}) {
@@ -101,6 +103,10 @@ export async function getMaterialsViewModel(filters: ListFilters & { type?: stri
     return q
   })
   const materials = await query
+  const deleteBlockers = await getDeletionBlockers(
+    'material',
+    materials.map((material) => material.id)
+  )
   return {
     materials: materials.map<MaterialRow>((m) => ({
       id: m.id,
@@ -115,6 +121,7 @@ export async function getMaterialsViewModel(filters: ListFilters & { type?: stri
         : null,
       imageUrl: m.imageKey ? `/catalog/materials/${m.id}/image?v=${token(m.imageKey)}` : null,
       isActive: m.isActive,
+      deleteBlocker: deleteBlockers.get(m.id) ?? null,
     })),
     counts,
     suppliers: await listActiveSuppliers(),
@@ -131,6 +138,7 @@ export type ComponentRow = {
   defaultSupplier: { id: number; name: string } | null
   imageUrl: string | null
   isActive: boolean
+  deleteBlocker: string | null
 }
 
 export async function getComponentsViewModel(filters: ListFilters = {}) {
@@ -143,6 +151,10 @@ export async function getComponentsViewModel(filters: ListFilters = {}) {
     return q
   })
   const components = await query
+  const deleteBlockers = await getDeletionBlockers(
+    'component',
+    components.map((component) => component.id)
+  )
   return {
     components: components.map<ComponentRow>((c) => ({
       id: c.id,
@@ -156,6 +168,7 @@ export async function getComponentsViewModel(filters: ListFilters = {}) {
         : null,
       imageUrl: c.imageKey ? `/catalog/components/${c.id}/image?v=${token(c.imageKey)}` : null,
       isActive: c.isActive,
+      deleteBlocker: deleteBlockers.get(c.id) ?? null,
     })),
     counts,
     suppliers: await listActiveSuppliers(),
@@ -175,6 +188,7 @@ export type ProductRow = {
   inProductionQty: number
   soldQty: number
   attachmentCount: number
+  deleteBlocker: string | null
 }
 
 export async function getProductsViewModel(filters: ListFilters & { categoryId?: number } = {}) {
@@ -196,7 +210,7 @@ export async function getProductsViewModel(filters: ListFilters & { categoryId?:
   ])
   const ids = products.map((p) => p.id)
 
-  const [productionRows, soldRows, attachmentRows] = await Promise.all([
+  const [productionRows, soldRows, attachmentRows, deleteBlockers] = await Promise.all([
     ids.length > 0
       ? db
           .from('production_jobs')
@@ -225,6 +239,7 @@ export async function getProductsViewModel(filters: ListFilters & { categoryId?:
           .select('product_id')
           .count('* as total')
       : [],
+    getDeletionBlockers('product', ids),
   ])
 
   // "In production" = units still pending on in-progress jobs (planned − produced).
@@ -259,6 +274,7 @@ export async function getProductsViewModel(filters: ListFilters & { categoryId?:
       inProductionQty: inProductionByProduct.get(p.id) ?? 0,
       soldQty: soldByProduct.get(p.id) ?? 0,
       attachmentCount: attachmentCountByProduct.get(p.id) ?? 0,
+      deleteBlocker: deleteBlockers.get(p.id) ?? null,
     })),
     categories: categories.map((c) => ({
       id: c.id,
@@ -285,6 +301,7 @@ export type ProductShowData = {
     soldQty: number
     createdAt: string | null
     updatedAt: string | null
+    deleteBlocker: string | null
   }
   images: Array<{
     id: number
@@ -344,42 +361,44 @@ export async function getProductShowViewModel(id: number): Promise<ProductShowDa
   const imageUrl = product.imageKey
     ? `/catalog/products/${id}/image?v=${token(product.imageKey)}`
     : null
-  const [attachments, productionRow, soldRow, completedJobs, costBasis] = await Promise.all([
-    db
-      .from('product_attachments')
-      .where('product_id', id)
-      .orderBy('sort_order', 'asc')
-      .orderBy('id', 'asc')
-      .select(
-        'id',
-        'original_name',
-        'size_bytes',
-        'mime_type',
-        'kind',
-        'sort_order',
-        'file_key',
-        'created_at'
-      ),
-    db
-      .from('production_jobs')
-      .where('product_id', id)
-      .where('status', 'in_progress')
-      .sum({ planned: 'planned_qty' })
-      .sum({ produced: 'produced_qty' })
-      .first(),
-    db
-      .from('order_items')
-      .join('orders', 'orders.id', 'order_items.order_id')
-      .where('order_items.product_id', id)
-      .where('orders.status', 'confirmed')
-      .sum({ qty: 'order_items.qty' })
-      .first(),
-    ProductionJob.query()
-      .where('product_id', id)
-      .where('status', 'completed')
-      .orderBy('completed_at', 'desc'),
-    latestProductCost(id),
-  ])
+  const [attachments, productionRow, soldRow, completedJobs, costBasis, deleteBlockers] =
+    await Promise.all([
+      db
+        .from('product_attachments')
+        .where('product_id', id)
+        .orderBy('sort_order', 'asc')
+        .orderBy('id', 'asc')
+        .select(
+          'id',
+          'original_name',
+          'size_bytes',
+          'mime_type',
+          'kind',
+          'sort_order',
+          'file_key',
+          'created_at'
+        ),
+      db
+        .from('production_jobs')
+        .where('product_id', id)
+        .where('status', 'in_progress')
+        .sum({ planned: 'planned_qty' })
+        .sum({ produced: 'produced_qty' })
+        .first(),
+      db
+        .from('order_items')
+        .join('orders', 'orders.id', 'order_items.order_id')
+        .where('order_items.product_id', id)
+        .where('orders.status', 'confirmed')
+        .sum({ qty: 'order_items.qty' })
+        .first(),
+      ProductionJob.query()
+        .where('product_id', id)
+        .where('status', 'completed')
+        .orderBy('completed_at', 'desc'),
+      latestProductCost(id),
+      getDeletionBlockers('product', [id]),
+    ])
   const planned = Number(productionRow?.planned ?? 0)
   const produced = Number(productionRow?.produced ?? 0)
   const inProductionQty = Math.max(0, planned - produced)
@@ -524,6 +543,7 @@ export async function getProductShowViewModel(id: number): Promise<ProductShowDa
       soldQty,
       createdAt: product.createdAt?.toISO() ?? null,
       updatedAt: product.updatedAt?.toISO() ?? null,
+      deleteBlocker: deleteBlockers.get(id) ?? null,
     },
     images,
     files,

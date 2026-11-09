@@ -4,6 +4,9 @@ import Expense from '#models/expense'
 import ProductionJob from '#models/production_job'
 import db from '@adonisjs/lucid/services/db'
 import { DateTime } from 'luxon'
+import Material from '#models/material'
+import Component from '#models/component'
+import { getDeletionBlockers } from '#services/catalog_deletion_service'
 
 // Mirrors the union the machines pages expect; the schema column is a bare string.
 export type MachineStatus = 'idle' | 'running' | 'maintenance' | 'offline' | 'retired'
@@ -63,6 +66,47 @@ async function getMachineCost30dByMachine(): Promise<Map<number, number>> {
   return byMachine
 }
 
+type SalesMetric = {
+  soldQty: number
+  salesRevenue: number
+  productionCost: number
+  salesProfit: number
+}
+
+async function getSalesMetricsByMachine(ids: number[]): Promise<Map<number, SalesMetric>> {
+  if (ids.length === 0) return new Map()
+  const rows = await db
+    .from('production_outputs as po')
+    .innerJoin('order_item_production_allocations as a', 'a.production_output_id', 'po.id')
+    .innerJoin('order_items as oi', 'oi.id', 'a.order_item_id')
+    .innerJoin('orders as o', 'o.id', 'oi.order_id')
+    .leftJoin('invoices as i', 'i.order_id', 'o.id')
+    .whereIn('po.machine_id', ids)
+    .where('o.status', 'confirmed')
+    .groupBy('po.machine_id')
+    .select('po.machine_id')
+    .select(
+      db.raw('COALESCE(SUM(a.qty - a.returned_qty), 0) as sold_qty'),
+      db.raw(
+        `COALESCE(SUM(CASE WHEN COALESCE(i.status, 'unpaid') <> 'void'
+          THEN (a.qty - a.returned_qty) * a.unit_sale_price ELSE 0 END), 0) as sales_revenue`
+      ),
+      db.raw('COALESCE(SUM((a.qty - a.returned_qty) * a.unit_cost), 0) as production_cost')
+    )
+  const result = new Map<number, SalesMetric>()
+  for (const row of rows) {
+    const salesRevenue = Number(row.sales_revenue) || 0
+    const productionCost = Number(row.production_cost) || 0
+    result.set(Number(row.machine_id), {
+      soldQty: Number(row.sold_qty) || 0,
+      salesRevenue,
+      productionCost,
+      salesProfit: salesRevenue - productionCost,
+    })
+  }
+  return result
+}
+
 export async function getMachinesIndexViewModel(filters: IndexFilters = {}) {
   const q = (filters.q ?? '').trim()
   const status = filters.status ?? 'all'
@@ -86,6 +130,7 @@ export async function getMachinesIndexViewModel(filters: IndexFilters = {}) {
     }
     return true
   })
+  const filteredIds = filtered.map((machine) => machine.id)
 
   const expenseSums = await db
     .from('expenses')
@@ -102,16 +147,25 @@ export async function getMachinesIndexViewModel(filters: IndexFilters = {}) {
   const items = itemIds.length ? await PurchaseItem.query().whereIn('id', itemIds) : []
   const itemById = new Map(items.map((i) => [i.id, i]))
 
-  const [runMinutes30dByMachine, machineCost30dByMachine] = await Promise.all([
-    getRunMinutes30dByMachine(),
-    getMachineCost30dByMachine(),
-  ])
+  const [runMinutes30dByMachine, machineCost30dByMachine, salesMetrics, deleteBlockers] =
+    await Promise.all([
+      getRunMinutes30dByMachine(),
+      getMachineCost30dByMachine(),
+      getSalesMetricsByMachine(filteredIds),
+      getDeletionBlockers('machine', filteredIds),
+    ])
 
   return {
     machines: filtered.map((m) => {
       const item = m.purchaseItemId ? itemById.get(m.purchaseItemId) : null
-      const purchaseCost = item ? Number(item.lineTotal) : 0
+      const purchaseCost = item ? Number(item.landedUnitCost ?? item.unitCost) : null
       const expenseTotal = expensesById.get(m.id) ?? 0
+      const sales = salesMetrics.get(m.id) ?? {
+        soldQty: 0,
+        salesRevenue: 0,
+        productionCost: 0,
+        salesProfit: 0,
+      }
       return {
         id: m.id,
         name: m.name,
@@ -120,9 +174,12 @@ export async function getMachinesIndexViewModel(filters: IndexFilters = {}) {
         status: m.status as MachineStatus,
         currentJobId: m.currentJobId,
         hourlyRate: m.hourlyRate,
-        purchaseCost: String(purchaseCost),
+        purchaseCost: purchaseCost === null ? null : String(purchaseCost),
         expenseTotal: String(expenseTotal),
-        totalSpent: String(purchaseCost + expenseTotal),
+        totalSpent: purchaseCost === null ? null : String(purchaseCost + expenseTotal),
+        soldQty: sales.soldQty,
+        salesProfit: String(sales.salesProfit),
+        deleteBlocker: deleteBlockers.get(m.id) ?? null,
         acquiredAt: m.acquiredAt?.toISO() ?? null,
         runMinutes30d: runMinutes30dByMachine.get(m.id) ?? 0,
         machineCost30d: String(machineCost30dByMachine.get(m.id) ?? 0),
@@ -135,25 +192,76 @@ export async function getMachinesIndexViewModel(filters: IndexFilters = {}) {
 
 export async function getMachineShowViewModel(id: number) {
   const machine = await Machine.findOrFail(id)
-  const [jobs, expenses, item, runMinutes30dByMachine, machineCost30dByMachine, lifetimeRow] =
-    await Promise.all([
-      ProductionJob.query().where('machine_id', id).orderBy('started_at', 'desc').limit(50),
-      Expense.query().where('machine_id', id).orderBy('incurred_at', 'desc'),
-      machine.purchaseItemId ? PurchaseItem.find(machine.purchaseItemId) : null,
-      getRunMinutes30dByMachine(),
-      getMachineCost30dByMachine(),
-      // Lifetime totals aren't bounded by the 50-row job history above.
-      db
-        .from('production_jobs')
-        .where('machine_id', id)
-        .select(
-          db.raw('COALESCE(SUM(machine_minutes), 0) as minutes'),
-          db.raw('COALESCE(SUM(total_machine_cost), 0) as cost')
-        )
-        .first(),
-    ])
-  const purchaseCost = item ? Number(item.lineTotal) : 0
+  const [
+    jobs,
+    expenses,
+    item,
+    runMinutes30dByMachine,
+    machineCost30dByMachine,
+    lifetimeRow,
+    salesMetrics,
+    deleteBlockers,
+    usageRows,
+  ] = await Promise.all([
+    ProductionJob.query().where('machine_id', id).orderBy('started_at', 'desc').limit(50),
+    Expense.query().where('machine_id', id).orderBy('incurred_at', 'desc'),
+    machine.purchaseItemId ? PurchaseItem.find(machine.purchaseItemId) : null,
+    getRunMinutes30dByMachine(),
+    getMachineCost30dByMachine(),
+    // Lifetime totals aren't bounded by the 50-row job history above.
+    db
+      .from('production_jobs')
+      .where('machine_id', id)
+      .select(
+        db.raw('COALESCE(SUM(machine_minutes), 0) as minutes'),
+        db.raw('COALESCE(SUM(total_machine_cost), 0) as cost')
+      )
+      .first(),
+    getSalesMetricsByMachine([id]),
+    getDeletionBlockers('machine', [id]),
+    db
+      .from('job_material_consumptions as c')
+      .innerJoin('production_jobs as j', 'j.id', 'c.job_id')
+      .where('j.machine_id', id)
+      .groupBy('c.item_kind', 'c.item_id')
+      .select('c.item_kind', 'c.item_id')
+      .select(
+        db.raw('COALESCE(SUM(c.qty_consumed - c.qty_returned), 0) as used_qty'),
+        db.raw('COALESCE(SUM(c.qty_wasted), 0) as wasted_qty')
+      ),
+  ])
+  const purchaseCost = item ? Number(item.landedUnitCost ?? item.unitCost) : null
   const expenseTotal = expenses.reduce((s, e) => s + Number(e.amount), 0)
+  const standaloneExpenseTotal = expenses
+    .filter((expense) => expense.jobId === null)
+    .reduce((sum, expense) => sum + Number(expense.amount), 0)
+  const sales = salesMetrics.get(id) ?? {
+    soldQty: 0,
+    salesRevenue: 0,
+    productionCost: 0,
+    salesProfit: 0,
+  }
+  const materialIds = usageRows
+    .filter((row) => row.item_kind === 'material')
+    .map((row) => Number(row.item_id))
+  const componentIds = usageRows
+    .filter((row) => row.item_kind === 'component')
+    .map((row) => Number(row.item_id))
+  const [materials, components, acquisition] = await Promise.all([
+    materialIds.length ? Material.query().whereIn('id', materialIds) : Promise.resolve([]),
+    componentIds.length ? Component.query().whereIn('id', componentIds) : Promise.resolve([]),
+    machine.purchaseItemId
+      ? db
+          .from('purchase_items as pi')
+          .innerJoin('purchases as p', 'p.id', 'pi.purchase_id')
+          .innerJoin('suppliers as s', 's.id', 'p.supplier_id')
+          .where('pi.id', machine.purchaseItemId)
+          .select('p.id', 'p.number', 'p.purchased_at', 's.name as supplier_name')
+          .first()
+      : null,
+  ])
+  const materialById = new Map(materials.map((material) => [material.id, material]))
+  const componentById = new Map(components.map((component) => [component.id, component]))
   return {
     machine: {
       id: machine.id,
@@ -165,14 +273,49 @@ export async function getMachineShowViewModel(id: number) {
       notes: machine.notes,
       acquiredAt: machine.acquiredAt?.toISO() ?? null,
       hourlyRate: machine.hourlyRate,
-      purchaseCost: String(purchaseCost),
+      purchaseCost: purchaseCost === null ? null : String(purchaseCost),
       expenseTotal: String(expenseTotal),
-      totalSpent: String(purchaseCost + expenseTotal),
+      standaloneExpenseTotal: String(standaloneExpenseTotal),
+      totalSpent: purchaseCost === null ? null : String(purchaseCost + expenseTotal),
+      soldQty: sales.soldQty,
+      salesRevenue: String(sales.salesRevenue),
+      productionCost: String(sales.productionCost),
+      salesProfit: String(sales.salesProfit),
+      afterPurchaseAndExpenses:
+        purchaseCost === null
+          ? null
+          : String(sales.salesProfit - purchaseCost - standaloneExpenseTotal),
+      deleteBlocker: deleteBlockers.get(id) ?? null,
       runMinutes30d: runMinutes30dByMachine.get(machine.id) ?? 0,
       machineCost30d: String(machineCost30dByMachine.get(machine.id) ?? 0),
       lifetimeMachineMinutes: Math.round(Number(lifetimeRow?.minutes ?? 0)),
       lifetimeMachineCost: String(Number(lifetimeRow?.cost ?? 0)),
     },
+    acquisition: acquisition
+      ? {
+          purchaseId: Number(acquisition.id),
+          purchaseNumber: String(acquisition.number),
+          supplierName: String(acquisition.supplier_name),
+          purchasedAt:
+            acquisition.purchased_at instanceof Date
+              ? acquisition.purchased_at.toISOString()
+              : String(acquisition.purchased_at),
+        }
+      : null,
+    usage: usageRows.map((row) => {
+      const catalogItem =
+        row.item_kind === 'material'
+          ? materialById.get(Number(row.item_id))
+          : componentById.get(Number(row.item_id))
+      return {
+        itemKind: String(row.item_kind),
+        itemId: Number(row.item_id),
+        name: catalogItem?.name ?? `Item #${row.item_id}`,
+        unit: catalogItem?.unit ?? 'unit',
+        usedQty: String(row.used_qty),
+        wastedQty: String(row.wasted_qty),
+      }
+    }),
     jobs: jobs.map((j) => ({
       id: j.id,
       number: j.number,

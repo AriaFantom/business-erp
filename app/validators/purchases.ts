@@ -6,8 +6,10 @@ const qtyRule = vine.number().min(0.001).max(999_999_999)
 const percentRule = vine.number().min(0).max(100)
 
 const lineRule = vine.object({
-  itemKind: vine.enum(['material', 'component']),
-  itemId: vine.number().positive(),
+  itemKind: vine.enum(['material', 'component', 'machine']),
+  itemId: vine.number().positive().optional(),
+  machineName: vine.string().trim().minLength(1).maxLength(120).optional(),
+  machineModel: vine.string().trim().maxLength(120).optional(),
   qty: qtyRule,
   unitCost: moneyRule,
   taxRatePct: percentRule.optional(),

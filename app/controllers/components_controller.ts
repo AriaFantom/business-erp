@@ -9,6 +9,8 @@ import { getComponentsViewModel } from '#services/catalog_view_models'
 import { audit } from '#services/audit'
 import { storeCatalogImage, removeCatalogImage } from '#services/catalog_image_storage'
 import { streamStoredObject, IMMUTABLE_PRIVATE } from '#services/file_streaming'
+import { deleteUnusedCatalogItem } from '#services/catalog_deletion_service'
+import { DomainError } from '#services/domain_errors'
 
 export default class ComponentsController {
   async index({ request, inertia, bouncer }: HttpContext) {
@@ -119,6 +121,21 @@ export default class ComponentsController {
     })
     session.flash('success', 'Component updated.')
     return response.redirect().back()
+  }
+
+  async destroy({ params, auth, bouncer, response, session }: HttpContext) {
+    await bouncer.authorize('components.delete' as never)
+    try {
+      await deleteUnusedCatalogItem('component', Number(params.id), auth.user!)
+      session.flash('success', 'Unused component deleted permanently.')
+    } catch (error) {
+      if (error instanceof DomainError) {
+        session.flash('error', error.message)
+        return response.redirect().back()
+      }
+      throw error
+    }
+    return response.redirect().toPath('/catalog/components')
   }
 
   async archive({ params, auth, bouncer, response, session }: HttpContext) {

@@ -1,5 +1,5 @@
 import { type ReactElement, useState } from 'react'
-import { router, useForm } from '@inertiajs/react'
+import { router, useForm, usePage } from '@inertiajs/react'
 import { Link } from '@adonisjs/inertia/react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -28,6 +28,8 @@ import { Package, CheckCircle2, XCircle } from 'lucide-react'
 import { ColumnVisibilityMenu, type ColumnDef } from '@/components/data-table/column-visibility'
 import { useColumnVisibility } from '@/hooks/use-column-visibility'
 import { EmptyState } from '@/components/empty-state'
+import { DeletePermanentlyAction } from '@/components/catalog/delete-permanently-action'
+import type { InertiaProps } from '@/types'
 
 type Row = {
   id: number
@@ -42,6 +44,7 @@ type Row = {
   inProductionQty: number
   soldQty: number
   attachmentCount: number
+  deleteBlocker: string | null
 }
 
 type Filters = { q: string; status: string; categoryId: string }
@@ -115,6 +118,8 @@ const PRODUCT_COLUMNS: ColumnDef[] = [
 ]
 
 export default function ProductsPage({ products, categories, filters, counts }: PageProps) {
+  const { user } = usePage<InertiaProps<PageProps>>().props
+  const canDelete = Boolean(user?.isOwner || user?.permissions?.includes('products.delete'))
   const { isVisible, toggle, reset } = useColumnVisibility('catalog.products')
   const baseQs =
     filters.categoryId && filters.categoryId !== 'all' ? `&categoryId=${filters.categoryId}` : ''
@@ -297,6 +302,13 @@ export default function ProductsPage({ products, categories, filters, counts }: 
                             <RestoreAction
                               path={`/catalog/products/${p.id}/restore`}
                               name={p.name}
+                            />
+                          )}
+                          {canDelete && (
+                            <DeletePermanentlyAction
+                              path={`/catalog/products/${p.id}/delete`}
+                              name={p.name}
+                              blockedReason={p.deleteBlocker}
                             />
                           )}
                         </div>

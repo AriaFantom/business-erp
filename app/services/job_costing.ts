@@ -15,6 +15,7 @@ import JobWorker from '#models/job_worker'
 import ProductionJobStage from '#models/production_job_stage'
 import type User from '#models/user'
 import { applyMovement, invalidateSnapshotCache } from '#services/inventory_service'
+import { recordProductionOutput } from '#services/production_sales_tracking'
 import { effectiveHourlyRate } from '#services/worker_service'
 import { audit } from '#services/audit'
 import { nextDocNumber } from '#services/numbering'
@@ -739,6 +740,15 @@ export async function completeJobInTrx(
     referenceId: refreshed.id,
     note: null,
     actor,
+    trx,
+  })
+  await recordProductionOutput({
+    jobId: refreshed.id,
+    productId: refreshed.productId,
+    machineId: refreshed.machineId,
+    producedQty,
+    unitCost: perUnitCost,
+    producedAt: completedAt,
     trx,
   })
   await freeMachine(refreshed, trx)

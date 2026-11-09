@@ -21,6 +21,7 @@ import { formatMoney, useCurrency } from '@/lib/currency'
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -34,10 +35,12 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import DashboardLayout from '@/layouts/dashboard-layout'
+import { DeletePermanentlyAction } from '@/components/catalog/delete-permanently-action'
+import type { InertiaProps } from '@/types'
 
 type MachineStatus = 'idle' | 'running' | 'maintenance' | 'offline' | 'retired'
 
-interface MachineDetail {
+type MachineDetail = {
   id: number
   name: string
   model: string | null
@@ -47,15 +50,22 @@ interface MachineDetail {
   notes: string | null
   acquiredAt: string | null
   hourlyRate: string
-  purchaseCost: string
+  purchaseCost: string | null
   expenseTotal: string
-  totalSpent: string
+  standaloneExpenseTotal: string
+  totalSpent: string | null
+  soldQty: number
+  salesRevenue: string
+  productionCost: string
+  salesProfit: string
+  afterPurchaseAndExpenses: string | null
+  deleteBlocker: string | null
   runMinutes30d: number
   machineCost30d: string
   lifetimeMachineMinutes: number
   lifetimeMachineCost: string
 }
-interface JobRow {
+type JobRow = {
   id: number
   number: string
   status: string
@@ -63,12 +73,26 @@ interface JobRow {
   completedAt: string | null
   totalCost: string
 }
-interface ExpenseRow {
+type ExpenseRow = {
   id: number
   kind: string
   description: string
   amount: string
   incurredAt: string
+}
+type UsageRow = {
+  itemKind: string
+  itemId: number
+  name: string
+  unit: string
+  usedQty: string
+  wastedQty: string
+}
+type Acquisition = {
+  purchaseId: number
+  purchaseNumber: string
+  supplierName: string
+  purchasedAt: string
 }
 
 const STATUS_VARIANT: Record<MachineStatus, 'default' | 'secondary' | 'outline' | 'destructive'> = {
@@ -211,10 +235,12 @@ function AddExpenseDialog({ machineId }: { machineId: number }) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="maintenance">Maintenance</SelectItem>
-                <SelectItem value="parts">Parts</SelectItem>
-                <SelectItem value="addon">Add-on</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
+                <SelectGroup>
+                  <SelectItem value="maintenance">Maintenance</SelectItem>
+                  <SelectItem value="parts">Parts</SelectItem>
+                  <SelectItem value="addon">Add-on</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectGroup>
               </SelectContent>
             </Select>
             {errors.kind && <span className="text-xs text-destructive">{errors.kind}</span>}
@@ -294,10 +320,96 @@ function PostAction({
   )
 }
 
+const UNIT_FAMILIES: Record<string, { unit: string; factor: number }[]> = {
+  mg: [
+    { unit: 'mg', factor: 0.001 },
+    { unit: 'g', factor: 1 },
+    { unit: 'kg', factor: 1000 },
+  ],
+  g: [
+    { unit: 'mg', factor: 0.001 },
+    { unit: 'g', factor: 1 },
+    { unit: 'kg', factor: 1000 },
+  ],
+  kg: [
+    { unit: 'mg', factor: 0.001 },
+    { unit: 'g', factor: 1 },
+    { unit: 'kg', factor: 1000 },
+  ],
+  ml: [
+    { unit: 'ml', factor: 1 },
+    { unit: 'l', factor: 1000 },
+  ],
+  l: [
+    { unit: 'ml', factor: 1 },
+    { unit: 'l', factor: 1000 },
+  ],
+  mm: [
+    { unit: 'mm', factor: 0.001 },
+    { unit: 'cm', factor: 0.01 },
+    { unit: 'm', factor: 1 },
+  ],
+  cm: [
+    { unit: 'mm', factor: 0.001 },
+    { unit: 'cm', factor: 0.01 },
+    { unit: 'm', factor: 1 },
+  ],
+  m: [
+    { unit: 'mm', factor: 0.001 },
+    { unit: 'cm', factor: 0.01 },
+    { unit: 'm', factor: 1 },
+  ],
+}
+
+function QuantityWithUnit({ quantity, storedUnit }: { quantity: string; storedUnit: string }) {
+  const stored = storedUnit.toLowerCase()
+  const family = UNIT_FAMILIES[stored]
+  const [unit, setUnit] = useState(stored)
+  const storedFactor = family?.find((option) => option.unit === stored)?.factor ?? 1
+  const selectedFactor = family?.find((option) => option.unit === unit)?.factor ?? 1
+  const formatted = ((Number(quantity) * storedFactor) / selectedFactor).toLocaleString(undefined, {
+    maximumFractionDigits: 9,
+  })
+
+  if (!family)
+    return (
+      <span className="tabular-nums">
+        {formatted} {storedUnit}
+      </span>
+    )
+  return (
+    <div className="flex items-center justify-end gap-2">
+      <span className="tabular-nums">{formatted}</span>
+      <Select value={unit} onValueChange={setUnit}>
+        <SelectTrigger className="h-8 w-20">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            {family.map((option) => (
+              <SelectItem key={option.unit} value={option.unit}>
+                {option.unit}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+    </div>
+  )
+}
+
 export default function MachineShow() {
   const currency = useCurrency()
-  const { props } = usePage<{ machine: MachineDetail; jobs: JobRow[]; expenses: ExpenseRow[] }>()
-  const { machine, jobs, expenses } = props
+  type PageProps = {
+    machine: MachineDetail
+    jobs: JobRow[]
+    expenses: ExpenseRow[]
+    usage: UsageRow[]
+    acquisition: Acquisition | null
+  }
+  const { props } = usePage<InertiaProps<PageProps>>()
+  const { machine, jobs, expenses, usage, acquisition, user } = props
+  const canDelete = Boolean(user?.isOwner || user?.permissions?.includes('machines.delete'))
   const isRetired = machine.status === 'retired'
 
   return (
@@ -329,6 +441,13 @@ export default function MachineShow() {
                 variant="outline"
               />
             )}
+            {canDelete && (
+              <DeletePermanentlyAction
+                path={`/machines/${machine.id}/delete`}
+                name={machine.name}
+                blockedReason={machine.deleteBlocker}
+              />
+            )}
             {!isRetired && (
               <PostAction
                 path={`/machines/${machine.id}/retire`}
@@ -345,41 +464,136 @@ export default function MachineShow() {
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Purchase cost
+              Acquisition cost
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold tabular-nums">{machine.purchaseCost}</p>
-            {machine.acquiredAt && (
+            <p className="text-2xl font-semibold tabular-nums">
+              {machine.purchaseCost === null
+                ? 'Not recorded'
+                : formatMoney(machine.purchaseCost, currency)}
+            </p>
+            {acquisition ? (
+              <p className="text-xs text-muted-foreground">
+                <Link href={`/purchases/${acquisition.purchaseId}`} className="hover:underline">
+                  {acquisition.purchaseNumber}
+                </Link>{' '}
+                · {acquisition.supplierName}
+              </p>
+            ) : machine.acquiredAt ? (
               <p className="text-xs text-muted-foreground">
                 Acquired {machine.acquiredAt.slice(0, 10)}
               </p>
-            )}
+            ) : null}
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Lifetime expenses
+              Sales profit
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold tabular-nums">{machine.expenseTotal}</p>
+            <p className="text-2xl font-semibold tabular-nums">
+              {formatMoney(machine.salesProfit, currency)}
+            </p>
             <p className="text-xs text-muted-foreground">
-              Maintenance, parts, and add-ons over time
+              Sales excluding tax − tracked production cost
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total spent</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              After purchase and expenses
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold tabular-nums">{machine.totalSpent}</p>
-            <p className="text-xs text-muted-foreground">Purchase + expenses</p>
+            <p className="text-2xl font-semibold tabular-nums">
+              {machine.afterPurchaseAndExpenses === null
+                ? 'Not available'
+                : formatMoney(machine.afterPurchaseAndExpenses, currency)}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Sales profit − acquisition − standalone expenses
+            </p>
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Tracked sales</CardTitle>
+          <CardDescription>
+            Starts from this rollout and uses each job’s captured production cost.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-4">
+          <div>
+            <p className="text-xs text-muted-foreground">Sold quantity</p>
+            <p className="text-xl font-semibold tabular-nums">{machine.soldQty}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Sales revenue</p>
+            <p className="text-xl font-semibold tabular-nums">
+              {formatMoney(machine.salesRevenue, currency)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Production cost</p>
+            <p className="text-xl font-semibold tabular-nums">
+              {formatMoney(machine.productionCost, currency)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Standalone expenses</p>
+            <p className="text-xl font-semibold tabular-nums">
+              {formatMoney(machine.standaloneExpenseTotal, currency)}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Material and component usage</CardTitle>
+          <CardDescription>
+            Lifetime usage with returns deducted; waste is separate.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {usage.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No tracked consumption yet.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Item</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="text-right">Used</TableHead>
+                  <TableHead className="text-right">Waste</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {usage.map((row) => (
+                  <TableRow key={`${row.itemKind}-${row.itemId}`}>
+                    <TableCell className="font-medium">{row.name}</TableCell>
+                    <TableCell className="capitalize text-muted-foreground">
+                      {row.itemKind}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <QuantityWithUnit quantity={row.usedQty} storedUnit={row.unit} />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <QuantityWithUnit quantity={row.wastedQty} storedUnit={row.unit} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <Card>

@@ -11,6 +11,7 @@ import { audit } from '#services/audit'
 import { nextDocNumber } from '#services/numbering'
 import { generateInvoiceForOrder } from '#services/invoice_service'
 import { applyMovement, invalidateSnapshotCache } from '#services/inventory_service'
+import { allocateSaleToProduction } from '#services/production_sales_tracking'
 import { DomainError, InvalidStateError } from '#services/domain_errors'
 import { resolveOrderLinePricing } from '#services/pricing'
 
@@ -160,6 +161,13 @@ export async function completePosOrder(input: {
         referenceId: order.id,
         note: null,
         actor: input.actor,
+        trx,
+      })
+      await allocateSaleToProduction({
+        orderItemId: item.id,
+        productId: l.productId,
+        qty: l.qty,
+        unitSalePrice: l.unitPrice,
         trx,
       })
     }

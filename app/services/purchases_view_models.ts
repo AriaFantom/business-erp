@@ -151,13 +151,20 @@ export async function getPurchaseShowViewModel(id: number) {
       cancelledAt: purchase.cancelledAt?.toISO() ?? null,
     },
     items: items.map((it) => {
-      const item = it.itemKind === 'material' ? matById.get(it.itemId) : compById.get(it.itemId)
+      const item =
+        it.itemKind === 'material'
+          ? matById.get(it.itemId)
+          : it.itemKind === 'component'
+            ? compById.get(it.itemId)
+            : null
+      const machineName = String(it.$getAttribute('machineName') ?? '')
+      const machineModel = String(it.$getAttribute('machineModel') ?? '')
       return {
         id: it.id,
         itemKind: it.itemKind,
         itemId: it.itemId,
-        itemName: item?.name ?? '—',
-        itemSku: item?.sku ?? '—',
+        itemName: it.itemKind === 'machine' ? machineName || 'Machine' : (item?.name ?? '—'),
+        itemSku: it.itemKind === 'machine' ? machineModel || 'No model' : (item?.sku ?? '—'),
         qty: it.qty,
         unitCost: it.unitCost,
         taxRatePct: it.taxRatePct,

@@ -1,5 +1,5 @@
 import { type ReactElement, useState } from 'react'
-import { useForm } from '@inertiajs/react'
+import { useForm, usePage } from '@inertiajs/react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -41,6 +42,9 @@ import { useColumnVisibility } from '@/hooks/use-column-visibility'
 import { EmptyState } from '@/components/empty-state'
 import { SkuField } from '@/components/catalog/sku-field'
 import { formatMoney, useCurrency } from '@/lib/currency'
+import { EditItemNameDialog } from '@/components/catalog/edit-item-name-dialog'
+import { DeletePermanentlyAction } from '@/components/catalog/delete-permanently-action'
+import type { InertiaProps } from '@/types'
 
 type Row = {
   id: number
@@ -53,6 +57,7 @@ type Row = {
   defaultSupplier: { id: number; name: string } | null
   imageUrl: string | null
   isActive: boolean
+  deleteBlocker: string | null
 }
 
 type SupplierOpt = { id: number; name: string }
@@ -151,9 +156,11 @@ function NewMaterialDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="filament">Filament</SelectItem>
-                  <SelectItem value="resin">Resin</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                  <SelectGroup>
+                    <SelectItem value="filament">Filament</SelectItem>
+                    <SelectItem value="resin">Resin</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </Field>
@@ -170,11 +177,13 @@ function NewMaterialDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
                 <SelectValue placeholder="None" />
               </SelectTrigger>
               <SelectContent>
-                {suppliers.map((s) => (
-                  <SelectItem key={s.id} value={String(s.id)}>
-                    {s.name}
-                  </SelectItem>
-                ))}
+                <SelectGroup>
+                  {suppliers.map((s) => (
+                    <SelectItem key={s.id} value={String(s.id)}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
           </Field>
@@ -284,6 +293,10 @@ const MATERIAL_COLUMNS: ColumnDef[] = [
 
 export default function MaterialsPage({ materials, suppliers, filters, counts }: PageProps) {
   const currency = useCurrency()
+  const { user } = usePage<InertiaProps<PageProps>>().props
+  const canEdit = Boolean(user?.isOwner || user?.permissions?.includes('materials.update'))
+  const canDelete = Boolean(user?.isOwner || user?.permissions?.includes('materials.delete'))
+  const [editing, setEditing] = useState<Row | null>(null)
   const { isVisible, toggle, reset } = useColumnVisibility('catalog.materials')
   const archivedHref = `/catalog/materials?status=archived${filters.type && filters.type !== 'all' ? `&type=${filters.type}` : ''}`
   const activeHref = `/catalog/materials?status=active${filters.type && filters.type !== 'all' ? `&type=${filters.type}` : ''}`
@@ -433,6 +446,11 @@ export default function MaterialsPage({ materials, suppliers, filters, counts }:
                     {isVisible('actions') && (
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
+                          {canEdit && (
+                            <Button variant="outline" size="sm" onClick={() => setEditing(m)}>
+                              Edit name
+                            </Button>
+                          )}
                           {m.isActive ? (
                             <ArchiveAction
                               path={`/catalog/materials/${m.id}/archive`}
@@ -442,6 +460,13 @@ export default function MaterialsPage({ materials, suppliers, filters, counts }:
                             <RestoreAction
                               path={`/catalog/materials/${m.id}/restore`}
                               name={m.name}
+                            />
+                          )}
+                          {canDelete && (
+                            <DeletePermanentlyAction
+                              path={`/catalog/materials/${m.id}/delete`}
+                              name={m.name}
+                              blockedReason={m.deleteBlocker}
                             />
                           )}
                         </div>
@@ -454,6 +479,16 @@ export default function MaterialsPage({ materials, suppliers, filters, counts }:
           )}
         </CardContent>
       </Card>
+      {editing && (
+        <EditItemNameDialog
+          kind="material"
+          id={editing.id}
+          name={editing.name}
+          sku={editing.sku}
+          open
+          onOpenChange={(open) => !open && setEditing(null)}
+        />
+      )}
     </div>
   )
 }

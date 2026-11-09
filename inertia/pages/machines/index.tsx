@@ -27,6 +27,7 @@ import DashboardLayout from '@/layouts/dashboard-layout'
 import { CheckCircle2, CircleSlash, Cpu, Play, Wrench, XCircle } from 'lucide-react'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
+import { formatMoney, useCurrency } from '@/lib/currency'
 
 type MachineStatus = 'idle' | 'running' | 'maintenance' | 'offline' | 'retired'
 
@@ -38,11 +39,9 @@ type Row = {
   status: MachineStatus
   currentJobId: number | null
   hourlyRate: string
-  purchaseCost: string
-  expenseTotal: string
-  totalSpent: string
-  runMinutes30d: number
-  machineCost30d: string
+  purchaseCost: string | null
+  soldQty: number
+  salesProfit: string
 }
 
 type Filters = { q: string; status: string }
@@ -157,13 +156,6 @@ function NewMachineDialog() {
   )
 }
 
-function formatMinutes(totalMinutes: number): string {
-  const h = Math.floor(totalMinutes / 60)
-  const m = totalMinutes % 60
-  if (h === 0) return `${m}m`
-  return `${h}h ${m}m`
-}
-
 function Field({
   label,
   value,
@@ -187,6 +179,7 @@ function Field({
 }
 
 export default function MachinesIndex({ machines, filters, counts }: PageProps) {
+  const currency = useCurrency()
   return (
     <div className="flex w-full flex-col gap-6 px-6 py-8">
       <Head title="Machines" />
@@ -286,10 +279,9 @@ export default function MachinesIndex({ machines, filters, counts }: PageProps) 
                   <TableHead>Status</TableHead>
                   <TableHead>Current job</TableHead>
                   <TableHead className="text-right">Purchase</TableHead>
-                  <TableHead className="text-right">Expenses</TableHead>
-                  <TableHead className="text-right">Total spent</TableHead>
-                  <TableHead className="text-right">Run time (30d)</TableHead>
-                  <TableHead className="text-right">Recovered (30d)</TableHead>
+                  <TableHead className="text-right">Sold</TableHead>
+                  <TableHead className="text-right">Sales profit</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -319,15 +311,20 @@ export default function MachinesIndex({ machines, filters, counts }: PageProps) 
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">{m.purchaseCost}</TableCell>
-                    <TableCell className="text-right tabular-nums">{m.expenseTotal}</TableCell>
-                    <TableCell className="text-right font-medium tabular-nums">
-                      {m.totalSpent}
-                    </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {formatMinutes(m.runMinutes30d)}
+                      {m.purchaseCost === null
+                        ? 'Not recorded'
+                        : formatMoney(m.purchaseCost, currency)}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">{m.machineCost30d}</TableCell>
+                    <TableCell className="text-right tabular-nums">{m.soldQty}</TableCell>
+                    <TableCell className="text-right font-medium tabular-nums">
+                      {formatMoney(m.salesProfit, currency)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button asChild variant="outline" size="sm">
+                        <Link href={`/machines/${m.id}`}>View details</Link>
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

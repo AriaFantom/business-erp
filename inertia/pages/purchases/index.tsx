@@ -17,6 +17,7 @@ import { Separator } from '@/components/ui/separator'
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -34,7 +35,7 @@ import { EmptyState } from '@/components/empty-state'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
-import { CheckCircle2, ExternalLink, Truck, XCircle } from 'lucide-react'
+import { CheckCircle2, ExternalLink, Plus, Truck, XCircle } from 'lucide-react'
 import { ColumnVisibilityMenu, type ColumnDef } from '@/components/data-table/column-visibility'
 import { useColumnVisibility } from '@/hooks/use-column-visibility'
 import { formatMoney, useCurrency } from '@/lib/currency'
@@ -72,8 +73,10 @@ type PageProps = {
 }
 
 type LineDraft = {
-  itemKind: 'material' | 'component'
-  itemId: number
+  itemKind: 'material' | 'component' | 'machine'
+  itemId?: number
+  machineName?: string
+  machineModel?: string
   qty: number
   unitCost: number
 }
@@ -119,6 +122,12 @@ function NewPurchaseDialog({
       data.items.filter((_, i) => i !== idx)
     )
 
+  const addMachineLine = () =>
+    setData('items', [
+      ...data.items,
+      { itemKind: 'machine', machineName: '', machineModel: '', qty: 1, unitCost: 0 },
+    ])
+
   const updateLine = (idx: number, patch: Partial<LineDraft>) =>
     setData(
       'items',
@@ -162,11 +171,13 @@ function NewPurchaseDialog({
                   <SelectValue placeholder="Pick supplier" />
                 </SelectTrigger>
                 <SelectContent>
-                  {suppliers.map((s) => (
-                    <SelectItem key={s.id} value={String(s.id)}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
+                  <SelectGroup>
+                    {suppliers.map((s) => (
+                      <SelectItem key={s.id} value={String(s.id)}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </Field>
@@ -189,17 +200,19 @@ function NewPurchaseDialog({
           <div className="rounded border p-3">
             <div className="mb-3 flex flex-col gap-2">
               <span className="text-sm font-medium">Add line</span>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <Select onValueChange={(v) => addLine('material', Number(v))}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Add material…" />
                   </SelectTrigger>
                   <SelectContent>
-                    {materials.map((m) => (
-                      <SelectItem key={m.id} value={String(m.id)}>
-                        {m.name} ({m.sku})
-                      </SelectItem>
-                    ))}
+                    <SelectGroup>
+                      {materials.map((m) => (
+                        <SelectItem key={m.id} value={String(m.id)}>
+                          {m.name} ({m.sku})
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
                   </SelectContent>
                 </Select>
                 <Select onValueChange={(v) => addLine('component', Number(v))}>
@@ -207,13 +220,19 @@ function NewPurchaseDialog({
                     <SelectValue placeholder="Add component…" />
                   </SelectTrigger>
                   <SelectContent>
-                    {components.map((c) => (
-                      <SelectItem key={c.id} value={String(c.id)}>
-                        {c.name} ({c.sku})
-                      </SelectItem>
-                    ))}
+                    <SelectGroup>
+                      {components.map((c) => (
+                        <SelectItem key={c.id} value={String(c.id)}>
+                          {c.name} ({c.sku})
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
                   </SelectContent>
                 </Select>
+                <Button type="button" variant="outline" onClick={addMachineLine}>
+                  <Plus data-icon="inline-start" />
+                  Add machine
+                </Button>
               </div>
             </div>
 
@@ -233,11 +252,34 @@ function NewPurchaseDialog({
                   <TableBody>
                     {data.items.map((ln, i) => {
                       const pool = ln.itemKind === 'material' ? materials : components
-                      const it = pool.find((p) => p.id === ln.itemId)
+                      const it =
+                        ln.itemKind === 'machine' ? undefined : pool.find((p) => p.id === ln.itemId)
                       return (
                         <TableRow key={i}>
                           <TableCell className="text-sm">
-                            [{ln.itemKind}] {it?.name ?? '—'}
+                            {ln.itemKind === 'machine' ? (
+                              <div className="grid min-w-48 gap-2">
+                                <Input
+                                  aria-label={`Machine line ${i + 1} name`}
+                                  placeholder="Machine name"
+                                  maxLength={120}
+                                  required
+                                  value={ln.machineName ?? ''}
+                                  onChange={(e) => updateLine(i, { machineName: e.target.value })}
+                                />
+                                <Input
+                                  aria-label={`Machine line ${i + 1} model`}
+                                  placeholder="Model (optional)"
+                                  maxLength={120}
+                                  value={ln.machineModel ?? ''}
+                                  onChange={(e) => updateLine(i, { machineModel: e.target.value })}
+                                />
+                              </div>
+                            ) : (
+                              <>
+                                [{ln.itemKind}] {it?.name ?? '—'}
+                              </>
+                            )}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
@@ -245,13 +287,14 @@ function NewPurchaseDialog({
                                 aria-label={`Line ${i + 1} quantity`}
                                 placeholder="Qty"
                                 type="number"
-                                step="0.001"
+                                step={ln.itemKind === 'machine' ? '1' : '0.001'}
+                                min={ln.itemKind === 'machine' ? 1 : 0.001}
                                 value={ln.qty}
                                 onChange={(e) => updateLine(i, { qty: Number(e.target.value) })}
                                 className="w-24"
                               />
                               <span className="text-xs text-muted-foreground">
-                                {it?.unit ?? ''}
+                                {ln.itemKind === 'machine' ? 'pcs' : (it?.unit ?? '')}
                               </span>
                             </div>
                           </TableCell>
@@ -269,7 +312,7 @@ function NewPurchaseDialog({
                                 className="w-28"
                               />
                               <span className="text-xs text-muted-foreground">
-                                /{it?.unit ?? ''}
+                                /{ln.itemKind === 'machine' ? 'machine' : (it?.unit ?? '')}
                               </span>
                             </div>
                           </TableCell>

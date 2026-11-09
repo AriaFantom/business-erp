@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 type Props = {
-  kind: 'product' | 'component'
+  kind: 'product' | 'component' | 'material'
   id: number
   name: string
   sku: string
@@ -31,8 +31,8 @@ export function EditItemNameDialog({ kind, id, name, sku, open, onOpenChange }: 
     setData('name', name)
   }, [open, id, name])
 
-  const label = kind === 'product' ? 'product' : 'component'
-  const path = kind === 'product' ? 'products' : 'components'
+  const label = kind
+  const path = kind === 'product' ? 'products' : kind === 'component' ? 'components' : 'materials'
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

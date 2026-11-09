@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -43,6 +44,7 @@ import { SkuField } from '@/components/catalog/sku-field'
 import { EditItemNameDialog } from '@/components/catalog/edit-item-name-dialog'
 import { formatMoney, useCurrency } from '@/lib/currency'
 import type { InertiaProps } from '@/types'
+import { DeletePermanentlyAction } from '@/components/catalog/delete-permanently-action'
 
 type Row = {
   id: number
@@ -54,6 +56,7 @@ type Row = {
   defaultSupplier: { id: number; name: string } | null
   imageUrl: string | null
   isActive: boolean
+  deleteBlocker: string | null
 }
 
 type SupplierOpt = { id: number; name: string }
@@ -156,11 +159,13 @@ function NewComponentDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
                   <SelectValue placeholder="None" />
                 </SelectTrigger>
                 <SelectContent>
-                  {suppliers.map((s) => (
-                    <SelectItem key={s.id} value={String(s.id)}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
+                  <SelectGroup>
+                    {suppliers.map((s) => (
+                      <SelectItem key={s.id} value={String(s.id)}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </Field>
@@ -271,6 +276,7 @@ export default function ComponentsPage({ components, suppliers, filters, counts 
   const currency = useCurrency()
   const { user } = usePage<InertiaProps<PageProps>>().props
   const canEdit = Boolean(user?.isOwner || user?.permissions?.includes('components.update'))
+  const canDelete = Boolean(user?.isOwner || user?.permissions?.includes('components.delete'))
   const [editing, setEditing] = useState<Row | null>(null)
   const { isVisible, toggle, reset } = useColumnVisibility('catalog.components')
   return (
@@ -410,6 +416,13 @@ export default function ComponentsPage({ components, suppliers, filters, counts 
                             <Button variant="outline" size="sm" onClick={() => setEditing(c)}>
                               Edit name
                             </Button>
+                          )}
+                          {canDelete && (
+                            <DeletePermanentlyAction
+                              path={`/catalog/components/${c.id}/delete`}
+                              name={c.name}
+                              blockedReason={c.deleteBlocker}
+                            />
                           )}
                           {c.isActive ? (
                             <ArchiveAction

@@ -12,6 +12,7 @@ import { generateInvoiceForOrder } from '#services/invoice_service'
 import { applyMovement, invalidateSnapshotCache } from '#services/inventory_service'
 import { DomainError, InvalidStateError } from '#services/domain_errors'
 import { resolveOrderLinePricing, type OrderLineInput } from '#services/pricing'
+import { allocateSaleToProduction } from '#services/production_sales_tracking'
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100
@@ -231,6 +232,13 @@ export async function confirmOrder(orderId: number, actor: User): Promise<Order>
         referenceId: order.id,
         note: null,
         actor,
+        trx,
+      })
+      await allocateSaleToProduction({
+        orderItemId: it.id,
+        productId: it.productId,
+        qty: Number(it.qty),
+        unitSalePrice: Number(it.unitPrice),
         trx,
       })
     }

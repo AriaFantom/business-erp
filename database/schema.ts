@@ -194,10 +194,14 @@ export class IdempotencyKeySchema extends BaseModel {
 }
 
 export class InventorySchema extends BaseModel {
-  static $columns = ['avgUnitCost', 'createdAt', 'id', 'itemId', 'itemKind', 'qty', 'updatedAt'] as const
+  static $columns = ['avgUnitCost', 'catalogProductId', 'componentId', 'createdAt', 'id', 'itemId', 'itemKind', 'materialId', 'qty', 'updatedAt'] as const
   $columns = InventorySchema.$columns
   @column()
   declare avgUnitCost: string
+  @column()
+  declare catalogProductId: number | null
+  @column()
+  declare componentId: number | null
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column({ isPrimary: true })
@@ -206,6 +210,8 @@ export class InventorySchema extends BaseModel {
   declare itemId: number
   @column()
   declare itemKind: string
+  @column()
+  declare materialId: number | null
   @column()
   declare qty: string
   @column.dateTime({ autoCreate: true, autoUpdate: true })
@@ -337,8 +343,12 @@ export class InvoiceSchema extends BaseModel {
 }
 
 export class JobMaterialConsumptionSchema extends BaseModel {
-  static $columns = ['createdAt', 'createdByUserId', 'id', 'itemId', 'itemKind', 'jobId', 'lineCost', 'qtyConsumed', 'qtyReturned', 'qtyWasted', 'reason', 'unitCostAtConsume'] as const
+  static $columns = ['catalogProductId', 'componentId', 'createdAt', 'createdByUserId', 'id', 'itemId', 'itemKind', 'jobId', 'lineCost', 'materialId', 'qtyConsumed', 'qtyReturned', 'qtyWasted', 'reason', 'unitCostAtConsume'] as const
   $columns = JobMaterialConsumptionSchema.$columns
+  @column()
+  declare catalogProductId: number | null
+  @column()
+  declare componentId: number | null
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column()
@@ -353,6 +363,8 @@ export class JobMaterialConsumptionSchema extends BaseModel {
   declare jobId: number
   @column()
   declare lineCost: string
+  @column()
+  declare materialId: number | null
   @column()
   declare qtyConsumed: string
   @column()
@@ -444,6 +456,29 @@ export class MaterialSchema extends BaseModel {
   declare type: string
   @column()
   declare unit: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
+export class OrderItemProductionAllocationSchema extends BaseModel {
+  static $columns = ['createdAt', 'id', 'orderItemId', 'productionOutputId', 'qty', 'returnedQty', 'unitCost', 'unitSalePrice', 'updatedAt'] as const
+  $columns = OrderItemProductionAllocationSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare orderItemId: number
+  @column()
+  declare productionOutputId: number
+  @column()
+  declare qty: number
+  @column()
+  declare returnedQty: number
+  @column()
+  declare unitCost: string
+  @column()
+  declare unitSalePrice: string
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
 }
@@ -621,8 +656,12 @@ export class ProductCategorySchema extends BaseModel {
 }
 
 export class ProductRecipeSchema extends BaseModel {
-  static $columns = ['createdAt', 'id', 'isCurrent', 'itemId', 'itemKind', 'learnedFromJobId', 'productId', 'qtyPerUnit', 'updatedAt', 'version'] as const
+  static $columns = ['catalogProductId', 'componentId', 'createdAt', 'id', 'isCurrent', 'itemId', 'itemKind', 'learnedFromJobId', 'materialId', 'productId', 'qtyPerUnit', 'updatedAt', 'version'] as const
   $columns = ProductRecipeSchema.$columns
+  @column()
+  declare catalogProductId: number | null
+  @column()
+  declare componentId: number | null
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column({ isPrimary: true })
@@ -635,6 +674,8 @@ export class ProductRecipeSchema extends BaseModel {
   declare itemKind: string
   @column()
   declare learnedFromJobId: number | null
+  @column()
+  declare materialId: number | null
   @column()
   declare productId: number
   @column()
@@ -735,6 +776,31 @@ export class ProductionJobSchema extends BaseModel {
   declare updatedAt: DateTime
 }
 
+export class ProductionOutputSchema extends BaseModel {
+  static $columns = ['availableQty', 'createdAt', 'id', 'jobId', 'machineId', 'producedAt', 'producedQty', 'productId', 'unitCost', 'updatedAt'] as const
+  $columns = ProductionOutputSchema.$columns
+  @column()
+  declare availableQty: number
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare jobId: number
+  @column()
+  declare machineId: number | null
+  @column.dateTime()
+  declare producedAt: DateTime
+  @column()
+  declare producedQty: number
+  @column()
+  declare productId: number
+  @column()
+  declare unitCost: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
 export class ProductSchema extends BaseModel {
   static $columns = ['categoryId', 'createdAt', 'defaultProfitPct', 'defaultSalePrice', 'defaultSalePriceSetAt', 'defaultSalePriceSetByUserId', 'defaultSalePriceSourceJobId', 'description', 'id', 'imageKey', 'isActive', 'name', 'sku', 'taxRatePct', 'updatedAt'] as const
   $columns = ProductSchema.$columns
@@ -771,12 +837,16 @@ export class ProductSchema extends BaseModel {
 }
 
 export class PurchaseItemSchema extends BaseModel {
-  static $columns = ['allocatedShipping', 'allocatedTax', 'createdAt', 'id', 'itemId', 'itemKind', 'landedUnitCost', 'lineSubtotal', 'lineTax', 'lineTotal', 'purchaseId', 'qty', 'taxRatePct', 'unitCost', 'updatedAt'] as const
+  static $columns = ['allocatedShipping', 'allocatedTax', 'catalogProductId', 'componentId', 'createdAt', 'id', 'itemId', 'itemKind', 'landedUnitCost', 'lineSubtotal', 'lineTax', 'lineTotal', 'machineModel', 'machineName', 'materialId', 'purchaseId', 'qty', 'taxRatePct', 'unitCost', 'updatedAt'] as const
   $columns = PurchaseItemSchema.$columns
   @column()
   declare allocatedShipping: string
   @column()
   declare allocatedTax: string
+  @column()
+  declare catalogProductId: number | null
+  @column()
+  declare componentId: number | null
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column({ isPrimary: true })
@@ -793,6 +863,12 @@ export class PurchaseItemSchema extends BaseModel {
   declare lineTax: string
   @column()
   declare lineTotal: string
+  @column()
+  declare machineModel: string | null
+  @column()
+  declare machineName: string | null
+  @column()
+  declare materialId: number | null
   @column()
   declare purchaseId: number
   @column()
@@ -831,8 +907,12 @@ export class PurchasePaymentSchema extends BaseModel {
 }
 
 export class PurchaseReturnItemSchema extends BaseModel {
-  static $columns = ['createdAt', 'id', 'itemId', 'itemKind', 'lineTotal', 'purchaseItemId', 'purchaseReturnId', 'qty', 'unitCost', 'updatedAt'] as const
+  static $columns = ['catalogProductId', 'componentId', 'createdAt', 'id', 'itemId', 'itemKind', 'lineTotal', 'materialId', 'purchaseItemId', 'purchaseReturnId', 'qty', 'unitCost', 'updatedAt'] as const
   $columns = PurchaseReturnItemSchema.$columns
+  @column()
+  declare catalogProductId: number | null
+  @column()
+  declare componentId: number | null
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column({ isPrimary: true })
@@ -843,6 +923,8 @@ export class PurchaseReturnItemSchema extends BaseModel {
   declare itemKind: string
   @column()
   declare lineTotal: string
+  @column()
+  declare materialId: number | null
   @column()
   declare purchaseItemId: number
   @column()
@@ -924,8 +1006,12 @@ export class PurchaseSchema extends BaseModel {
 }
 
 export class QuotationItemBomSchema extends BaseModel {
-  static $columns = ['createdAt', 'id', 'itemId', 'itemKind', 'qty', 'quotationItemId', 'unitCostAtTime', 'updatedAt'] as const
+  static $columns = ['catalogProductId', 'componentId', 'createdAt', 'id', 'itemId', 'itemKind', 'materialId', 'qty', 'quotationItemId', 'unitCostAtTime', 'updatedAt'] as const
   $columns = QuotationItemBomSchema.$columns
+  @column()
+  declare catalogProductId: number | null
+  @column()
+  declare componentId: number | null
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column({ isPrimary: true })
@@ -934,6 +1020,8 @@ export class QuotationItemBomSchema extends BaseModel {
   declare itemId: number
   @column()
   declare itemKind: string
+  @column()
+  declare materialId: number | null
   @column()
   declare qty: string
   @column()
@@ -1065,8 +1153,12 @@ export class RoleSchema extends BaseModel {
 }
 
 export class StockMovementSchema extends BaseModel {
-  static $columns = ['createdAt', 'createdByUserId', 'id', 'itemId', 'itemKind', 'note', 'qty', 'reason', 'referenceId', 'referenceType', 'unitCost'] as const
+  static $columns = ['catalogProductId', 'componentId', 'createdAt', 'createdByUserId', 'id', 'itemId', 'itemKind', 'materialId', 'note', 'qty', 'reason', 'referenceId', 'referenceType', 'unitCost'] as const
   $columns = StockMovementSchema.$columns
+  @column()
+  declare catalogProductId: number | null
+  @column()
+  declare componentId: number | null
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column()
@@ -1077,6 +1169,8 @@ export class StockMovementSchema extends BaseModel {
   declare itemId: number
   @column()
   declare itemKind: string
+  @column()
+  declare materialId: number | null
   @column()
   declare note: string | null
   @column()
@@ -1092,8 +1186,12 @@ export class StockMovementSchema extends BaseModel {
 }
 
 export class StockTakeItemSchema extends BaseModel {
-  static $columns = ['countedQty', 'createdAt', 'expectedQty', 'id', 'itemId', 'itemKind', 'stockTakeId', 'unitCost', 'updatedAt'] as const
+  static $columns = ['catalogProductId', 'componentId', 'countedQty', 'createdAt', 'expectedQty', 'id', 'itemId', 'itemKind', 'materialId', 'stockTakeId', 'unitCost', 'updatedAt'] as const
   $columns = StockTakeItemSchema.$columns
+  @column()
+  declare catalogProductId: number | null
+  @column()
+  declare componentId: number | null
   @column()
   declare countedQty: string | null
   @column.dateTime({ autoCreate: true })
@@ -1106,6 +1204,8 @@ export class StockTakeItemSchema extends BaseModel {
   declare itemId: number
   @column()
   declare itemKind: string
+  @column()
+  declare materialId: number | null
   @column()
   declare stockTakeId: number
   @column()

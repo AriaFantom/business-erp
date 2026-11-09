@@ -11,6 +11,7 @@ import { tick } from '#services/job_auto_complete_scheduler'
 import { InvalidStateError } from '#services/domain_errors'
 import { setupJobFixture } from '#tests/helpers/job_fixtures'
 import { DateTime } from 'luxon'
+import db from '@adonisjs/lucid/services/db'
 
 test.group('Force done jobs', (group) => {
   group.each.setup(() => testUtils.db().withGlobalTransaction())
@@ -58,6 +59,10 @@ test.group('Force done jobs', (group) => {
       .where('item_id', product.id)
       .firstOrFail()
     assert.equal(productStock.qty, '2.000000000')
+    const output = await db.from('production_outputs').where('job_id', job.id).first()
+    assert.equal(Number(output?.produced_qty), 2)
+    assert.equal(Number(output?.available_qty), 2)
+    assert.equal(Number(output?.machine_id), machine.id)
 
     const stages = await ProductionJobStage.query().where('job_id', job.id).orderBy('sequence')
     assert.deepEqual(

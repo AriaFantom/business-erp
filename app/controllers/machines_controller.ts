@@ -13,6 +13,7 @@ import {
 import { recordExpense } from '#services/job_costing'
 import { getMachineShowViewModel, getMachinesIndexViewModel } from '#services/machines_view_models'
 import { DomainError } from '#services/domain_errors'
+import { deleteUnusedCatalogItem } from '#services/catalog_deletion_service'
 
 export default class MachinesController {
   async index({ inertia, bouncer, request }: HttpContext) {
@@ -68,6 +69,17 @@ export default class MachinesController {
       return this._domain(err, response, session)
     }
     return response.redirect().back()
+  }
+
+  async destroy({ params, auth, bouncer, response, session }: HttpContext) {
+    await bouncer.authorize('machines.delete' as never)
+    try {
+      await deleteUnusedCatalogItem('machine', Number(params.id), auth.user!)
+      session.flash('success', 'Unused machine deleted permanently.')
+    } catch (error) {
+      return this._domain(error, response, session)
+    }
+    return response.redirect().toPath('/machines')
   }
 
   async toggleMaintenance({ params, auth, bouncer, response, session }: HttpContext) {

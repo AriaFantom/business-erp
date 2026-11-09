@@ -16,8 +16,10 @@ import { nextDocNumber } from '#services/numbering'
 import { DomainError, InvalidStateError } from '#services/domain_errors'
 
 export type PurchaseLineInput = {
-  itemKind: 'material' | 'component'
-  itemId: number
+  itemKind: 'material' | 'component' | 'machine'
+  itemId?: number
+  machineName?: string
+  machineModel?: string
   qty: number
   unitCost: number
   taxRatePct?: number
@@ -102,6 +104,25 @@ function assertPurchaseLine(line: PurchaseLineInput) {
       message: 'A purchase line tax percentage must be between 0 and 100.',
     })
   }
+  if (line.itemKind === 'machine') {
+    if (!Number.isInteger(line.qty)) {
+      throw new DomainError({
+        code: 'INVALID_MACHINE_PURCHASE_QUANTITY',
+        message: 'Machine quantities must be whole numbers.',
+      })
+    }
+    if (!line.machineName?.trim()) {
+      throw new DomainError({
+        code: 'MACHINE_NAME_REQUIRED',
+        message: 'Enter a name for each machine purchase line.',
+      })
+    }
+  } else if (!line.itemId) {
+    throw new DomainError({
+      code: 'PURCHASE_ITEM_REQUIRED',
+      message: 'Choose a material or component for every stock line.',
+    })
+  }
 }
 
 function assertDatabaseUnitCost(value: number) {
@@ -176,7 +197,9 @@ export async function createPurchase(input: CreatePurchaseInput): Promise<Purcha
   }
   for (const item of input.items) {
     assertPurchaseLine(item)
-    await ensureItemExists(item.itemKind, item.itemId)
+    if (item.itemKind !== 'machine') {
+      await ensureItemExists(item.itemKind, item.itemId!)
+    }
   }
 
   const shippingCharge = normalizeCharge(input.shippingCharge, 'Shipping charge')
@@ -259,7 +282,7 @@ export async function createPurchase(input: CreatePurchaseInput): Promise<Purcha
       const item = new PurchaseItem()
       item.purchaseId = purchase.id
       item.itemKind = l.itemKind
-      item.itemId = l.itemId
+      item.itemId = l.itemId ?? 0
       item.qty = String(l.qty)
       item.unitCost = String(l.unitCost)
       item.taxRatePct = String(l.taxRatePct)
@@ -269,6 +292,11 @@ export async function createPurchase(input: CreatePurchaseInput): Promise<Purcha
       item.allocatedShipping = String(l.allocatedShipping)
       item.allocatedTax = String(l.allocatedTax)
       item.landedUnitCost = String(l.landedUnitCost)
+      item.$setAttribute('machineName', l.itemKind === 'machine' ? l.machineName!.trim() : null)
+      item.$setAttribute(
+        'machineModel',
+        l.itemKind === 'machine' ? l.machineModel?.trim() || null : null
+      )
       item.useTransaction(trx)
       await item.save()
     }
@@ -318,10 +346,24 @@ export async function confirmPurchase(purchaseId: number, actor: User): Promise<
 
     for (const l of lines) {
       if (l.itemKind === 'machine') {
-        const qty = Math.floor(Number(l.qty))
+        const qty = Number(l.qty)
+        const baseName =
+          String(l.$getAttribute('machineName') ?? '').trim() || `Machine ${purchase.number}`
+        const model = String(l.$getAttribute('machineModel') ?? '').trim() || null
+        const names = Array.from({ length: qty }, (_, index) =>
+          qty === 1 ? baseName : `${baseName} ${index + 1}`
+        )
+        const duplicate = await Machine.query({ client: trx }).whereIn('name', names).first()
+        if (duplicate) {
+          throw new DomainError({
+            code: 'MACHINE_NAME_EXISTS',
+            message: `A machine named "${duplicate.name}" already exists. Rename the purchase line before confirming.`,
+          })
+        }
         for (let i = 0; i < qty; i++) {
           const machine = new Machine()
-          machine.name = `${purchase.supplierId ? `Supplier-${purchase.supplierId}` : 'Machine'} #${purchase.id}-${l.id}-${i + 1}`
+          machine.name = names[i]
+          machine.model = model
           machine.purchaseItemId = l.id
           machine.acquiredAt = DateTime.now()
           machine.status = 'idle'
@@ -432,8 +474,9 @@ export async function returnPurchaseItems(input: ReturnPurchaseInput): Promise<P
       }
       if (item.itemKind !== 'material' && item.itemKind !== 'component') {
         throw new DomainError({
-          code: 'RETURN_KIND_NOT_ALLOWED',
-          message: 'Machines cannot be returned through a purchase return.',
+          code: 'MACHINE_RETURNS_UNSUPPORTED',
+          message:
+            'Machine supplier returns are not supported. Record the supplier adjustment separately.',
         })
       }
       const remaining = Number(item.qty) - (alreadyReturned.get(item.id) ?? 0)

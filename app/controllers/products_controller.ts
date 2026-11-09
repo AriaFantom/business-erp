@@ -25,6 +25,8 @@ import {
 import { qrPayload, renderQrSvg, renderQrPngBuffer } from '#services/product_qr'
 import { streamStoredObject, IMMUTABLE_PRIVATE, NO_STORE } from '#services/file_streaming'
 import { formatCurrency, getAppCurrency } from '#services/currency'
+import { deleteUnusedCatalogItem } from '#services/catalog_deletion_service'
+import { DomainError } from '#services/domain_errors'
 
 export default class ProductsController {
   async index({ request, inertia, bouncer }: HttpContext) {
@@ -152,6 +154,21 @@ export default class ProductsController {
     })
     session.flash('success', 'Product updated.')
     return response.redirect().back()
+  }
+
+  async destroy({ params, auth, bouncer, response, session }: HttpContext) {
+    await bouncer.authorize('products.delete' as never)
+    try {
+      await deleteUnusedCatalogItem('product', Number(params.id), auth.user!)
+      session.flash('success', 'Unused product deleted permanently.')
+    } catch (error) {
+      if (error instanceof DomainError) {
+        session.flash('error', error.message)
+        return response.redirect().back()
+      }
+      throw error
+    }
+    return response.redirect().toPath('/catalog/products')
   }
 
   async archive({ params, auth, bouncer, response, session }: HttpContext) {

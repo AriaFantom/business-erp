@@ -11,6 +11,7 @@ import { audit } from '#services/audit'
 import { nextDocNumber } from '#services/numbering'
 import { DomainError, InvalidStateError } from '#services/domain_errors'
 import { invalidatePdf } from '#services/document_pdf/render'
+import { restoreReturnedProduction } from '#services/production_sales_tracking'
 
 export type RefundMethod = 'cash' | 'bank' | 'upi' | 'other'
 
@@ -192,6 +193,7 @@ export async function createOrderReturn(input: CreateOrderReturnInput): Promise<
           actor: input.actor,
           trx,
         })
+        await restoreReturnedProduction({ orderItemId: l.item.id, qty: l.qty, trx })
       }
     }
 
