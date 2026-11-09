@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -91,11 +92,13 @@ export function ListToolbar({ basePath, q, searchPlaceholder, selects = [] }: Pr
             <SelectValue placeholder={s.placeholder ?? 'All'} />
           </SelectTrigger>
           <SelectContent>
-            {s.options.map((o) => (
-              <SelectItem key={o.value} value={o.value}>
-                {o.label}
-              </SelectItem>
-            ))}
+            <SelectGroup>
+              {s.options.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectGroup>
           </SelectContent>
         </Select>
       ))}

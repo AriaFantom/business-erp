@@ -1,15 +1,53 @@
 import * as React from 'react'
 
+import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
-function Table({ className, ...props }: React.ComponentProps<'table'>) {
+type TableProps = React.ComponentProps<'table'> & {
+  filterable?: boolean
+  filterPlaceholder?: string
+}
+
+function Table({
+  className,
+  children,
+  filterable = true,
+  filterPlaceholder = 'Filter rows…',
+  ...props
+}: TableProps) {
+  const [filter, setFilter] = React.useState('')
+  const tableRef = React.useRef<HTMLTableElement | null>(null)
+
+  React.useEffect(() => {
+    const needle = filter.trim().toLocaleLowerCase()
+    const rows = tableRef.current?.querySelectorAll<HTMLTableRowElement>('tbody > tr') ?? []
+    rows.forEach((row) => {
+      row.hidden = Boolean(needle) && !row.textContent?.toLocaleLowerCase().includes(needle)
+    })
+  }, [filter, children])
+
   return (
-    <div data-slot="table-container" className="relative w-full overflow-x-auto">
-      <table
-        data-slot="table"
-        className={cn('w-full caption-bottom text-sm', className)}
-        {...props}
-      />
+    <div className="flex w-full flex-col gap-2">
+      {filterable && (
+        <Input
+          type="search"
+          value={filter}
+          onChange={(event) => setFilter(event.target.value)}
+          placeholder={filterPlaceholder}
+          aria-label={filterPlaceholder}
+          className="w-full sm:w-64"
+        />
+      )}
+      <div data-slot="table-container" className="relative w-full overflow-x-auto">
+        <table
+          ref={tableRef}
+          data-slot="table"
+          className={cn('w-full caption-bottom text-sm', className)}
+          {...props}
+        >
+          {children}
+        </table>
+      </div>
     </div>
   )
 }

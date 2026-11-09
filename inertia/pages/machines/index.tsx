@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
-import { CheckCircle2, CircleSlash, Cpu, Play, Wrench, XCircle } from 'lucide-react'
+import { CheckCircle2, CircleSlash, Cpu, ExternalLink, Play, Wrench, XCircle } from 'lucide-react'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
 import { formatMoney, useCurrency } from '@/lib/currency'
@@ -321,8 +321,14 @@ export default function MachinesIndex({ machines, filters, counts }: PageProps) 
                       {formatMoney(m.salesProfit, currency)}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button asChild variant="outline" size="sm">
-                        <Link href={`/machines/${m.id}`}>View details</Link>
+                      <Button asChild variant="outline" size="icon">
+                        <Link
+                          href={`/machines/${m.id}`}
+                          aria-label={`View details for ${m.name}`}
+                          title="View details"
+                        >
+                          <ExternalLink />
+                        </Link>
                       </Button>
                     </TableCell>
                   </TableRow>

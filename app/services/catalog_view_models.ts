@@ -651,6 +651,7 @@ export type SupplierRow = {
   gstin: string | null
   email: string | null
   phone: string | null
+  address: string | null
   isActive: boolean
   outstanding: string
 }
@@ -658,10 +659,10 @@ export type SupplierRow = {
 export async function getSuppliersViewModel(filters: ListFilters = {}) {
   const query = Supplier.query().orderBy('name', 'asc')
   applyStatus(query as never, filters.status)
-  applySearch(query as never, filters.q, ['name', 'email', 'phone', 'gstin'])
+  applySearch(query as never, filters.q, ['name', 'email', 'phone', 'gstin', 'address'])
   const counts = await countByStatus(() => {
     const q = Supplier.query()
-    applySearch(q as never, filters.q, ['name', 'email', 'phone', 'gstin'])
+    applySearch(q as never, filters.q, ['name', 'email', 'phone', 'gstin', 'address'])
     return q
   })
   const suppliers = await query
@@ -692,6 +693,7 @@ export async function getSuppliersViewModel(filters: ListFilters = {}) {
       gstin: s.gstin,
       email: s.email,
       phone: s.phone,
+      address: s.address,
       isActive: s.isActive,
       outstanding: Math.max(
         0,

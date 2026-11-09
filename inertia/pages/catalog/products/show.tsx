@@ -1,7 +1,7 @@
 import { type ReactElement, useEffect, useRef, useState } from 'react'
 import { router, usePage } from '@inertiajs/react'
 import { Link } from '@adonisjs/inertia/react'
-import { ArrowLeft, Download, Paperclip, Trash2, Upload } from 'lucide-react'
+import { ArrowLeft, Download, Paperclip, Pin, Trash2, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
@@ -289,8 +289,13 @@ function ProfitAnalysisCard({
                       {defaultSalePriceSource?.jobId === j.id ? (
                         <Badge variant="secondary">Default</Badge>
                       ) : canEdit ? (
-                        <Button size="sm" onClick={() => onSetDefault(j)}>
-                          Set as default
+                        <Button
+                          size="icon"
+                          aria-label={`Set job ${j.number} as default price source`}
+                          title="Set as default"
+                          onClick={() => onSetDefault(j)}
+                        >
+                          <Pin />
                         </Button>
                       ) : null}
                     </TableCell>

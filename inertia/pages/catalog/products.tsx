@@ -24,7 +24,7 @@ import {
   type ProductCategoryOption,
 } from '@/components/catalog/new-product-dialog'
 import { QuickProductDialog } from '@/components/catalog/quick-product-dialog'
-import { Package, CheckCircle2, XCircle } from 'lucide-react'
+import { Archive, CheckCircle2, ExternalLink, Package, RotateCcw, XCircle } from 'lucide-react'
 import { ColumnVisibilityMenu, type ColumnDef } from '@/components/data-table/column-visibility'
 import { useColumnVisibility } from '@/hooks/use-column-visibility'
 import { EmptyState } from '@/components/empty-state'
@@ -72,8 +72,15 @@ function ArchiveAction({ path, name }: { path: string; name: string }) {
   const [open, setOpen] = useState(false)
   return (
     <>
-      <Button variant="destructive" size="sm" disabled={processing} onClick={() => setOpen(true)}>
-        Archive
+      <Button
+        variant="destructive"
+        size="icon"
+        disabled={processing}
+        aria-label={`Archive ${name}`}
+        title="Archive"
+        onClick={() => setOpen(true)}
+      >
+        <Archive />
       </Button>
       <ConfirmDialog
         open={open}
@@ -93,12 +100,13 @@ function RestoreAction({ path, name }: { path: string; name: string }) {
   return (
     <Button
       variant="outline"
-      size="sm"
+      size="icon"
       disabled={processing}
       onClick={() => post(path, { preserveScroll: true })}
+      aria-label={`Restore ${name}`}
       title={`Restore ${name}`}
     >
-      Restore
+      <RotateCcw />
     </Button>
   )
 }
@@ -284,8 +292,14 @@ export default function ProductsPage({ products, categories, filters, counts }: 
                     {isVisible('actions') && (
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          <Button asChild variant="outline" size="sm">
-                            <Link href={`/catalog/products/${p.id}`}>View</Link>
+                          <Button asChild variant="outline" size="icon">
+                            <Link
+                              href={`/catalog/products/${p.id}`}
+                              aria-label={`View ${p.name}`}
+                              title="View product"
+                            >
+                              <ExternalLink />
+                            </Link>
                           </Button>
                           <ProductFilesDialog
                             productId={p.id}

@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
-import { Archive, CheckCircle2, Truck, XCircle } from 'lucide-react'
+import { Archive, CheckCircle2, Pencil, Truck, XCircle } from 'lucide-react'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
 import { ConfirmDialog } from '@/components/confirm-dialog'
@@ -34,6 +34,7 @@ type Row = {
   gstin: string | null
   email: string | null
   phone: string | null
+  address: string | null
   isActive: boolean
   outstanding: string
 }
@@ -123,6 +124,91 @@ function NewSupplierDialog() {
   )
 }
 
+function EditSupplierDialog({ supplier }: { supplier: Row }) {
+  const [open, setOpen] = useState(false)
+  const { data, setData, post, processing, errors, transform } = useForm({
+    name: supplier.name,
+    gstin: supplier.gstin ?? '',
+    email: supplier.email ?? '',
+    phone: supplier.phone ?? '',
+    address: supplier.address ?? '',
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label={`Edit ${supplier.name}`}
+          title="Edit supplier"
+        >
+          <Pencil />
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit supplier</DialogTitle>
+        </DialogHeader>
+        <form
+          className="flex flex-col gap-3"
+          onSubmit={(event) => {
+            event.preventDefault()
+            transform((values) => ({
+              name: values.name.trim(),
+              gstin: values.gstin.trim() || null,
+              email: values.email.trim() || null,
+              phone: values.phone.trim() || null,
+              address: values.address.trim() || null,
+            }))
+            post(`/suppliers/${supplier.id}`, {
+              preserveScroll: true,
+              onSuccess: () => setOpen(false),
+            })
+          }}
+        >
+          <Field
+            label="Name"
+            value={data.name}
+            error={errors.name}
+            onChange={(value) => setData('name', value)}
+          />
+          <Field
+            label="GSTIN"
+            value={data.gstin}
+            error={errors.gstin}
+            onChange={(value) => setData('gstin', value)}
+          />
+          <Field
+            label="Email"
+            type="email"
+            value={data.email}
+            error={errors.email}
+            onChange={(value) => setData('email', value)}
+          />
+          <Field
+            label="Phone"
+            value={data.phone}
+            error={errors.phone}
+            onChange={(value) => setData('phone', value)}
+          />
+          <Field
+            label="Address"
+            value={data.address}
+            error={errors.address}
+            onChange={(value) => setData('address', value)}
+          />
+          <DialogFooter>
+            <Button type="submit" disabled={processing}>
+              {processing ? 'Saving…' : 'Save changes'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function Field({
   label,
   value,
@@ -189,7 +275,7 @@ export default function SuppliersIndex({ suppliers, filters, counts }: PageProps
       <ListToolbar
         basePath="/suppliers"
         q={filters.q}
-        searchPlaceholder="Search by name, email, phone, GSTIN…"
+        searchPlaceholder="Search by name, email, phone, GSTIN, address…"
         selects={[
           {
             name: 'status',
@@ -224,6 +310,7 @@ export default function SuppliersIndex({ suppliers, filters, counts }: PageProps
                   <TableHead>GSTIN</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Phone</TableHead>
+                  <TableHead>Address</TableHead>
                   <TableHead className="text-right">Outstanding</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-32 text-right">Actions</TableHead>
@@ -236,6 +323,9 @@ export default function SuppliersIndex({ suppliers, filters, counts }: PageProps
                     <TableCell className="font-mono text-xs">{s.gstin ?? '—'}</TableCell>
                     <TableCell>{s.email ?? '—'}</TableCell>
                     <TableCell>{s.phone ?? '—'}</TableCell>
+                    <TableCell className="max-w-56 truncate" title={s.address ?? undefined}>
+                      {s.address ?? '—'}
+                    </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {Number(s.outstanding) > 0 ? (
                         <span className="font-medium">{s.outstanding}</span>
@@ -250,13 +340,16 @@ export default function SuppliersIndex({ suppliers, filters, counts }: PageProps
                         <Badge variant="secondary">Archived</Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-right">
-                      {s.isActive && (
-                        <ArchiveAction
-                          path={`/suppliers/${s.id}/archive`}
-                          confirmText={`Archive ${s.name}?`}
-                        />
-                      )}
+                    <TableCell>
+                      <div className="flex justify-end gap-2">
+                        <EditSupplierDialog supplier={s} />
+                        {s.isActive && (
+                          <ArchiveAction
+                            path={`/suppliers/${s.id}/archive`}
+                            confirmText={`Archive ${s.name}?`}
+                          />
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -282,7 +375,7 @@ function ArchiveAction({ path, confirmText }: { path: string; confirmText: strin
         title="Archive"
         onClick={() => setOpen(true)}
       >
-        <Archive className="size-4" />
+        <Archive />
       </Button>
       <ConfirmDialog
         open={open}

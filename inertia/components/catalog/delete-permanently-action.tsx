@@ -22,15 +22,15 @@ export function DeletePermanentlyAction({
       <Button
         type="button"
         variant="destructive-soft"
-        size="sm"
+        size="icon"
         disabled={processing || blocked}
+        aria-label={`Delete ${name} permanently`}
         title={
           blockedReason ? `${blockedReason} Archive or retire this record instead.` : undefined
         }
         onClick={() => setOpen(true)}
       >
-        <Trash2 data-icon="inline-start" />
-        Delete permanently
+        <Trash2 />
       </Button>
       {blockedReason && (
         <span className="max-w-56 text-right text-xs text-muted-foreground">

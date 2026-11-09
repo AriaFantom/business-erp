@@ -62,6 +62,8 @@ Completed jobs create machine-attributed production outputs from rollout onward.
 
 Use the shared shadcn `Select` in dashboard dialogs instead of native HTML selects so option menus inherit the application theme, accessibility behavior, and overlay positioning. Keep `SelectItem` entries inside `SelectGroup`.
 
+Dashboard data tables use the shared `Table` quick filter so loaded rows remain searchable even on detail and reporting pages. Keep row-level actions compact and icon-only, with descriptive accessible labels and titles; primary page and dialog actions retain text labels. Supplier details are editable together from the suppliers list. Catalog primary-image controls for products, components, and materials accept a local file, a pasted clipboard image, or a direct image URL; linked images are downloaded in the browser and therefore require the source to allow cross-origin downloads.
+
 The module settings page uses the full dashboard content width, with Save and conditional Reset actions right-aligned in the page-title header. Presets and the connected workflow share one configuration card whose header introduces the presets without duplicating that text in the content, with the four large equal module-style preset options constrained and centered above the workflow. Operational stages use constrained columns with visible gaps and frequent, closely staggered MagicUI-style `AnimatedBeam` connections. Reports are not configurable and must not appear in this workflow or its presets.
 
 ## Production Deployment & Data Safety

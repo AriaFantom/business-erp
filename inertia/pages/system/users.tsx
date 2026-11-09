@@ -339,24 +339,23 @@ export default function SystemUsers({
                                 {canAssign && row.editable && (
                                   <Button
                                     variant="outline"
-                                    size="sm"
+                                    size="icon"
+                                    aria-label={`Change roles for ${fullNameOf(row)}`}
+                                    title="Change roles"
                                     onClick={() => setEditing(row)}
                                   >
-                                    <ShieldCheck data-icon="inline-start" /> Change roles
+                                    <ShieldCheck />
                                   </Button>
                                 )}
                                 {row.accessEditable && (
                                   <Button
                                     variant={row.isActive ? 'destructive' : 'outline'}
-                                    size="sm"
+                                    size="icon"
+                                    aria-label={`${row.isActive ? 'Revoke' : 'Restore'} access for ${fullNameOf(row)}`}
+                                    title={row.isActive ? 'Revoke access' : 'Restore access'}
                                     onClick={() => setChangingAccess(row)}
                                   >
-                                    {row.isActive ? (
-                                      <UserRoundX data-icon="inline-start" />
-                                    ) : (
-                                      <UserRoundCheck data-icon="inline-start" />
-                                    )}
-                                    {row.isActive ? 'Revoke access' : 'Restore access'}
+                                    {row.isActive ? <UserRoundX /> : <UserRoundCheck />}
                                   </Button>
                                 )}
                               </div>

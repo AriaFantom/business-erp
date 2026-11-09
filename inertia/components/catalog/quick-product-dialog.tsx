@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { useForm } from '@inertiajs/react'
 
 import { ProductField, type ProductCategoryOption } from '@/components/catalog/new-product-dialog'
+import { InlineImagePicker } from '@/components/catalog/inline-image-picker'
 import { SkuField } from '@/components/catalog/sku-field'
 import { Button } from '@/components/ui/button'
 import {
@@ -115,21 +116,17 @@ export function QuickProductDialog({ categories }: { categories: ProductCategory
               </SelectContent>
             </Select>
           </ProductField>
-          <ProductField id="quick-product-image" label="Product picture" error={errors.image}>
-            <Input
-              id="quick-product-image"
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              aria-invalid={!!errors.image}
-              onChange={(event) => {
-                setData('image', event.target.files?.[0] ?? null)
+          <div className="flex flex-col gap-1">
+            <InlineImagePicker
+              file={data.image}
+              label="Product picture"
+              onChange={(file) => {
+                setData('image', file)
                 clearErrors('image')
               }}
             />
-            <p className="text-xs text-muted-foreground">
-              Optional. PNG, JPEG or WebP, up to 15 MB.
-            </p>
-          </ProductField>
+            {errors.image && <p className="text-xs text-destructive">{errors.image}</p>}
+          </div>
           <DialogFooter>
             <Button type="submit" disabled={processing}>
               {processing ? 'Creating…' : 'Create product'}

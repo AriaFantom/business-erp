@@ -1,7 +1,17 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { router } from '@inertiajs/react'
 import { Plus, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { InlineImagePicker } from '@/components/catalog/inline-image-picker'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 type Props = {
   uploadPath: string
@@ -14,26 +24,12 @@ type Props = {
 }
 
 export function AvatarUploader({ uploadPath, imageUrl, alt, size = 40, maxMb = 15 }: Props) {
-  const inputRef = useRef<HTMLInputElement | null>(null)
+  const [open, setOpen] = useState(false)
+  const [file, setFile] = useState<File | null>(null)
   const [busy, setBusy] = useState(false)
 
-  function pick() {
-    if (busy) return
-    inputRef.current?.click()
-  }
-
-  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    e.target.value = ''
+  function upload() {
     if (!file) return
-
-    const maxBytes = maxMb * 1024 * 1024
-    if (file.size > maxBytes) {
-      const sizeMb = (file.size / 1024 / 1024).toFixed(1)
-      toast.error(`Image is ${sizeMb} MB — max allowed is ${maxMb} MB. Please pick a smaller file.`)
-      return
-    }
-
     setBusy(true)
     router.post(
       uploadPath,
@@ -47,54 +43,61 @@ export function AvatarUploader({ uploadPath, imageUrl, alt, size = 40, maxMb = 1
             'Image upload failed.'
           toast.error(String(msg))
         },
+        onSuccess: () => {
+          setFile(null)
+          setOpen(false)
+        },
         onFinish: () => setBusy(false),
       }
     )
   }
 
   return (
-    <button
-      type="button"
-      onClick={pick}
-      disabled={busy}
-      aria-label={imageUrl ? `Replace image for ${alt}` : `Add image for ${alt}`}
-      style={{ width: size, height: size }}
-      className="group relative shrink-0 overflow-hidden rounded border border-border bg-muted text-[10px] text-muted-foreground transition hover:border-primary disabled:cursor-wait disabled:opacity-60"
-    >
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/png,image/jpeg,image/webp"
-        className="hidden"
-        onChange={onFileChange}
-      />
-      {imageUrl ? (
-        <img src={imageUrl} alt={alt} className="h-full w-full object-cover" loading="lazy" />
-      ) : null}
-      <span
-        className={
-          'absolute inset-0 flex items-center justify-center ' +
-          (imageUrl ? 'bg-foreground/40 opacity-0 transition group-hover:opacity-100' : '')
-        }
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        disabled={busy}
+        aria-label={imageUrl ? `Replace image for ${alt}` : `Add image for ${alt}`}
+        title={imageUrl ? 'Replace image' : 'Add image'}
+        style={{ width: size, height: size }}
+        className="group relative shrink-0 overflow-hidden rounded border border-border bg-muted text-[10px] text-muted-foreground transition hover:border-primary disabled:cursor-wait disabled:opacity-60"
       >
-        {busy ? (
-          <Loader2
-            className="animate-spin text-foreground"
-            style={{
-              width: Math.max(16, Math.floor(size * 0.3)),
-              height: Math.max(16, Math.floor(size * 0.3)),
-            }}
-          />
-        ) : (
-          <Plus
-            className={imageUrl ? 'text-background' : ''}
-            style={{
-              width: Math.max(16, Math.floor(size * 0.3)),
-              height: Math.max(16, Math.floor(size * 0.3)),
-            }}
-          />
-        )}
-      </span>
-    </button>
+        {imageUrl ? (
+          <img src={imageUrl} alt={alt} className="h-full w-full object-cover" loading="lazy" />
+        ) : null}
+        <span
+          className={
+            'absolute inset-0 flex items-center justify-center ' +
+            (imageUrl ? 'bg-foreground/40 opacity-0 transition group-hover:opacity-100' : '')
+          }
+        >
+          {busy ? (
+            <Loader2 className="animate-spin text-foreground" />
+          ) : (
+            <Plus className={imageUrl ? 'text-background' : ''} />
+          )}
+        </span>
+      </button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{imageUrl ? 'Replace image' : 'Add image'}</DialogTitle>
+            <DialogDescription>
+              Choose a file, paste an image with Ctrl+V, or use a direct image link.
+            </DialogDescription>
+          </DialogHeader>
+          <InlineImagePicker file={file} onChange={setFile} maxMb={maxMb} />
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={upload} disabled={!file || busy}>
+              {busy ? 'Uploading…' : 'Upload image'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

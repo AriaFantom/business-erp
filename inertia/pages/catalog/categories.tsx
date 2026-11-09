@@ -25,7 +25,7 @@ import DashboardLayout from '@/layouts/dashboard-layout'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { Tag, CheckCircle2, XCircle } from 'lucide-react'
+import { Archive, CheckCircle2, RotateCcw, Tag, XCircle } from 'lucide-react'
 import { ColumnVisibilityMenu, type ColumnDef } from '@/components/data-table/column-visibility'
 import { useColumnVisibility } from '@/hooks/use-column-visibility'
 import { formatMoney, useCurrency } from '@/lib/currency'
@@ -142,8 +142,15 @@ function ArchiveAction({ path, name }: { path: string; name: string }) {
   const [open, setOpen] = useState(false)
   return (
     <>
-      <Button variant="destructive" size="sm" disabled={processing} onClick={() => setOpen(true)}>
-        Archive
+      <Button
+        variant="destructive"
+        size="icon"
+        disabled={processing}
+        aria-label={`Archive ${name}`}
+        title="Archive"
+        onClick={() => setOpen(true)}
+      >
+        <Archive />
       </Button>
       <ConfirmDialog
         open={open}
@@ -163,12 +170,13 @@ function RestoreAction({ path, name }: { path: string; name: string }) {
   return (
     <Button
       variant="outline"
-      size="sm"
+      size="icon"
       disabled={processing}
       onClick={() => post(path, { preserveScroll: true })}
+      aria-label={`Restore ${name}`}
       title={`Restore ${name}`}
     >
-      Restore
+      <RotateCcw />
     </Button>
   )
 }

@@ -381,8 +381,14 @@ export default function ProductionFloor({ runningJobs, draftJobs, serverNow }: P
                       {j.createdAt?.slice(0, 10) ?? '—'}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button asChild size="sm">
-                        <Link href={`/jobs/${j.id}`}>Start…</Link>
+                      <Button asChild size="icon">
+                        <Link
+                          href={`/jobs/${j.id}`}
+                          aria-label={`Start job ${j.number}`}
+                          title="Start job"
+                        >
+                          <PlayCircle />
+                        </Link>
                       </Button>
                     </TableCell>
                   </TableRow>
