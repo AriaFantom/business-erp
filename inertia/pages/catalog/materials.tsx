@@ -287,7 +287,7 @@ function RestoreAction({ path, name }: { path: string; name: string }) {
 }
 
 const MATERIAL_COLUMNS: ColumnDef[] = [
-  { key: 'image', label: 'Image' },
+  { key: 'image', label: 'Image', required: true },
   { key: 'sku', label: 'SKU' },
   { key: 'name', label: 'Name', required: true },
   { key: 'type', label: 'Type' },
@@ -305,7 +305,7 @@ export default function MaterialsPage({ materials, suppliers, filters, counts }:
   const canEdit = Boolean(user?.isOwner || user?.permissions?.includes('materials.update'))
   const canDelete = Boolean(user?.isOwner || user?.permissions?.includes('materials.delete'))
   const [editing, setEditing] = useState<Row | null>(null)
-  const { isVisible, toggle, reset } = useColumnVisibility('catalog.materials')
+  const { isVisible, toggle, reset } = useColumnVisibility('catalog.materials', ['image'])
   const archivedHref = `/catalog/materials?status=archived${filters.type && filters.type !== 'all' ? `&type=${filters.type}` : ''}`
   const activeHref = `/catalog/materials?status=active${filters.type && filters.type !== 'all' ? `&type=${filters.type}` : ''}`
   const totalHref = `/catalog/materials${filters.type && filters.type !== 'all' ? `?type=${filters.type}` : ''}`
@@ -455,23 +455,15 @@ export default function MaterialsPage({ materials, suppliers, filters, counts }:
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           {canEdit && (
-                            <>
-                              <AvatarUploader
-                                uploadPath={`/catalog/materials/${m.id}/image`}
-                                imageUrl={m.imageUrl}
-                                alt={m.name}
-                                actionTrigger
-                              />
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                aria-label={`Edit ${m.name}`}
-                                title="Edit name"
-                                onClick={() => setEditing(m)}
-                              >
-                                <Pencil />
-                              </Button>
-                            </>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              aria-label={`Edit ${m.name}`}
+                              title="Edit name"
+                              onClick={() => setEditing(m)}
+                            >
+                              <Pencil />
+                            </Button>
                           )}
                           {(!canDelete || m.deleteBlocker) && m.isActive ? (
                             <ArchiveAction

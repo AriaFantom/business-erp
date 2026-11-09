@@ -269,7 +269,7 @@ function RestoreAction({ path, name }: { path: string; name: string }) {
 }
 
 const COMPONENT_COLUMNS: ColumnDef[] = [
-  { key: 'image', label: 'Image' },
+  { key: 'image', label: 'Image', required: true },
   { key: 'sku', label: 'SKU' },
   { key: 'name', label: 'Name', required: true },
   { key: 'unit', label: 'Unit' },
@@ -286,7 +286,7 @@ export default function ComponentsPage({ components, suppliers, filters, counts 
   const canEdit = Boolean(user?.isOwner || user?.permissions?.includes('components.update'))
   const canDelete = Boolean(user?.isOwner || user?.permissions?.includes('components.delete'))
   const [editing, setEditing] = useState<Row | null>(null)
-  const { isVisible, toggle, reset } = useColumnVisibility('catalog.components')
+  const { isVisible, toggle, reset } = useColumnVisibility('catalog.components', ['image'])
   return (
     <div className="flex w-full flex-col gap-6 px-6 py-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -421,23 +421,15 @@ export default function ComponentsPage({ components, suppliers, filters, counts 
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           {canEdit && (
-                            <>
-                              <AvatarUploader
-                                uploadPath={`/catalog/components/${c.id}/image`}
-                                imageUrl={c.imageUrl}
-                                alt={c.name}
-                                actionTrigger
-                              />
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                aria-label={`Edit ${c.name}`}
-                                title="Edit name"
-                                onClick={() => setEditing(c)}
-                              >
-                                <Pencil />
-                              </Button>
-                            </>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              aria-label={`Edit ${c.name}`}
+                              title="Edit name"
+                              onClick={() => setEditing(c)}
+                            >
+                              <Pencil />
+                            </Button>
                           )}
                           {canDelete && !c.deleteBlocker && (
                             <DeletePermanentlyAction

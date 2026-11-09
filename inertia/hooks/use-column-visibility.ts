@@ -40,14 +40,22 @@ export type UseColumnVisibility = {
  * preferences survive reloads. Stores the *hidden* set so newly added
  * columns default to visible without code changes.
  */
-export function useColumnVisibility(scope: string): UseColumnVisibility {
+export function useColumnVisibility(
+  scope: string,
+  requiredColumns: readonly string[] = []
+): UseColumnVisibility {
   const [hidden, setHidden] = React.useState<Set<string>>(() => readHidden(scope))
+  const required = React.useMemo(() => new Set(requiredColumns), [requiredColumns])
 
-  const isVisible = React.useCallback((key: string) => !hidden.has(key), [hidden])
+  const isVisible = React.useCallback(
+    (key: string) => required.has(key) || !hidden.has(key),
+    [hidden, required]
+  )
 
   const toggle = React.useCallback(
     (key: string) => {
       setHidden((prev) => {
+        if (required.has(key)) return prev
         const next = new Set(prev)
         if (next.has(key)) next.delete(key)
         else next.add(key)
@@ -55,7 +63,7 @@ export function useColumnVisibility(scope: string): UseColumnVisibility {
         return next
       })
     },
-    [scope]
+    [required, scope]
   )
 
   const reset = React.useCallback(() => {
