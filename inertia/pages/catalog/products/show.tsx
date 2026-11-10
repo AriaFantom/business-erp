@@ -1,7 +1,7 @@
 import { type ReactElement, useEffect, useRef, useState } from 'react'
 import { router, usePage } from '@inertiajs/react'
 import { Link } from '@adonisjs/inertia/react'
-import { ArrowLeft, Download, Paperclip, Pin, Trash2, Upload } from 'lucide-react'
+import { ArrowLeft, Download, Paperclip, Pencil, Pin, Trash2, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
@@ -336,27 +336,30 @@ function ProductHero({
         <div className="flex flex-1 flex-col gap-3">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h1 className="text-2xl font-semibold">{product.name}</h1>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-2xl font-semibold">{product.name}</h1>
+                {product.isActive ? (
+                  <Badge variant="outline">Active</Badge>
+                ) : (
+                  <Badge variant="secondary">Archived</Badge>
+                )}
+                {product.category?.name === 'Custom Orders' && (
+                  <Badge variant="secondary">Custom</Badge>
+                )}
+              </div>
               <p className="font-mono text-sm text-muted-foreground">{product.sku}</p>
-              {canEdit && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="mt-3"
-                  onClick={onEditName}
-                >
-                  Edit name
-                </Button>
-              )}
             </div>
-            {product.isActive ? (
-              <Badge variant="outline">Active</Badge>
-            ) : (
-              <Badge variant="secondary">Archived</Badge>
-            )}
-            {product.category?.name === 'Custom Orders' && (
-              <Badge variant="secondary">Custom</Badge>
+            {canEdit && (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                aria-label={`Edit name for ${product.name}`}
+                title="Edit name"
+                onClick={onEditName}
+              >
+                <Pencil />
+              </Button>
             )}
           </div>
           {product.description && <p className="text-sm">{product.description}</p>}
@@ -496,7 +499,7 @@ function FilesCard({ productId, initial }: { productId: number; initial: FileRow
           />
           <Button asChild size="sm" disabled={busy}>
             <span>
-              <Upload className="size-4" />
+              <Upload data-icon="inline-start" />
               {busy ? 'Working…' : 'Upload'}
             </span>
           </Button>
@@ -535,7 +538,7 @@ function FilesCard({ productId, initial }: { productId: number; initial: FileRow
                     <div className="flex justify-end gap-1">
                       <Button asChild variant="ghost" size="icon" aria-label="Download">
                         <a href={`/catalog/products/${productId}/files/${f.id}/download`}>
-                          <Download className="size-4" />
+                          <Download />
                         </a>
                       </Button>
                       <Button
@@ -545,7 +548,7 @@ function FilesCard({ productId, initial }: { productId: number; initial: FileRow
                         disabled={busy}
                         onClick={() => setPending(f)}
                       >
-                        <Trash2 className="size-4" />
+                        <Trash2 />
                       </Button>
                     </div>
                   </TableCell>
@@ -626,7 +629,7 @@ export default function ProductShowPage({ product, images, files, profitAnalysis
         sourceJob={dialogJob ? { id: dialogJob.id, number: dialogJob.number } : null}
       />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Images</CardTitle>
@@ -635,8 +638,10 @@ export default function ProductShowPage({ product, images, files, profitAnalysis
             <ProductImageGallery productId={product.id} images={images} canEdit={canEdit} />
           </CardContent>
         </Card>
-        <FilesCard productId={product.id} initial={files} />
         <QrCard product={product} />
+        <div className="min-w-0 lg:col-span-2">
+          <FilesCard productId={product.id} initial={files} />
+        </div>
       </div>
     </div>
   )
