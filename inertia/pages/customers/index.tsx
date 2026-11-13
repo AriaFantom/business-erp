@@ -1,5 +1,5 @@
 import { type ReactElement, useState } from 'react'
-import { useForm } from '@inertiajs/react'
+import { useForm, usePage } from '@inertiajs/react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -22,12 +22,14 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
-import { Archive, CheckCircle2, Users, XCircle } from 'lucide-react'
+import { Archive, CheckCircle2, Pencil, Users, XCircle } from 'lucide-react'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { StatCard } from '@/components/catalog/stat-card'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { EmptyState } from '@/components/empty-state'
 import { formatMoney, useCurrency } from '@/lib/currency'
+import type { InertiaProps } from '@/types'
+import { hasPermission } from '@/lib/nav'
 
 type Row = {
   id: number
@@ -35,6 +37,8 @@ type Row = {
   gstin: string | null
   email: string | null
   phone: string | null
+  billingAddress: string | null
+  shippingAddress: string | null
   isActive: boolean
   creditLimit: string | null
   openBalance: string
@@ -77,6 +81,7 @@ function NewCustomerDialog() {
             e.preventDefault()
             post('/customers', {
               preserveScroll: true,
+              preserveState: false,
               onSuccess: () => {
                 reset()
                 setOpen(false)
@@ -184,34 +189,92 @@ function Field({
   )
 }
 
-function CreditLimitDialog({ customer }: { customer: Row }) {
-  const currency = useCurrency()
+function EditCustomerDialog({ customer }: { customer: Row }) {
   const [open, setOpen] = useState(false)
-  const { data, setData, post, processing, transform } = useForm({
+  const { data, setData, post, processing, errors, transform } = useForm({
+    name: customer.name,
+    gstin: customer.gstin ?? '',
+    email: customer.email ?? '',
+    phone: customer.phone ?? '',
+    billingAddress: customer.billingAddress ?? '',
+    shippingAddress: customer.shippingAddress ?? '',
     creditLimit: customer.creditLimit ?? '',
   })
-  transform((d) => ({ creditLimit: d.creditLimit === '' ? null : Number(d.creditLimit) }))
+  transform((d) => ({
+    name: d.name,
+    gstin: d.gstin.trim() || null,
+    email: d.email.trim() || null,
+    phone: d.phone.trim() || null,
+    billingAddress: d.billingAddress.trim() || null,
+    shippingAddress: d.shippingAddress.trim() || null,
+    creditLimit: d.creditLimit === '' ? null : Number(d.creditLimit),
+  }))
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" title="Set credit limit">
-          {customer.creditLimit ? formatMoney(customer.creditLimit, currency) : 'No limit'}
+        <Button
+          variant="outline"
+          size="icon"
+          title={`Edit ${customer.name}`}
+          aria-label={`Edit ${customer.name}`}
+        >
+          <Pencil />
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-sm">
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Credit limit — {customer.name}</DialogTitle>
+          <DialogTitle>Edit customer</DialogTitle>
         </DialogHeader>
         <form
-          className="flex flex-col gap-3"
+          className="flex flex-col gap-4"
           onSubmit={(e) => {
             e.preventDefault()
             post(`/customers/${customer.id}`, {
               preserveScroll: true,
+              preserveState: false,
               onSuccess: () => setOpen(false),
             })
           }}
         >
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field
+              label="Name"
+              value={data.name}
+              error={errors.name}
+              onChange={(value) => setData('name', value)}
+            />
+            <Field
+              label="GSTIN"
+              value={data.gstin}
+              error={errors.gstin}
+              onChange={(value) => setData('gstin', value)}
+            />
+            <Field
+              label="Email"
+              type="email"
+              value={data.email}
+              error={errors.email}
+              onChange={(value) => setData('email', value)}
+            />
+            <Field
+              label="Phone"
+              value={data.phone}
+              error={errors.phone}
+              onChange={(value) => setData('phone', value)}
+            />
+          </div>
+          <Field
+            label="Billing address"
+            value={data.billingAddress}
+            error={errors.billingAddress}
+            onChange={(value) => setData('billingAddress', value)}
+          />
+          <Field
+            label="Shipping address"
+            value={data.shippingAddress}
+            error={errors.shippingAddress}
+            onChange={(value) => setData('shippingAddress', value)}
+          />
           <div className="flex flex-col gap-1">
             <Label>Credit limit</Label>
             <Input
@@ -223,8 +286,11 @@ function CreditLimitDialog({ customer }: { customer: Row }) {
               onChange={(e) => setData('creditLimit', e.target.value)}
             />
             <span className="text-xs text-muted-foreground">
-              Current open balance: {customer.openBalance}. Leave empty for no limit.
+              Leave empty for no limit. The current balance and account status are not changed.
             </span>
+            {errors.creditLimit && (
+              <span className="text-xs text-destructive">{errors.creditLimit}</span>
+            )}
           </div>
           <DialogFooter>
             <Button type="submit" disabled={processing}>
@@ -265,6 +331,9 @@ function ArchiveAction({ path, confirmText }: { path: string; confirmText: strin
 }
 
 export default function CustomersIndex({ customers, filters, counts }: PageProps) {
+  const currency = useCurrency()
+  const { user } = usePage<InertiaProps<PageProps>>().props
+  const canUpdate = hasPermission(user, 'customers.update')
   return (
     <div className="flex w-full flex-col gap-6 px-6 py-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -357,7 +426,7 @@ export default function CustomersIndex({ customers, filters, counts }: PageProps
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <CreditLimitDialog customer={c} />
+                      {c.creditLimit ? formatMoney(c.creditLimit, currency) : 'No limit'}
                     </TableCell>
                     <TableCell>
                       {c.isActive ? (
@@ -366,13 +435,16 @@ export default function CustomersIndex({ customers, filters, counts }: PageProps
                         <Badge variant="secondary">Archived</Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-right">
-                      {c.isActive && (
-                        <ArchiveAction
-                          path={`/customers/${c.id}/archive`}
-                          confirmText={`Archive ${c.name}?`}
-                        />
-                      )}
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-2">
+                        {canUpdate && <EditCustomerDialog customer={c} />}
+                        {c.isActive && (
+                          <ArchiveAction
+                            path={`/customers/${c.id}/archive`}
+                            confirmText={`Archive ${c.name}?`}
+                          />
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

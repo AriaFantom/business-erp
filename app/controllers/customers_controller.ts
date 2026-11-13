@@ -4,6 +4,7 @@ import Invoice from '#models/invoice'
 import { createCustomerValidator, updateCustomerValidator } from '#validators/catalog'
 import { getCustomersViewModel } from '#services/catalog_view_models'
 import { audit } from '#services/audit'
+import db from '@adonisjs/lucid/services/db'
 
 export default class CustomersController {
   async index({ request, inertia, bouncer }: HttpContext) {
@@ -44,20 +45,26 @@ export default class CustomersController {
 
   async update({ params, request, auth, bouncer, response, session }: HttpContext) {
     await bouncer.authorize('customers.update' as never)
-    const customer = await Customer.findOrFail(params.id)
     const payload = await request.validateUsing(updateCustomerValidator)
-    const { creditLimit, ...rest } = payload
-    customer.merge(rest)
-    if (creditLimit !== undefined) {
-      customer.creditLimit = creditLimit === null ? null : String(creditLimit)
-    }
-    await customer.save()
-    await audit({
-      actor: auth.user!,
-      action: 'customer.update',
-      targetType: 'customer',
-      targetId: customer.id,
-      payload,
+    await db.transaction(async (trx) => {
+      const customer = await Customer.query({ client: trx })
+        .where('id', params.id)
+        .forUpdate()
+        .firstOrFail()
+      const { creditLimit, ...rest } = payload
+      customer.merge(rest)
+      if (creditLimit !== undefined) {
+        customer.creditLimit = creditLimit === null ? null : String(creditLimit)
+      }
+      await customer.save()
+      await audit({
+        actor: auth.user!,
+        action: 'customer.update',
+        targetType: 'customer',
+        targetId: customer.id,
+        payload: { ...rest, creditLimit },
+        trx,
+      })
     })
     session.flash('success', 'Customer updated.')
     return response.redirect().back()

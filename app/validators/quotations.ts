@@ -14,6 +14,14 @@ const lineRule = vine.object({
   profitPctOverride: vine.number().min(0).max(1000).optional(),
   taxRatePct: vine.number().min(0).max(100).optional(),
   boms: vine.array(bomLineRule).optional(),
+  pricingMode: vine.enum(['manual', 'estimated']).optional(),
+  estimate: vine
+    .object({
+      extraCost: vine.number().min(0).max(99_999_999_999),
+      profitPct: vine.number().min(0).max(1000).optional(),
+      expectedFingerprint: vine.string().fixedLength(64),
+    })
+    .optional(),
 })
 
 export const createQuotationValidator = vine.compile(
@@ -29,5 +37,14 @@ export const suggestPriceValidator = vine.compile(
   vine.object({
     productId: vine.number().positive(),
     qty: vine.number().min(1).max(1_000_000).optional(),
+  })
+)
+
+export const estimateQuotationValidator = vine.compile(
+  vine.object({
+    productId: vine.number().positive().nullable().optional(),
+    extraCost: vine.number().min(0).max(99_999_999_999),
+    profitPct: vine.number().min(0).max(1000).nullable().optional(),
+    boms: vine.array(bomLineRule).maxLength(200),
   })
 )

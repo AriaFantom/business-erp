@@ -14,8 +14,9 @@ import { audit } from '#services/audit'
 import { nextDocNumber } from '#services/numbering'
 import { computeUnitPrice } from '#services/pricing'
 import { latestProductCost } from '#services/job_costing'
-import { InvalidStateError } from '#services/domain_errors'
+import { DomainError, InvalidStateError } from '#services/domain_errors'
 import { invalidatePdf } from '#services/document_pdf/render'
+import { estimateQuotationLine, type QuotationEstimate } from '#services/quotation_estimate_service'
 
 export type BomLineInput = {
   itemKind: 'material' | 'component'
@@ -33,11 +34,19 @@ export type QuotationLineInput = {
   profitPctOverride?: number | null
   taxRatePct?: number | null
   boms?: BomLineInput[]
+  pricingMode?: 'manual' | 'estimated'
+  estimate?: {
+    extraCost: number
+    profitPct?: number | null
+    expectedFingerprint: string
+  }
 }
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100
 }
+
+const MAX_DATABASE_TOTAL = 999_999_999_999.99
 
 async function buildLine(input: QuotationLineInput) {
   let unitPrice: number
@@ -50,8 +59,43 @@ async function buildLine(input: QuotationLineInput) {
     qty: number
     unitCost: number
   }[] = []
+  let estimate: QuotationEstimate | null = null
 
-  if (input.productId) {
+  if (input.pricingMode === 'estimated') {
+    if (!input.estimate) {
+      throw new DomainError({
+        code: 'ESTIMATE_REQUIRED',
+        message: 'Review and apply the cost estimate before creating this quotation.',
+      })
+    }
+    estimate = await estimateQuotationLine({
+      productId: input.productId,
+      extraCost: input.estimate.extraCost,
+      profitPct: input.estimate.profitPct,
+      boms: input.boms ?? [],
+    })
+    if (estimate.fingerprint !== input.estimate.expectedFingerprint) {
+      throw new DomainError({
+        code: 'ESTIMATE_STALE',
+        message: 'Catalog costs changed. Review and apply the updated estimate before saving.',
+      })
+    }
+    unitPrice = estimate.suggestedUnitPrice
+    profitPctUsed = estimate.profitPct
+    for (const bom of estimate.boms) {
+      bomSnapshots.push({
+        itemKind: bom.itemKind,
+        itemId: bom.itemId,
+        qty: bom.qty,
+        unitCost: bom.unitCost,
+      })
+    }
+    if (input.productId) {
+      const product = await Product.findOrFail(input.productId)
+      const category = product.categoryId ? await ProductCategory.find(product.categoryId) : null
+      taxRatePct = input.taxRatePct ?? Number(product.taxRatePct ?? category?.taxRatePct ?? 0)
+    }
+  } else if (input.productId) {
     const product = await Product.findOrFail(input.productId)
     const category = product.categoryId ? await ProductCategory.find(product.categoryId) : null
     const cost = await latestProductCost(input.productId)
@@ -110,6 +154,19 @@ async function buildLine(input: QuotationLineInput) {
   const subtotal = round2(unitPrice * input.qty)
   const tax = round2((subtotal * taxRatePct) / 100)
   const total = round2(subtotal + tax)
+  if (
+    !Number.isFinite(subtotal) ||
+    !Number.isFinite(tax) ||
+    !Number.isFinite(total) ||
+    subtotal > MAX_DATABASE_TOTAL ||
+    tax > MAX_DATABASE_TOTAL ||
+    total > MAX_DATABASE_TOTAL
+  ) {
+    throw new DomainError({
+      code: 'QUOTATION_TOTAL_OVERFLOW',
+      message: 'A quotation line total is too large to save.',
+    })
+  }
   return {
     productId: input.productId ?? null,
     name: input.name,
@@ -121,7 +178,15 @@ async function buildLine(input: QuotationLineInput) {
     lineTax: tax,
     lineTotal: total,
     bomSnapshots,
-    boms: input.boms ?? [],
+    boms: estimate
+      ? estimate.boms.map((bom) => ({
+          itemKind: bom.itemKind,
+          itemId: bom.itemId,
+          qty: bom.qty,
+        }))
+      : (input.boms ?? []),
+    pricingBasis: input.pricingMode ?? null,
+    estimate,
   }
 }
 
@@ -235,6 +300,14 @@ export async function createQuotation(input: {
       item.lineSubtotal = String(l.lineSubtotal)
       item.lineTax = String(l.lineTax)
       item.lineTotal = String(l.lineTotal)
+      item.pricingBasis = l.pricingBasis
+      item.estimatedMaterialCost = l.estimate ? String(l.estimate.materialCost) : null
+      item.estimatedComponentCost = l.estimate ? String(l.estimate.componentCost) : null
+      item.estimatedExtraCost = l.estimate ? String(l.estimate.extraCost) : null
+      item.estimatedUnitCost = l.estimate ? String(l.estimate.estimatedUnitCost) : null
+      item.estimatedProfitPct = l.estimate ? String(l.estimate.profitPct) : null
+      item.estimatedSuggestedUnitPrice = l.estimate ? String(l.estimate.suggestedUnitPrice) : null
+      item.estimateCostFingerprint = l.estimate?.fingerprint ?? null
       item.useTransaction(trx)
       await item.save()
 

@@ -1,14 +1,23 @@
-import { type ReactElement } from 'react'
+import { type ReactElement, useState } from 'react'
 import { Head, useForm } from '@inertiajs/react'
 import { Link } from '@adonisjs/inertia/react'
-import { ChevronLeft, Package, Plus, Trash2, Wrench, X } from 'lucide-react'
+import { Calculator, ChevronLeft, Package, Plus, Trash2, Wrench, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -24,6 +33,8 @@ import {
 import { EmptyState } from '@/components/empty-state'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { formatMoney, useCurrency } from '@/lib/currency'
+import { toast } from 'sonner'
+import { Badge } from '@/components/ui/badge'
 
 type CustomerOpt = { id: number; name: string }
 type ProductOpt = {
@@ -35,8 +46,8 @@ type ProductOpt = {
   taxRatePct: number
   suggestedUnitPrice: number
 }
-type MaterialOpt = { id: number; name: string; unitCost: number }
-type ComponentOpt = { id: number; name: string; unitCost: number }
+type MaterialOpt = { id: number; name: string; unit: string; unitCost: number }
+type ComponentOpt = { id: number; name: string; unit: string; unitCost: number }
 
 type PageProps = {
   customers: CustomerOpt[]
@@ -60,6 +71,35 @@ type LineDraft = {
   profitPctOverride?: number
   taxRatePct: number
   boms: BomDraft[]
+  pricingMode?: 'manual' | 'estimated'
+  estimate?: {
+    extraCost: number
+    profitPct: number
+    expectedFingerprint: string
+  }
+  estimateTarget?: number
+}
+
+type EstimateResult = {
+  materialCost: number
+  componentCost: number
+  catalogCost: number
+  extraCost: number
+  estimatedUnitCost: number
+  profitPct: number
+  profitFrom: 'category' | 'product' | 'global'
+  suggestedUnitPrice: number
+  fingerprint: string
+  boms: Array<{
+    itemKind: 'material' | 'component'
+    itemId: number
+    name: string
+    unit: string
+    qty: number
+    unitCost: number
+    lineCost: number
+    zeroCost: boolean
+  }>
 }
 
 function round2(n: number): number {
@@ -86,6 +126,267 @@ function computeCustomUnitPrice(cost?: number, profitPct?: number): number {
   return round2((cost ?? 0) * (1 + (profitPct ?? 0) / 100))
 }
 
+function xsrfToken() {
+  const cookie = document.cookie.split('; ').find((part) => part.startsWith('XSRF-TOKEN='))
+  return cookie ? decodeURIComponent(cookie.slice('XSRF-TOKEN='.length)) : ''
+}
+
+function EstimateDialog({
+  line,
+  quantity,
+  materials,
+  components,
+  onApply,
+}: {
+  line: LineDraft
+  quantity: number
+  materials: MaterialOpt[]
+  components: ComponentOpt[]
+  onApply: (result: EstimateResult, boms: BomDraft[]) => void
+}) {
+  const currency = useCurrency()
+  const [open, setOpen] = useState(false)
+  const [boms, setBoms] = useState<BomDraft[]>(line.boms)
+  const [extraCost, setExtraCost] = useState(String(line.estimate?.extraCost ?? 0))
+  const [profitPct, setProfitPct] = useState(line.estimate ? String(line.estimate.profitPct) : '')
+  const [result, setResult] = useState<EstimateResult | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  const addBom = (itemKind: 'material' | 'component') => {
+    const options = itemKind === 'material' ? materials : components
+    if (!options[0]) return
+    setBoms((current) => [...current, { itemKind, itemId: options[0].id, qty: 1 }])
+    setResult(null)
+  }
+
+  const preview = async () => {
+    setLoading(true)
+    try {
+      const response = await fetch('/quotations/estimate', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'X-XSRF-TOKEN': xsrfToken(),
+        },
+        body: JSON.stringify({
+          productId: line.productId ?? null,
+          extraCost: Number(extraCost || 0),
+          profitPct: profitPct === '' ? null : Number(profitPct),
+          boms,
+        }),
+      })
+      const body = await response.json()
+      if (!response.ok) throw new Error(body.error ?? 'The estimate could not be calculated.')
+      setResult(body.data)
+      setProfitPct(String(body.data.profitPct))
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'The estimate could not be calculated.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        if (next) {
+          setBoms(line.boms)
+          setExtraCost(String(line.estimate?.extraCost ?? 0))
+          setProfitPct(line.estimate ? String(line.estimate.profitPct) : '')
+          setResult(null)
+        }
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button type="button" variant="outline" size="sm">
+          <Calculator data-icon="inline-start" />
+          Estimate cost
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Estimate cost — {line.name || 'custom item'}</DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-muted-foreground">
+            Enter the materials and costs for one product. This estimate does not reserve stock or
+            change the saved product price.
+          </p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <Label>Materials and components per product</Label>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => addBom('material')}>
+                <Plus data-icon="inline-start" /> Material
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => addBom('component')}>
+                <Plus data-icon="inline-start" /> Component
+              </Button>
+            </div>
+          </div>
+          {boms.length === 0 ? (
+            <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+              No catalog items added. You can still estimate using only the extra cost.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {boms.map((bom, index) => {
+                const options = bom.itemKind === 'material' ? materials : components
+                const selected = options.find((item) => item.id === bom.itemId)
+                return (
+                  <div
+                    key={`${bom.itemKind}-${index}`}
+                    className="grid gap-2 rounded-lg border p-3 sm:grid-cols-[1fr_9rem_auto] sm:items-end"
+                  >
+                    <Field label={bom.itemKind === 'material' ? 'Material' : 'Component'}>
+                      <Select
+                        value={String(bom.itemId)}
+                        onValueChange={(value) => {
+                          setBoms((current) =>
+                            current.map((entry, i) =>
+                              i === index ? { ...entry, itemId: Number(value) } : entry
+                            )
+                          )
+                          setResult(null)
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            {options.map((item) => (
+                              <SelectItem key={item.id} value={String(item.id)}>
+                                {item.name}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                    <Field label={`Quantity (${selected?.unit ?? 'unit'})`}>
+                      <Input
+                        type="number"
+                        min={0.0001}
+                        step="0.0001"
+                        value={bom.qty}
+                        onChange={(event) => {
+                          setBoms((current) =>
+                            current.map((entry, i) =>
+                              i === index ? { ...entry, qty: Number(event.target.value) } : entry
+                            )
+                          )
+                          setResult(null)
+                        }}
+                      />
+                    </Field>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Remove estimate item"
+                      title="Remove"
+                      onClick={() => {
+                        setBoms((current) => current.filter((_, i) => i !== index))
+                        setResult(null)
+                      }}
+                    >
+                      <X />
+                    </Button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label={`Extra cost per product (${currency})`}>
+              <Input
+                type="number"
+                min={0}
+                step="0.0001"
+                value={extraCost}
+                onChange={(event) => {
+                  setExtraCost(event.target.value)
+                  setResult(null)
+                }}
+              />
+            </Field>
+            <Field label="Markup on cost (%)">
+              <Input
+                type="number"
+                min={0}
+                max={1000}
+                step="0.01"
+                value={profitPct}
+                placeholder="Use category default"
+                onChange={(event) => {
+                  setProfitPct(event.target.value)
+                  setResult(null)
+                }}
+              />
+            </Field>
+          </div>
+          {result && (
+            <div className="flex flex-col gap-2 rounded-lg bg-muted/40 p-4 text-sm">
+              <div className="flex justify-between">
+                <span>Materials/components</span>
+                <span>{formatMoney(result.catalogCost, currency)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Extra cost</span>
+                <span>{formatMoney(result.extraCost, currency)}</span>
+              </div>
+              <div className="flex justify-between font-medium">
+                <span>Estimated unit cost</span>
+                <span>{formatMoney(result.estimatedUnitCost, currency)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Suggested price excluding tax ({result.profitPct}% markup)</span>
+                <span>{formatMoney(result.suggestedUnitPrice, currency)}</span>
+              </div>
+              <div className="flex justify-between border-t pt-2">
+                <span>Total for {quantity || 0}</span>
+                <span>{formatMoney(result.suggestedUnitPrice * (quantity || 0), currency)}</span>
+              </div>
+              {result.boms.some((bom) => bom.zeroCost) && (
+                <p className="text-xs text-destructive">
+                  One or more items have a zero default cost. Review their catalog costs.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={preview} disabled={loading}>
+            {loading ? 'Calculating…' : 'Calculate'}
+          </Button>
+          <Button
+            type="button"
+            disabled={!result}
+            onClick={() => {
+              if (!result) return
+              onApply(
+                result,
+                result.boms.map((bom) => ({
+                  itemKind: bom.itemKind,
+                  itemId: bom.itemId,
+                  qty: bom.qty,
+                }))
+              )
+              setOpen(false)
+            }}
+          >
+            Apply estimated price
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export default function QuotationNew({ customers, products, materials, components }: PageProps) {
   const currency = useCurrency()
   const { data, setData, post, processing, errors } = useForm({
@@ -108,6 +409,7 @@ export default function QuotationNew({ customers, products, materials, component
         profitPctOverride: p.profitPct,
         taxRatePct: p.taxRatePct,
         boms: [],
+        pricingMode: 'manual',
       },
     ])
   }
@@ -123,6 +425,7 @@ export default function QuotationNew({ customers, products, materials, component
         unitPrice: 0,
         taxRatePct: 18,
         boms: [],
+        pricingMode: 'manual',
       },
     ])
 
@@ -148,6 +451,9 @@ export default function QuotationNew({ customers, products, materials, component
               boms: newBoms,
               unitCost: newCost,
               unitPrice: computeCustomUnitPrice(newCost, l.profitPctOverride),
+              pricingMode: 'manual',
+              estimate: undefined,
+              estimateTarget: undefined,
             }
           : l
       )
@@ -167,6 +473,9 @@ export default function QuotationNew({ customers, products, materials, component
               boms: newBoms,
               unitCost: newCost,
               unitPrice: computeCustomUnitPrice(newCost, l.profitPctOverride),
+              pricingMode: 'manual',
+              estimate: undefined,
+              estimateTarget: undefined,
             }
           : l
       )
@@ -186,6 +495,9 @@ export default function QuotationNew({ customers, products, materials, component
               boms: newBoms,
               unitCost: newCost,
               unitPrice: computeCustomUnitPrice(newCost, l.profitPctOverride),
+              pricingMode: 'manual',
+              estimate: undefined,
+              estimateTarget: undefined,
             }
           : l
       )
@@ -288,11 +600,13 @@ export default function QuotationNew({ customers, products, materials, component
                 </span>
               </SelectTrigger>
               <SelectContent>
-                {products.map((p) => (
-                  <SelectItem key={p.id} value={String(p.id)}>
-                    {p.name} ({p.sku})
-                  </SelectItem>
-                ))}
+                <SelectGroup>
+                  {products.map((p) => (
+                    <SelectItem key={p.id} value={String(p.id)}>
+                      {p.name} ({p.sku})
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
             <Button type="button" variant="outline" onClick={addCustomLine}>
@@ -342,6 +656,34 @@ export default function QuotationNew({ customers, products, materials, component
                                 placeholder={isCustom ? 'Product name' : ''}
                                 onChange={(e) => updateLine(i, { name: e.target.value })}
                               />
+                              <div className="flex flex-wrap items-center gap-2">
+                                <EstimateDialog
+                                  line={ln}
+                                  quantity={ln.qty}
+                                  materials={materials}
+                                  components={components}
+                                  onApply={(estimate, estimateBoms) =>
+                                    updateLine(i, {
+                                      boms: estimateBoms,
+                                      unitCost: estimate.estimatedUnitCost,
+                                      profitPctOverride: estimate.profitPct,
+                                      unitPrice: estimate.suggestedUnitPrice,
+                                      pricingMode: 'estimated',
+                                      estimate: {
+                                        extraCost: estimate.extraCost,
+                                        profitPct: estimate.profitPct,
+                                        expectedFingerprint: estimate.fingerprint,
+                                      },
+                                      estimateTarget: estimate.suggestedUnitPrice,
+                                    })
+                                  }
+                                />
+                                {ln.pricingMode === 'estimated' && (
+                                  <Badge variant="secondary">
+                                    Estimated cost {formatMoney(ln.unitCost ?? 0, currency)}
+                                  </Badge>
+                                )}
+                              </div>
                               {isCustom && (
                                 <div className="rounded border bg-muted/30 p-3">
                                   <div className="mb-2 flex items-center justify-between">
@@ -400,11 +742,13 @@ export default function QuotationNew({ customers, products, materials, component
                                                 <SelectValue />
                                               </SelectTrigger>
                                               <SelectContent>
-                                                {itemList.map((it) => (
-                                                  <SelectItem key={it.id} value={String(it.id)}>
-                                                    {it.name}
-                                                  </SelectItem>
-                                                ))}
+                                                <SelectGroup>
+                                                  {itemList.map((it) => (
+                                                    <SelectItem key={it.id} value={String(it.id)}>
+                                                      {it.name}
+                                                    </SelectItem>
+                                                  ))}
+                                                </SelectGroup>
                                               </SelectContent>
                                             </Select>
                                             <Input
@@ -476,6 +820,9 @@ export default function QuotationNew({ customers, products, materials, component
                                   updateLine(i, {
                                     profitPctOverride: profit,
                                     unitPrice: computeCustomUnitPrice(ln.unitCost, profit),
+                                    pricingMode: 'manual',
+                                    estimate: undefined,
+                                    estimateTarget: undefined,
                                   })
                                 }}
                                 className="w-20"
@@ -490,14 +837,22 @@ export default function QuotationNew({ customers, products, materials, component
                               step="0.0001"
                               value={ln.unitPrice ?? ''}
                               placeholder={ln.productId ? 'auto' : '0'}
-                              readOnly={isCustom}
                               onChange={(e) =>
                                 updateLine(i, {
                                   unitPrice: e.target.value ? Number(e.target.value) : undefined,
+                                  pricingMode: 'manual',
                                 })
                               }
                               className="w-28"
                             />
+                            {ln.pricingMode === 'manual' &&
+                              ln.estimateTarget !== undefined &&
+                              Number(ln.unitPrice ?? 0) < ln.estimateTarget && (
+                                <p className="mt-1 w-32 text-xs text-destructive">
+                                  Below estimated target of{' '}
+                                  {formatMoney(ln.estimateTarget, currency)}
+                                </p>
+                              )}
                           </TableCell>
                           <TableCell className="align-top">
                             <Input

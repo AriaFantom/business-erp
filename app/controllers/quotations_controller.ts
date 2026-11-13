@@ -1,6 +1,10 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import React from 'react'
-import { createQuotationValidator, suggestPriceValidator } from '#validators/quotations'
+import {
+  createQuotationValidator,
+  estimateQuotationValidator,
+  suggestPriceValidator,
+} from '#validators/quotations'
 import {
   getQuotationCreateViewModel,
   getQuotationShowViewModel,
@@ -20,6 +24,7 @@ import { getDashboardBranding } from '#services/dashboard_branding'
 import { ensurePdf, streamPdf } from '#services/document_pdf/render'
 import { QuotationDocument } from '#services/document_pdf/quotation_document'
 import { getAppCurrency } from '#services/currency'
+import { estimateQuotationLine } from '#services/quotation_estimate_service'
 
 export default class QuotationsController {
   async index({ request, inertia, bouncer }: HttpContext) {
@@ -67,6 +72,8 @@ export default class QuotationsController {
           profitPctOverride: i.profitPctOverride ?? null,
           taxRatePct: i.taxRatePct ?? null,
           boms: i.boms ?? [],
+          pricingMode: i.pricingMode,
+          estimate: i.estimate ?? undefined,
         })),
         actor: auth.user!,
       })
@@ -143,6 +150,25 @@ export default class QuotationsController {
     const payload = await request.validateUsing(suggestPriceValidator)
     const breakdown = await suggestPriceFor(payload.productId)
     return response.json({ data: breakdown })
+  }
+
+  async estimate({ request, bouncer, response }: HttpContext) {
+    await bouncer.authorize('quotations.create' as never)
+    const payload = await request.validateUsing(estimateQuotationValidator)
+    try {
+      const estimate = await estimateQuotationLine({
+        productId: payload.productId ?? null,
+        extraCost: payload.extraCost,
+        profitPct: payload.profitPct ?? null,
+        boms: payload.boms,
+      })
+      return response.json({ data: estimate })
+    } catch (error) {
+      if (error instanceof DomainError) {
+        return response.status(error.status).send({ error: error.message, code: error.code })
+      }
+      throw error
+    }
   }
 
   private _domain(

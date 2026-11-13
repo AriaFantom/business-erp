@@ -53,11 +53,13 @@ async function getQuotationOptionLists() {
     materials: materials.map((m) => ({
       id: m.id,
       name: m.name,
+      unit: m.unit,
       unitCost: Number(m.defaultUnitCost),
     })),
     components: components.map((c) => ({
       id: c.id,
       name: c.name,
+      unit: c.unit,
       unitCost: Number(c.defaultUnitCost),
     })),
     products: products.map((p) => {
@@ -174,6 +176,13 @@ export async function getQuotationShowViewModel(id: number) {
       lineSubtotal: it.lineSubtotal,
       lineTax: it.lineTax,
       lineTotal: it.lineTotal,
+      pricingBasis: it.pricingBasis,
+      estimatedMaterialCost: it.estimatedMaterialCost,
+      estimatedComponentCost: it.estimatedComponentCost,
+      estimatedExtraCost: it.estimatedExtraCost,
+      estimatedUnitCost: it.estimatedUnitCost,
+      estimatedProfitPct: it.estimatedProfitPct,
+      estimatedSuggestedUnitPrice: it.estimatedSuggestedUnitPrice,
       boms: it.boms.map((b) => ({
         id: b.id,
         itemKind: b.itemKind,

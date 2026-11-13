@@ -371,6 +371,9 @@ router
         router.get('quotations/new', [QuotationsController, 'create']).as('quotations.new')
         router.get('quotations/:id', [QuotationsController, 'show']).as('quotations.show')
         router.post('quotations', [QuotationsController, 'store']).as('quotations.store')
+        router
+          .post('quotations/estimate', [QuotationsController, 'estimate'])
+          .as('quotations.estimate')
         router.post('quotations/:id/send', [QuotationsController, 'send']).as('quotations.send')
         router
           .post('quotations/:id/accept', [QuotationsController, 'accept'])

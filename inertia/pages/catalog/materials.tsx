@@ -66,25 +66,45 @@ type Filters = { q: string; status: string; type: string }
 
 type Counts = { total: number; active: number; archived: number }
 
+type QuickAddDefaults = {
+  sourceName: string
+  type: string
+  unit: string
+  defaultSupplierId: number | null
+  defaultUnitCost: string
+  reorderThresholdG: string | null
+}
+
 type PageProps = {
   materials: Row[]
   suppliers: SupplierOpt[]
   filters: Filters
   counts: Counts
+  quickAddDefaults: QuickAddDefaults | null
 }
 
-function NewMaterialDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
+function NewMaterialDialog({
+  suppliers,
+  quick = false,
+  quickAddDefaults,
+}: {
+  suppliers: SupplierOpt[]
+  quick?: boolean
+  quickAddDefaults?: QuickAddDefaults | null
+}) {
   const currency = useCurrency()
   const [open, setOpen] = useState(false)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const { data, setData, post, processing, errors, reset, transform } = useForm({
     sku: '',
     name: '',
-    type: 'filament',
-    unit: 'g',
-    defaultSupplierId: '' as string,
-    defaultUnitCost: 0,
-    reorderThresholdG: '' as string,
+    type: quickAddDefaults?.type ?? 'filament',
+    unit: quickAddDefaults?.unit ?? 'g',
+    defaultSupplierId: quickAddDefaults?.defaultSupplierId
+      ? String(quickAddDefaults.defaultSupplierId)
+      : '',
+    defaultUnitCost: Number(quickAddDefaults?.defaultUnitCost ?? 0),
+    reorderThresholdG: quickAddDefaults?.reorderThresholdG ?? '',
   })
 
   return (
@@ -98,11 +118,13 @@ function NewMaterialDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
       }}
     >
       <DialogTrigger asChild>
-        <Button>New material</Button>
+        <Button variant={quick ? 'outline' : 'default'}>
+          {quick ? 'Quick add' : 'New material'}
+        </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Create material</DialogTitle>
+          <DialogTitle>{quick ? 'Quick add material' : 'Create material'}</DialogTitle>
         </DialogHeader>
         <form
           className="flex flex-col gap-4"
@@ -124,6 +146,7 @@ function NewMaterialDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
             post('/catalog/materials', {
               forceFormData: !!imageFile,
               preserveScroll: true,
+              preserveState: false,
               onSuccess: () => {
                 reset()
                 setImageFile(null)
@@ -133,9 +156,18 @@ function NewMaterialDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
           }}
         >
           <InlineImagePicker file={imageFile} onChange={setImageFile} />
+          {quick && (
+            <div className="rounded-lg border bg-muted/30 px-3 py-2 text-sm">
+              <span className="font-medium">Settings copied from </span>
+              <span>{quickAddDefaults?.sourceName ?? 'the standard defaults'}</span>
+              <p className="text-xs text-muted-foreground">
+                Review them below. The name, SKU, image, and stock are never copied.
+              </p>
+            </div>
+          )}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 [&>*]:min-w-0">
             <SkuField
-              id="material-sku"
+              id={quick ? 'quick-material-sku' : 'material-sku'}
               name={data.name}
               value={data.sku}
               onChange={(sku) => setData('sku', sku)}
@@ -299,7 +331,13 @@ const MATERIAL_COLUMNS: ColumnDef[] = [
   { key: 'actions', label: 'Actions', required: true },
 ]
 
-export default function MaterialsPage({ materials, suppliers, filters, counts }: PageProps) {
+export default function MaterialsPage({
+  materials,
+  suppliers,
+  filters,
+  counts,
+  quickAddDefaults,
+}: PageProps) {
   const currency = useCurrency()
   const { user } = usePage<InertiaProps<PageProps>>().props
   const canEdit = Boolean(user?.isOwner || user?.permissions?.includes('materials.update'))
@@ -316,7 +354,10 @@ export default function MaterialsPage({ materials, suppliers, filters, counts }:
           <h1 className="text-2xl font-semibold">Materials</h1>
           <p className="text-sm text-muted-foreground">{materials.length} materials in catalog.</p>
         </div>
-        <NewMaterialDialog suppliers={suppliers} />
+        <div className="flex items-center gap-2">
+          <NewMaterialDialog suppliers={suppliers} quick quickAddDefaults={quickAddDefaults} />
+          <NewMaterialDialog suppliers={suppliers} />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

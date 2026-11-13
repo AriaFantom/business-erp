@@ -54,6 +54,13 @@ type Item = {
   lineSubtotal: string
   lineTax: string
   lineTotal: string
+  pricingBasis: string | null
+  estimatedMaterialCost: string | null
+  estimatedComponentCost: string | null
+  estimatedExtraCost: string | null
+  estimatedUnitCost: string | null
+  estimatedProfitPct: string | null
+  estimatedSuggestedUnitPrice: string | null
   boms: BomEntry[]
 }
 
@@ -241,6 +248,39 @@ export default function QuotationShow({ quotation, items }: PageProps) {
                           </span>
                         </div>
                       )}
+                    </div>
+                  )}
+                  {it.pricingBasis === 'estimated' && it.estimatedUnitCost !== null && (
+                    <div className="mt-3 grid gap-2 rounded-lg bg-muted/40 p-3 text-xs sm:grid-cols-4">
+                      <div>
+                        <span className="text-muted-foreground">Catalog cost</span>
+                        <p className="font-medium">
+                          {formatMoney(
+                            Number(it.estimatedMaterialCost ?? 0) +
+                              Number(it.estimatedComponentCost ?? 0),
+                            currency
+                          )}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Extra cost</span>
+                        <p className="font-medium">
+                          {formatMoney(it.estimatedExtraCost ?? 0, currency)}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Estimated unit cost</span>
+                        <p className="font-medium">{formatMoney(it.estimatedUnitCost, currency)}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Applied target</span>
+                        <p className="font-medium">
+                          {formatMoney(it.estimatedSuggestedUnitPrice ?? 0, currency)} excluding tax
+                          {it.estimatedProfitPct !== null
+                            ? ` · ${Number(it.estimatedProfitPct).toFixed(2)}% markup`
+                            : ''}
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>

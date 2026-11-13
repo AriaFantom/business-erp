@@ -1033,12 +1033,26 @@ export class QuotationItemBomSchema extends BaseModel {
 }
 
 export class QuotationItemSchema extends BaseModel {
-  static $columns = ['createdAt', 'description', 'id', 'lineSubtotal', 'lineTax', 'lineTotal', 'productId', 'profitPctUsed', 'qty', 'quotationId', 'taxRatePct', 'unitPrice', 'updatedAt'] as const
+  static $columns = ['createdAt', 'description', 'estimateCostFingerprint', 'estimatedComponentCost', 'estimatedExtraCost', 'estimatedMaterialCost', 'estimatedProfitPct', 'estimatedSuggestedUnitPrice', 'estimatedUnitCost', 'id', 'lineSubtotal', 'lineTax', 'lineTotal', 'pricingBasis', 'productId', 'profitPctUsed', 'qty', 'quotationId', 'taxRatePct', 'unitPrice', 'updatedAt'] as const
   $columns = QuotationItemSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column()
   declare description: string
+  @column()
+  declare estimateCostFingerprint: string | null
+  @column()
+  declare estimatedComponentCost: string | null
+  @column()
+  declare estimatedExtraCost: string | null
+  @column()
+  declare estimatedMaterialCost: string | null
+  @column()
+  declare estimatedProfitPct: string | null
+  @column()
+  declare estimatedSuggestedUnitPrice: string | null
+  @column()
+  declare estimatedUnitCost: string | null
   @column({ isPrimary: true })
   declare id: number
   @column()
@@ -1047,6 +1061,8 @@ export class QuotationItemSchema extends BaseModel {
   declare lineTax: string
   @column()
   declare lineTotal: string
+  @column()
+  declare pricingBasis: string | null
   @column()
   declare productId: number | null
   @column()

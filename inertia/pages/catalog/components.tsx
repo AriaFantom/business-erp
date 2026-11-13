@@ -65,24 +65,47 @@ type Filters = { q: string; status: string }
 
 type Counts = { total: number; active: number; archived: number }
 
+type QuickAddDefaults = {
+  sourceName: string
+  unit: string
+  defaultSupplierId: number | null
+  defaultUnitCost: string
+  reorderThresholdQty: number | null
+}
+
 type PageProps = {
   components: Row[]
   suppliers: SupplierOpt[]
   filters: Filters
   counts: Counts
+  quickAddDefaults: QuickAddDefaults | null
 }
 
-function NewComponentDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
+function NewComponentDialog({
+  suppliers,
+  quick = false,
+  quickAddDefaults,
+}: {
+  suppliers: SupplierOpt[]
+  quick?: boolean
+  quickAddDefaults?: QuickAddDefaults | null
+}) {
   const currency = useCurrency()
   const [open, setOpen] = useState(false)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const { data, setData, post, processing, errors, reset, transform } = useForm({
     sku: '',
     name: '',
-    unit: 'pcs',
-    defaultSupplierId: '',
-    defaultUnitCost: 0,
-    reorderThresholdQty: '',
+    unit: quickAddDefaults?.unit ?? 'pcs',
+    defaultSupplierId: quickAddDefaults?.defaultSupplierId
+      ? String(quickAddDefaults.defaultSupplierId)
+      : '',
+    defaultUnitCost: Number(quickAddDefaults?.defaultUnitCost ?? 0),
+    reorderThresholdQty:
+      quickAddDefaults?.reorderThresholdQty === null ||
+      quickAddDefaults?.reorderThresholdQty === undefined
+        ? ''
+        : String(quickAddDefaults.reorderThresholdQty),
   })
 
   return (
@@ -94,11 +117,13 @@ function NewComponentDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
       }}
     >
       <DialogTrigger asChild>
-        <Button>New component</Button>
+        <Button variant={quick ? 'outline' : 'default'}>
+          {quick ? 'Quick add' : 'New component'}
+        </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Create component</DialogTitle>
+          <DialogTitle>{quick ? 'Quick add component' : 'Create component'}</DialogTitle>
         </DialogHeader>
         <form
           className="flex flex-col gap-4"
@@ -121,6 +146,7 @@ function NewComponentDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
             post('/catalog/components', {
               forceFormData: !!imageFile,
               preserveScroll: true,
+              preserveState: false,
               onSuccess: () => {
                 reset()
                 setImageFile(null)
@@ -130,9 +156,18 @@ function NewComponentDialog({ suppliers }: { suppliers: SupplierOpt[] }) {
           }}
         >
           <InlineImagePicker file={imageFile} onChange={setImageFile} />
+          {quick && (
+            <div className="rounded-lg border bg-muted/30 px-3 py-2 text-sm">
+              <span className="font-medium">Settings copied from </span>
+              <span>{quickAddDefaults?.sourceName ?? 'the standard defaults'}</span>
+              <p className="text-xs text-muted-foreground">
+                Review them below. The name, SKU, image, and stock are never copied.
+              </p>
+            </div>
+          )}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 [&>*]:min-w-0">
             <SkuField
-              id="component-sku"
+              id={quick ? 'quick-component-sku' : 'component-sku'}
               name={data.name}
               value={data.sku}
               onChange={(sku) => setData('sku', sku)}
@@ -280,7 +315,13 @@ const COMPONENT_COLUMNS: ColumnDef[] = [
   { key: 'actions', label: 'Actions', required: true },
 ]
 
-export default function ComponentsPage({ components, suppliers, filters, counts }: PageProps) {
+export default function ComponentsPage({
+  components,
+  suppliers,
+  filters,
+  counts,
+  quickAddDefaults,
+}: PageProps) {
   const currency = useCurrency()
   const { user } = usePage<InertiaProps<PageProps>>().props
   const canEdit = Boolean(user?.isOwner || user?.permissions?.includes('components.update'))
@@ -294,7 +335,10 @@ export default function ComponentsPage({ components, suppliers, filters, counts 
           <h1 className="text-2xl font-semibold">Components</h1>
           <p className="text-sm text-muted-foreground">{components.length} components.</p>
         </div>
-        <NewComponentDialog suppliers={suppliers} />
+        <div className="flex items-center gap-2">
+          <NewComponentDialog suppliers={suppliers} quick quickAddDefaults={quickAddDefaults} />
+          <NewComponentDialog suppliers={suppliers} />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

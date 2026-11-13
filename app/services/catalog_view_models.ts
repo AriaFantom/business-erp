@@ -102,7 +102,15 @@ export async function getMaterialsViewModel(filters: ListFilters & { type?: stri
     if (filters.type && filters.type !== 'all') q.where('type', filters.type)
     return q
   })
-  const materials = await query
+  const [materials, latestMaterial] = await Promise.all([
+    query,
+    Material.query()
+      .where('is_active', true)
+      .preload('defaultSupplier')
+      .orderBy('created_at', 'desc')
+      .orderBy('id', 'desc')
+      .first(),
+  ])
   const deleteBlockers = await getDeletionBlockers(
     'material',
     materials.map((material) => material.id)
@@ -125,6 +133,18 @@ export async function getMaterialsViewModel(filters: ListFilters & { type?: stri
     })),
     counts,
     suppliers: await listActiveSuppliers(),
+    quickAddDefaults: latestMaterial
+      ? {
+          sourceName: latestMaterial.name,
+          type: latestMaterial.type,
+          unit: latestMaterial.unit,
+          defaultSupplierId: latestMaterial.defaultSupplier?.isActive
+            ? latestMaterial.defaultSupplier.id
+            : null,
+          defaultUnitCost: latestMaterial.defaultUnitCost,
+          reorderThresholdG: latestMaterial.reorderThresholdG,
+        }
+      : null,
   }
 }
 
@@ -150,7 +170,15 @@ export async function getComponentsViewModel(filters: ListFilters = {}) {
     applySearch(q as never, filters.q, ['name', 'sku'])
     return q
   })
-  const components = await query
+  const [components, latestComponent] = await Promise.all([
+    query,
+    Component.query()
+      .where('is_active', true)
+      .preload('defaultSupplier')
+      .orderBy('created_at', 'desc')
+      .orderBy('id', 'desc')
+      .first(),
+  ])
   const deleteBlockers = await getDeletionBlockers(
     'component',
     components.map((component) => component.id)
@@ -172,6 +200,17 @@ export async function getComponentsViewModel(filters: ListFilters = {}) {
     })),
     counts,
     suppliers: await listActiveSuppliers(),
+    quickAddDefaults: latestComponent
+      ? {
+          sourceName: latestComponent.name,
+          unit: latestComponent.unit,
+          defaultSupplierId: latestComponent.defaultSupplier?.isActive
+            ? latestComponent.defaultSupplier.id
+            : null,
+          defaultUnitCost: latestComponent.defaultUnitCost,
+          reorderThresholdQty: latestComponent.reorderThresholdQty,
+        }
+      : null,
   }
 }
 
@@ -715,6 +754,8 @@ export type CustomerRow = {
   gstin: string | null
   email: string | null
   phone: string | null
+  billingAddress: string | null
+  shippingAddress: string | null
   isActive: boolean
   creditLimit: string | null
   openBalance: string
@@ -749,6 +790,8 @@ export async function getCustomersViewModel(filters: ListFilters = {}) {
       gstin: c.gstin,
       email: c.email,
       phone: c.phone,
+      billingAddress: c.billingAddress,
+      shippingAddress: c.shippingAddress,
       isActive: c.isActive,
       creditLimit: c.creditLimit,
       openBalance: Math.max(0, Math.round((balanceByCustomer.get(c.id) ?? 0) * 100) / 100).toFixed(
