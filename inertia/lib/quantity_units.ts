@@ -11,6 +11,7 @@ const UNIT_FACTORS: Record<string, { family: string; factor: number }> = {
 
 export function compatibleUnits(storedUnit: string): string[] {
   const normalized = storedUnit.trim().toLowerCase()
+  if (!normalized) return []
   const definition = UNIT_FACTORS[normalized]
   if (!definition) return [storedUnit]
   return Object.entries(UNIT_FACTORS)
