@@ -480,7 +480,6 @@ export default function MaterialsPage({ materials, suppliers, filters, counts }:
                             <DeletePermanentlyAction
                               path={`/catalog/materials/${m.id}/delete`}
                               name={m.name}
-                              blockedReason={null}
                             />
                           )}
                         </div>

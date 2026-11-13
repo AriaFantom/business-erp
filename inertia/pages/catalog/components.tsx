@@ -435,7 +435,6 @@ export default function ComponentsPage({ components, suppliers, filters, counts 
                             <DeletePermanentlyAction
                               path={`/catalog/components/${c.id}/delete`}
                               name={c.name}
-                              blockedReason={null}
                             />
                           )}
                           {(!canDelete || c.deleteBlocker) && c.isActive ? (

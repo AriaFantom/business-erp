@@ -289,7 +289,7 @@ export default function ProductsPage({ products, categories, filters, counts }: 
                     )}
                     {isVisible('actions') && (
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
+                        <div className="flex items-center justify-end gap-1">
                           <Button asChild variant="outline" size="icon">
                             <Link
                               href={`/catalog/products/${p.id}`}
@@ -310,11 +310,10 @@ export default function ProductsPage({ products, categories, filters, counts }: 
                               name={p.name}
                             />
                           )}
-                          {canDelete && (
+                          {canDelete && !p.deleteBlocker && (
                             <DeletePermanentlyAction
                               path={`/catalog/products/${p.id}/delete`}
                               name={p.name}
-                              blockedReason={p.deleteBlocker}
                             />
                           )}
                         </div>

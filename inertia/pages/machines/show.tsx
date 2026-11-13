@@ -441,11 +441,10 @@ export default function MachineShow() {
                 variant="outline"
               />
             )}
-            {canDelete && (
+            {canDelete && !machine.deleteBlocker && (
               <DeletePermanentlyAction
                 path={`/machines/${machine.id}/delete`}
                 name={machine.name}
-                blockedReason={machine.deleteBlocker}
               />
             )}
             {!isRetired && (

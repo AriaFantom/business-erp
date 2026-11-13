@@ -4,39 +4,23 @@ import { Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 
-export function DeletePermanentlyAction({
-  path,
-  name,
-  blockedReason,
-}: {
-  path: string
-  name: string
-  blockedReason: string | null
-}) {
+export function DeletePermanentlyAction({ path, name }: { path: string; name: string }) {
   const [open, setOpen] = useState(false)
   const { post, processing } = useForm()
-  const blocked = Boolean(blockedReason)
 
   return (
-    <div className="flex flex-col items-end gap-1">
+    <>
       <Button
         type="button"
         variant="destructive-soft"
         size="icon"
-        disabled={processing || blocked}
+        disabled={processing}
         aria-label={`Delete ${name} permanently`}
-        title={
-          blockedReason ? `${blockedReason} Archive or retire this record instead.` : undefined
-        }
+        title="Delete permanently"
         onClick={() => setOpen(true)}
       >
         <Trash2 />
       </Button>
-      {blockedReason && (
-        <span className="max-w-56 text-right text-xs text-muted-foreground">
-          Can’t delete: {blockedReason}
-        </span>
-      )}
       <ConfirmDialog
         open={open}
         onOpenChange={setOpen}
@@ -46,6 +30,6 @@ export function DeletePermanentlyAction({
         variant="destructive"
         onConfirm={() => post(path, { preserveScroll: true })}
       />
-    </div>
+    </>
   )
 }
