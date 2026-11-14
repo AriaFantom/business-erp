@@ -395,6 +395,35 @@ function EstimateDialog({
           </div>
           {result && (
             <div className="flex flex-col gap-2 rounded-lg bg-muted/40 p-4 text-sm">
+              {result.boms.length > 0 && (
+                <Table aria-label="Estimated material and component requirements">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Item</TableHead>
+                      <TableHead className="text-right">Per product</TableHead>
+                      <TableHead className="text-right">For this line</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {result.boms.map((bom) => (
+                      <TableRow key={`${bom.itemKind}:${bom.itemId}`}>
+                        <TableCell className="whitespace-normal">
+                          {bom.name}
+                          <span className="block text-xs capitalize text-muted-foreground">
+                            {bom.itemKind}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {formatQuantity(bom.qty)} {bom.unit}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {formatQuantity(bom.qty * (quantity || 0))} {bom.unit}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
               <div className="flex justify-between">
                 <span>Materials/components</span>
                 <span>{formatMoney(result.catalogCost, currency)}</span>

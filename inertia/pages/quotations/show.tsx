@@ -2,7 +2,7 @@ import { type ReactElement, useState } from 'react'
 import { useForm } from '@inertiajs/react'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -39,6 +39,8 @@ type BomEntry = {
   itemId: number
   itemName: string
   qty: string
+  unit: string | null
+  requiredQty: string
   unitCostAtTime: string
 }
 
@@ -65,7 +67,10 @@ type Item = {
   boms: BomEntry[]
 }
 
-type PageProps = { quotation: Quotation; items: Item[] }
+type Requirement = Pick<BomEntry, 'itemKind' | 'itemName' | 'unit' | 'requiredQty'> & {
+  key: string
+}
+type PageProps = { quotation: Quotation; items: Item[]; requirements: Requirement[] }
 
 function PostAction({
   path,
@@ -104,7 +109,7 @@ function PostAction({
   )
 }
 
-export default function QuotationShow({ quotation, items }: PageProps) {
+export default function QuotationShow({ quotation, items, requirements }: PageProps) {
   const currency = useCurrency()
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-8">
@@ -209,9 +214,14 @@ export default function QuotationShow({ quotation, items }: PageProps) {
                           <TableRow>
                             <TableHead className="text-xs">Type</TableHead>
                             <TableHead className="text-xs">Item</TableHead>
-                            <TableHead className="text-xs text-right">Qty</TableHead>
+                            <TableHead className="text-xs text-right">
+                              Required per product
+                            </TableHead>
+                            <TableHead className="text-xs text-right">
+                              Required for this line
+                            </TableHead>
                             <TableHead className="text-xs text-right">Unit cost</TableHead>
-                            <TableHead className="text-xs text-right">Line cost</TableHead>
+                            <TableHead className="text-xs text-right">Cost per product</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -222,7 +232,10 @@ export default function QuotationShow({ quotation, items }: PageProps) {
                                 <TableCell className="text-xs capitalize">{bom.itemKind}</TableCell>
                                 <TableCell className="text-xs">{bom.itemName}</TableCell>
                                 <TableCell className="text-right text-xs">
-                                  {Number(bom.qty).toFixed(4)}
+                                  {bom.qty} {bom.unit ?? '(unit unavailable)'}
+                                </TableCell>
+                                <TableCell className="text-right text-xs">
+                                  {bom.requiredQty} {bom.unit ?? '(unit unavailable)'}
                                 </TableCell>
                                 <TableCell className="text-right text-xs">
                                   {formatMoney(bom.unitCostAtTime, currency)}
@@ -236,7 +249,9 @@ export default function QuotationShow({ quotation, items }: PageProps) {
                         </TableBody>
                       </Table>
                       <div className="mt-1 flex justify-between text-xs">
-                        <span className="text-muted-foreground">Cost basis</span>
+                        <span className="text-muted-foreground">
+                          Material and component cost per product
+                        </span>
                         <span className="tabular-nums">
                           {formatMoney(
                             it.boms.reduce(
@@ -293,6 +308,44 @@ export default function QuotationShow({ quotation, items }: PageProps) {
                 </div>
               ))}
             </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Total material and component requirements</CardTitle>
+          <CardDescription>
+            Combined across quotation lines with a saved breakdown. Each item is shown in its own
+            unit.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {requirements.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No material or component requirements were recorded for this quotation.
+            </p>
+          ) : (
+            <Table aria-label="Total material and component requirements">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Item</TableHead>
+                  <TableHead className="text-right">Total required</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {requirements.map((item) => (
+                  <TableRow key={item.key}>
+                    <TableCell className="capitalize">{item.itemKind}</TableCell>
+                    <TableCell>{item.itemName}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {item.requiredQty} {item.unit ?? '(unit unavailable)'}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>

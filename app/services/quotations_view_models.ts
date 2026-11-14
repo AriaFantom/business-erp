@@ -7,6 +7,7 @@ import ProductCategory from '#models/product_category'
 import Material from '#models/material'
 import Component from '#models/component'
 import { computeUnitPrice } from '#services/pricing'
+import { quantityToScaled, scaledToQuantity } from '#services/quantity_units'
 
 /**
  * Builds the option lists needed by the quotation create form: active customers,
@@ -136,8 +137,50 @@ export async function getQuotationShowViewModel(id: number) {
     materialIds.length ? Material.query().whereIn('id', [...new Set(materialIds)]) : [],
     componentIds.length ? Component.query().whereIn('id', [...new Set(componentIds)]) : [],
   ])
-  const matById = new Map(materials.map((m) => [m.id, m.name]))
-  const compById = new Map(components.map((c) => [c.id, c.name]))
+  const matById = new Map(materials.map((m) => [m.id, m]))
+  const compById = new Map(components.map((c) => [c.id, c]))
+  const totals = new Map<
+    string,
+    {
+      key: string
+      itemKind: string
+      itemName: string
+      unit: string | null
+      scaledQuantity: bigint
+    }
+  >()
+  const bomsByLine = new Map(
+    items.map((line) => [
+      line.id,
+      line.boms.map((bom) => {
+        const catalog = (bom.itemKind === 'material' ? matById : compById).get(bom.itemId)
+        const itemName = catalog?.name ?? `Item #${bom.itemId}`
+        const unit = catalog?.unit || null
+        // Quotation quantity is stored in individual products, even for dozens or packs.
+        const perProduct = quantityToScaled(bom.qty)
+        const required = perProduct * BigInt(line.qty)
+        const key = `${bom.itemKind}:${bom.itemId}`
+        const prior = totals.get(key)
+        totals.set(key, {
+          key,
+          itemKind: bom.itemKind,
+          itemName,
+          unit,
+          scaledQuantity: (prior?.scaledQuantity ?? 0n) + required,
+        })
+        return {
+          id: bom.id,
+          itemKind: bom.itemKind,
+          itemId: bom.itemId,
+          itemName,
+          unit,
+          qty: scaledToQuantity(perProduct),
+          requiredQty: scaledToQuantity(required),
+          unitCostAtTime: bom.unitCostAtTime,
+        }
+      }),
+    ])
+  )
 
   return {
     quotation: {
@@ -164,6 +207,18 @@ export async function getQuotationShowViewModel(id: number) {
       rejectedAt: q.rejectedAt?.toISO() ?? null,
       convertedToOrderId: q.convertedToOrderId,
     },
+    requirements: [...totals.values()]
+      .sort((a, b) =>
+        a.itemKind === b.itemKind
+          ? a.itemName.localeCompare(b.itemName)
+          : a.itemKind === 'material'
+            ? -1
+            : 1
+      )
+      .map(({ scaledQuantity, ...item }) => ({
+        ...item,
+        requiredQty: scaledToQuantity(scaledQuantity),
+      })),
     items: items.map((it) => ({
       id: it.id,
       productId: it.productId,
@@ -188,17 +243,7 @@ export async function getQuotationShowViewModel(id: number) {
       estimatedUnitCost: it.estimatedUnitCost,
       estimatedProfitPct: it.estimatedProfitPct,
       estimatedSuggestedUnitPrice: it.estimatedSuggestedUnitPrice,
-      boms: it.boms.map((b) => ({
-        id: b.id,
-        itemKind: b.itemKind,
-        itemId: b.itemId,
-        itemName:
-          b.itemKind === 'material'
-            ? (matById.get(b.itemId) ?? '—')
-            : (compById.get(b.itemId) ?? '—'),
-        qty: b.qty,
-        unitCostAtTime: b.unitCostAtTime,
-      })),
+      boms: bomsByLine.get(it.id) ?? [],
     })),
   }
 }

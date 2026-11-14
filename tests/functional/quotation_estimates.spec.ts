@@ -11,6 +11,7 @@ import QuotationItemBom from '#models/quotation_item_bom'
 import Inventory from '#models/inventory'
 import { createQuotation } from '#services/quotation_service'
 import { estimateQuotationLine } from '#services/quotation_estimate_service'
+import { getQuotationShowViewModel } from '#services/quotations_view_models'
 
 let sequence = 0
 const unique = (prefix: string) => `${prefix}-${Date.now()}-${++sequence}`
@@ -86,7 +87,8 @@ test.group('Quotation cost estimates', (group) => {
         {
           productId: product.id,
           name: product.name,
-          qty: 3,
+          qty: 0.25,
+          unit: 'dozen',
           taxRatePct: 18,
           boms,
           pricingMode: 'estimated',
@@ -96,9 +98,25 @@ test.group('Quotation cost estimates', (group) => {
             expectedFingerprint: estimate.fingerprint,
           },
         },
+        {
+          productId: product.id,
+          name: product.name,
+          qty: 2,
+          boms,
+          pricingMode: 'estimated',
+          estimate: {
+            extraCost: 1,
+            profitPct: estimate.profitPct,
+            expectedFingerprint: estimate.fingerprint,
+          },
+        },
+        { productId: product.id, name: product.name, qty: 1 },
       ],
     })
-    const item = await QuotationItem.query().where('quotation_id', quotation.id).firstOrFail()
+    const item = await QuotationItem.query()
+      .where('quotation_id', quotation.id)
+      .orderBy('id')
+      .firstOrFail()
     const materialBom = await QuotationItemBom.query()
       .where('quotation_item_id', item.id)
       .where('item_kind', 'material')
@@ -110,6 +128,18 @@ test.group('Quotation cost estimates', (group) => {
     assert.equal(item.estimatedSuggestedUnitPrice, '9.59')
     assert.equal(Number(item.unitPrice), 9.59)
     assert.equal(Number(materialBom.qty), 2)
+    const view = await getQuotationShowViewModel(quotation.id)
+    const lineMaterial = view.items[0].boms.find((bom) => bom.itemKind === 'material')
+    assert.equal(lineMaterial?.qty, '2')
+    assert.equal(lineMaterial?.requiredQty, '6')
+    assert.equal(lineMaterial?.unit, 'kg')
+    assert.deepEqual(
+      view.requirements.map(({ itemKind, requiredQty, unit }) => [itemKind, requiredQty, unit]),
+      [
+        ['material', '10', 'kg'],
+        ['component', '5', 'pcs'],
+      ]
+    )
     assert.equal(stockAfter?.$extras.total ?? 0, stockBefore?.$extras.total ?? 0)
   })
 
