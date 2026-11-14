@@ -14,6 +14,19 @@ import { applyMovement, invalidateSnapshotCache } from '#services/inventory_serv
 import { audit } from '#services/audit'
 import { nextDocNumber } from '#services/numbering'
 import { DomainError, InvalidStateError } from '#services/domain_errors'
+import {
+  lockMeasurementRegistry,
+  markMeasurementUnitsUsed,
+  measurementIndex,
+} from '#services/measurement_registry'
+import {
+  addQuantities,
+  compareQuantities,
+  convertConsumptionQuantity,
+  convertReturnQuantity,
+  convertUnitMoney,
+  subtractQuantities,
+} from '#services/quantity_units'
 
 export type PurchaseLineInput = {
   itemKind: 'material' | 'component' | 'machine'
@@ -22,6 +35,7 @@ export type PurchaseLineInput = {
   machineModel?: string
   qty: number
   unitCost: number
+  unit?: string
   taxRatePct?: number
 }
 
@@ -105,7 +119,7 @@ function assertPurchaseLine(line: PurchaseLineInput) {
     })
   }
   if (line.itemKind === 'machine') {
-    if (!Number.isInteger(line.qty)) {
+    if (!line.unit && !Number.isInteger(line.qty)) {
       throw new DomainError({
         code: 'INVALID_MACHINE_PURCHASE_QUANTITY',
         message: 'Machine quantities must be whole numbers.',
@@ -213,18 +227,81 @@ export async function createPurchase(input: CreatePurchaseInput): Promise<Purcha
   }
 
   return db.transaction(async (trx) => {
+    await lockMeasurementRegistry(trx)
+    const units = await measurementIndex(trx)
+    const materialIds = input.items.flatMap((line) =>
+      line.itemKind === 'material' ? [line.itemId!] : []
+    )
+    const componentIds = input.items.flatMap((line) =>
+      line.itemKind === 'component' ? [line.itemId!] : []
+    )
+    const [materials, components] = await Promise.all([
+      materialIds.length
+        ? Material.query({ client: trx }).whereIn('id', materialIds).forShare()
+        : [],
+      componentIds.length
+        ? Component.query({ client: trx }).whereIn('id', componentIds).forShare()
+        : [],
+    ])
+    const materialUnits = new Map(materials.map((item) => [item.id, item.unit]))
+    const componentUnits = new Map(components.map((item) => [item.id, item.unit]))
+    const usedCodes: string[] = []
     const number = await nextDocNumber('PO', trx, input.purchasedAt)
 
     let subtotal = 0
     let legacyTaxTotal = 0
     const baseLines = input.items.map((l) => {
       const t = recomputeLine(l)
+      const stored =
+        l.itemKind === 'machine'
+          ? 'pcs'
+          : (l.itemKind === 'material' ? materialUnits : componentUnits).get(l.itemId!)
+      if (!stored)
+        throw new DomainError({
+          code: 'PURCHASE_ITEM_REQUIRED',
+          message: 'The selected item no longer exists.',
+        })
+      const conversion = convertConsumptionQuantity(l.qty, l.unit, stored, units)
+      const qty = Number(conversion.storedQuantity)
+      if (
+        qty > 999_999_999 ||
+        (l.itemKind === 'machine' && (!Number.isInteger(qty) || qty > 1000))
+      ) {
+        throw new DomainError({
+          code: 'INVALID_PURCHASE_QUANTITY',
+          message:
+            'The converted quantity is out of range. A line can contain at most 1,000 whole machines.',
+        })
+      }
+      const source = units.get(conversion.enteredUnit)
+      const destination = units.get(stored.trim().toLowerCase())
+      usedCodes.push(conversion.enteredUnit, stored)
+      const unitCost = l.unit
+        ? convertUnitMoney(l.unitCost, source?.factor ?? '1', destination?.factor ?? '1', 4)
+        : l.unitCost
+      assertDatabaseUnitCost(unitCost)
       assertDatabaseMoney(t.lineSubtotal, 'A purchase line subtotal')
       assertDatabaseMoney(t.lineTotal, 'A purchase line total')
       subtotal += t.lineSubtotal
       legacyTaxTotal += t.lineTax
-      return { ...l, taxRatePct: l.taxRatePct ?? 0, ...t }
+      return {
+        ...l,
+        qty,
+        storedQuantity: conversion.storedQuantity,
+        unitCost,
+        measurementSnapshot: {
+          unit: conversion.enteredUnit,
+          quantity: conversion.enteredQuantity,
+          unitCost: String(l.unitCost),
+          factor: source?.factor ?? '1',
+          storedUnit: stored,
+          storedFactor: destination?.factor ?? '1',
+        },
+        taxRatePct: l.taxRatePct ?? 0,
+        ...t,
+      }
     })
+    await markMeasurementUnitsUsed(trx, usedCodes)
     subtotal = round2(subtotal)
     legacyTaxTotal = round2(legacyTaxTotal)
     assertDatabaseMoney(subtotal, 'The goods subtotal')
@@ -283,8 +360,9 @@ export async function createPurchase(input: CreatePurchaseInput): Promise<Purcha
       item.purchaseId = purchase.id
       item.itemKind = l.itemKind
       item.itemId = l.itemId ?? 0
-      item.qty = String(l.qty)
+      item.qty = l.storedQuantity
       item.unitCost = String(l.unitCost)
+      item.measurementSnapshot = l.measurementSnapshot
       item.taxRatePct = String(l.taxRatePct)
       item.lineSubtotal = String(l.lineSubtotal)
       item.lineTax = String(l.lineTax)
@@ -375,7 +453,7 @@ export async function confirmPurchase(purchaseId: number, actor: User): Promise<
       await applyMovement({
         itemKind: l.itemKind as 'material' | 'component',
         itemId: l.itemId,
-        qty: Number(l.qty),
+        qty: l.qty,
         unitCost: l.landedUnitCost === null ? Number(l.unitCost) : Number(l.landedUnitCost),
         reason: 'purchase',
         referenceType: 'purchase',
@@ -409,7 +487,7 @@ export async function confirmPurchase(purchaseId: number, actor: User): Promise<
 
 export type ReturnPurchaseInput = {
   purchaseId: number
-  items: { purchaseItemId: number; qty: number }[]
+  items: { purchaseItemId: number; qty: number; unit?: string }[]
   note?: string | null
   actor: User
 }
@@ -451,18 +529,20 @@ export async function returnPurchaseItems(input: ReturnPurchaseInput): Promise<P
           .sum('qty as total_returned')
           .groupBy('purchase_item_id')
       : []
-    const alreadyReturned = new Map<number, number>(
-      priorRows.map((r) => [r.purchaseItemId, Number(r.$extras.total_returned)])
+    const alreadyReturned = new Map<number, string>(
+      priorRows.map((r) => [r.purchaseItemId, String(r.$extras.total_returned)])
     )
 
     // Merge duplicate lines in the request so the availability check covers
     // the whole request, not each line independently.
-    const requested = new Map<number, number>()
+    const requested = new Map<number, string>()
     for (const l of input.items) {
-      requested.set(l.purchaseItemId, (requested.get(l.purchaseItemId) ?? 0) + l.qty)
+      const snapshot = lineById.get(l.purchaseItemId)?.measurementSnapshot ?? null
+      const qty = convertReturnQuantity(l.qty, l.unit, snapshot)
+      requested.set(l.purchaseItemId, addQuantities(requested.get(l.purchaseItemId) ?? '0', qty))
     }
 
-    const returnLines: { item: PurchaseItem; qty: number; unitCost: number; lineTotal: number }[] =
+    const returnLines: { item: PurchaseItem; qty: string; unitCost: number; lineTotal: number }[] =
       []
     for (const [purchaseItemId, qty] of requested) {
       const item = lineById.get(purchaseItemId)
@@ -479,15 +559,23 @@ export async function returnPurchaseItems(input: ReturnPurchaseInput): Promise<P
             'Machine supplier returns are not supported. Record the supplier adjustment separately.',
         })
       }
-      const remaining = Number(item.qty) - (alreadyReturned.get(item.id) ?? 0)
-      if (qty <= 0 || qty > remaining + 1e-9) {
+      const remaining = subtractQuantities(item.qty, alreadyReturned.get(item.id) ?? '0')
+      if (compareQuantities(qty, remaining) > 0) {
         throw new DomainError({
           code: 'RETURN_EXCEEDS_PURCHASED',
-          message: `Cannot return ${qty}: only ${round2(Math.max(0, remaining))} left returnable on this line.`,
+          message: `Cannot return ${qty}: only ${remaining} left returnable on this line.`,
         })
       }
       const unitCost = Number(item.unitCost)
-      returnLines.push({ item, qty, unitCost, lineTotal: round2(qty * unitCost) })
+      const snapshot = item.measurementSnapshot as {
+        unitCost: string
+        factor: string
+        storedFactor: string
+      } | null
+      const originalGoodsCost = snapshot
+        ? (Number(snapshot.unitCost) * Number(snapshot.storedFactor)) / Number(snapshot.factor)
+        : unitCost
+      returnLines.push({ item, qty, unitCost, lineTotal: round2(Number(qty) * originalGoodsCost) })
     }
 
     const total = round2(returnLines.reduce((sum, l) => sum + l.lineTotal, 0))
@@ -519,7 +607,7 @@ export async function returnPurchaseItems(input: ReturnPurchaseInput): Promise<P
       await applyMovement({
         itemKind: l.item.itemKind as 'material' | 'component',
         itemId: l.item.itemId,
-        qty: -l.qty,
+        qty: `-${l.qty}`,
         unitCost: 0,
         reason: 'purchase_return',
         referenceType: 'purchase_return',
@@ -535,7 +623,7 @@ export async function returnPurchaseItems(input: ReturnPurchaseInput): Promise<P
       action: 'purchase.return',
       targetType: 'purchase',
       targetId: purchase.id,
-      payload: { number, total, lineCount: returnLines.length },
+      payload: { number, total, lineCount: returnLines.length, entered: input.items },
       trx,
     })
 

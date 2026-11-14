@@ -167,6 +167,14 @@ export async function getPurchaseShowViewModel(id: number) {
         itemSku: it.itemKind === 'machine' ? machineModel || 'No model' : (item?.sku ?? '—'),
         qty: it.qty,
         unitCost: it.unitCost,
+        measurementSnapshot: it.measurementSnapshot as {
+          unit: string
+          quantity: string
+          unitCost: string
+          factor: string
+          storedUnit: string
+          storedFactor: string
+        } | null,
         taxRatePct: it.taxRatePct,
         lineSubtotal: it.lineSubtotal,
         lineTax: it.lineTax,

@@ -77,7 +77,7 @@ export class CashSessionSchema extends BaseModel {
 }
 
 export class ComponentSchema extends BaseModel {
-  static $columns = ['createdAt', 'defaultSupplierId', 'defaultUnitCost', 'id', 'imageKey', 'isActive', 'name', 'reorderThresholdQty', 'sku', 'unit', 'updatedAt'] as const
+  static $columns = ['createdAt', 'defaultSupplierId', 'defaultUnitCost', 'id', 'imageKey', 'isActive', 'measurementUnitId', 'name', 'reorderThresholdQty', 'sku', 'unit', 'updatedAt'] as const
   $columns = ComponentSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
@@ -91,6 +91,8 @@ export class ComponentSchema extends BaseModel {
   declare imageKey: string | null
   @column()
   declare isActive: boolean
+  @column()
+  declare measurementUnitId: number | null
   @column()
   declare name: string
   @column()
@@ -250,7 +252,7 @@ export class InvitationSchema extends BaseModel {
 }
 
 export class InvoiceItemSchema extends BaseModel {
-  static $columns = ['createdAt', 'description', 'id', 'invoiceId', 'lineSubtotal', 'lineTax', 'lineTotal', 'productId', 'qty', 'taxRatePct', 'unitPrice', 'updatedAt'] as const
+  static $columns = ['createdAt', 'description', 'id', 'invoiceId', 'lineSubtotal', 'lineTax', 'lineTotal', 'measurementSnapshot', 'productId', 'qty', 'taxRatePct', 'unitPrice', 'updatedAt'] as const
   $columns = InvoiceItemSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
@@ -266,6 +268,8 @@ export class InvoiceItemSchema extends BaseModel {
   declare lineTax: string
   @column()
   declare lineTotal: string
+  @column()
+  declare measurementSnapshot: any | null
   @column()
   declare productId: number | null
   @column()
@@ -432,7 +436,7 @@ export class MachineSchema extends BaseModel {
 }
 
 export class MaterialSchema extends BaseModel {
-  static $columns = ['createdAt', 'defaultSupplierId', 'defaultUnitCost', 'id', 'imageKey', 'isActive', 'name', 'reorderThresholdG', 'sku', 'type', 'unit', 'updatedAt'] as const
+  static $columns = ['createdAt', 'defaultSupplierId', 'defaultUnitCost', 'id', 'imageKey', 'isActive', 'measurementUnitId', 'name', 'reorderThresholdG', 'sku', 'type', 'unit', 'updatedAt'] as const
   $columns = MaterialSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
@@ -447,6 +451,8 @@ export class MaterialSchema extends BaseModel {
   @column()
   declare isActive: boolean
   @column()
+  declare measurementUnitId: number | null
+  @column()
   declare name: string
   @column()
   declare reorderThresholdG: string | null
@@ -458,6 +464,36 @@ export class MaterialSchema extends BaseModel {
   declare unit: string
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
+}
+
+export class MeasurementCategorySchema extends BaseModel {
+  static $columns = ['id', 'name'] as const
+  $columns = MeasurementCategorySchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare name: string
+}
+
+export class MeasurementUnitSchema extends BaseModel {
+  static $columns = ['categoryId', 'code', 'factor', 'id', 'isActive', 'isLocked', 'isReference', 'name'] as const
+  $columns = MeasurementUnitSchema.$columns
+  @column()
+  declare categoryId: number
+  @column()
+  declare code: string
+  @column()
+  declare factor: string
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare isActive: boolean
+  @column()
+  declare isLocked: boolean
+  @column()
+  declare isReference: boolean
+  @column()
+  declare name: string
 }
 
 export class OrderItemProductionAllocationSchema extends BaseModel {
@@ -484,7 +520,7 @@ export class OrderItemProductionAllocationSchema extends BaseModel {
 }
 
 export class OrderItemSchema extends BaseModel {
-  static $columns = ['createdAt', 'description', 'id', 'lineSubtotal', 'lineTax', 'lineTotal', 'orderId', 'productId', 'qty', 'taxRatePct', 'unitPrice', 'updatedAt'] as const
+  static $columns = ['createdAt', 'description', 'id', 'lineSubtotal', 'lineTax', 'lineTotal', 'measurementSnapshot', 'orderId', 'productId', 'qty', 'taxRatePct', 'unitPrice', 'updatedAt'] as const
   $columns = OrderItemSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
@@ -498,6 +534,8 @@ export class OrderItemSchema extends BaseModel {
   declare lineTax: string
   @column()
   declare lineTotal: string
+  @column()
+  declare measurementSnapshot: any | null
   @column()
   declare orderId: number
   @column()
@@ -837,7 +875,7 @@ export class ProductSchema extends BaseModel {
 }
 
 export class PurchaseItemSchema extends BaseModel {
-  static $columns = ['allocatedShipping', 'allocatedTax', 'catalogProductId', 'componentId', 'createdAt', 'id', 'itemId', 'itemKind', 'landedUnitCost', 'lineSubtotal', 'lineTax', 'lineTotal', 'machineModel', 'machineName', 'materialId', 'purchaseId', 'qty', 'taxRatePct', 'unitCost', 'updatedAt'] as const
+  static $columns = ['allocatedShipping', 'allocatedTax', 'catalogProductId', 'componentId', 'createdAt', 'id', 'itemId', 'itemKind', 'landedUnitCost', 'lineSubtotal', 'lineTax', 'lineTotal', 'machineModel', 'machineName', 'materialId', 'measurementSnapshot', 'purchaseId', 'qty', 'taxRatePct', 'unitCost', 'updatedAt'] as const
   $columns = PurchaseItemSchema.$columns
   @column()
   declare allocatedShipping: string
@@ -869,6 +907,8 @@ export class PurchaseItemSchema extends BaseModel {
   declare machineName: string | null
   @column()
   declare materialId: number | null
+  @column()
+  declare measurementSnapshot: any | null
   @column()
   declare purchaseId: number
   @column()
@@ -1033,7 +1073,7 @@ export class QuotationItemBomSchema extends BaseModel {
 }
 
 export class QuotationItemSchema extends BaseModel {
-  static $columns = ['createdAt', 'description', 'estimateCostFingerprint', 'estimatedComponentCost', 'estimatedExtraCost', 'estimatedMaterialCost', 'estimatedProfitPct', 'estimatedSuggestedUnitPrice', 'estimatedUnitCost', 'id', 'lineSubtotal', 'lineTax', 'lineTotal', 'pricingBasis', 'productId', 'profitPctUsed', 'qty', 'quotationId', 'taxRatePct', 'unitPrice', 'updatedAt'] as const
+  static $columns = ['createdAt', 'description', 'estimateCostFingerprint', 'estimatedComponentCost', 'estimatedExtraCost', 'estimatedMaterialCost', 'estimatedProfitPct', 'estimatedSuggestedUnitPrice', 'estimatedUnitCost', 'id', 'lineSubtotal', 'lineTax', 'lineTotal', 'measurementSnapshot', 'pricingBasis', 'productId', 'profitPctUsed', 'qty', 'quotationId', 'taxRatePct', 'unitPrice', 'updatedAt'] as const
   $columns = QuotationItemSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
@@ -1061,6 +1101,8 @@ export class QuotationItemSchema extends BaseModel {
   declare lineTax: string
   @column()
   declare lineTotal: string
+  @column()
+  declare measurementSnapshot: any | null
   @column()
   declare pricingBasis: string | null
   @column()

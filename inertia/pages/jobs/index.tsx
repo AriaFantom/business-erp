@@ -1,4 +1,6 @@
 import { type ReactElement, useState } from 'react'
+import { useMeasurementUnits } from '@/lib/quantity_units'
+import { QuantityUnitSelect } from '@/components/catalog/quantity-unit-select'
 import { useForm } from '@inertiajs/react'
 import { Link } from '@adonisjs/inertia/react'
 import { CheckCircle2, ExternalLink, Factory, Loader2 } from 'lucide-react'
@@ -59,10 +61,12 @@ type Filters = { q: string; status: string; productId: string }
 type PageProps = { jobs: JobRow[]; products: ProductOpt[]; filters: Filters }
 
 function NewJobDialog({ products }: { products: ProductOpt[] }) {
+  const { convertDisplayQuantity } = useMeasurementUnits()
   const [open, setOpen] = useState(false)
   const { data, setData, post, processing, errors, reset, transform } = useForm({
     productId: 0,
     plannedQty: 1,
+    unit: 'pcs',
     parentJobId: '',
     note: '',
   })
@@ -83,6 +87,7 @@ function NewJobDialog({ products }: { products: ProductOpt[] }) {
             transform((d) => ({
               productId: d.productId,
               plannedQty: d.plannedQty,
+              unit: d.unit,
               parentJobId: d.parentJobId ? Number(d.parentJobId) : undefined,
               note: d.note || undefined,
             }))
@@ -113,12 +118,27 @@ function NewJobDialog({ products }: { products: ProductOpt[] }) {
             </Select>
           </Field>
           <Field label="Planned qty" error={errors.plannedQty}>
-            <Input
-              type="number"
-              placeholder="How many units to make"
-              value={data.plannedQty}
-              onChange={(e) => setData('plannedQty', Number(e.target.value))}
-            />
+            <div className="flex gap-2">
+              <Input
+                type="number"
+                step="any"
+                placeholder="How many units to make"
+                value={data.plannedQty}
+                onChange={(e) => setData('plannedQty', Number(e.target.value))}
+              />
+              <QuantityUnitSelect
+                value={data.unit}
+                onChange={(unit) =>
+                  setData((current) => ({
+                    ...current,
+                    unit,
+                    plannedQty: Number(
+                      convertDisplayQuantity(current.plannedQty, current.unit, unit).toFixed(9)
+                    ),
+                  }))
+                }
+              />
+            </div>
           </Field>
           <Field label="Parent job ID (for reprints)" error={errors.parentJobId}>
             <Input

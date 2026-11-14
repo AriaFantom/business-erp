@@ -3,7 +3,8 @@ import vine from '@vinejs/vine'
 const lineRule = vine.object({
   productId: vine.number().positive().optional(),
   description: vine.string().trim().minLength(1).maxLength(280),
-  qty: vine.number().min(1).max(1_000_000),
+  qty: vine.number().positive().max(1_000_000),
+  unit: vine.string().trim().minLength(1).maxLength(16).optional(),
   unitPrice: vine.number().min(0).max(99_999_999_999),
   taxRatePct: vine.number().min(0).max(100),
 })
@@ -23,7 +24,8 @@ export const returnOrderValidator = vine.compile(
       .array(
         vine.object({
           orderItemId: vine.number().positive().withoutDecimals(),
-          qty: vine.number().positive().withoutDecimals(),
+          qty: vine.number().positive().max(1_000_000),
+          unit: vine.string().trim().minLength(1).maxLength(16).optional(),
         })
       )
       .minLength(1)

@@ -15,6 +15,15 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import DashboardLayout from '@/layouts/dashboard-layout'
+import { useMeasurementUnits } from '@/lib/quantity_units'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 type StockTake = {
   id: number
@@ -115,15 +124,18 @@ function PostAction({
 }
 
 export default function StockTakeShow({ stockTake, lines, totals }: PageProps) {
+  const { compatibleUnits, convertDisplayQuantity } = useMeasurementUnits()
   const editable = stockTake.status === 'draft'
   const [kindFilter, setKindFilter] = useState<'all' | 'material' | 'component' | 'product'>('all')
 
   const { data, setData, post, processing, transform } = useForm<{
     countsByKey: Record<string, string>
+    unitsByKey: Record<string, string>
   }>({
     countsByKey: Object.fromEntries(
       lines.map((l) => [`${l.itemKind}:${l.itemId}`, l.countedQty ?? ''])
     ),
+    unitsByKey: {},
   })
 
   transform((d) => ({
@@ -134,6 +146,7 @@ export default function StockTakeShow({ stockTake, lines, totals }: PageProps) {
         itemKind: l.itemKind,
         itemId: l.itemId,
         countedQty: raw.trim() === '' ? null : Number(raw),
+        unit: d.unitsByKey[key],
       }
     }),
   }))
@@ -262,21 +275,63 @@ export default function StockTakeShow({ stockTake, lines, totals }: PageProps) {
                     </TableCell>
                     <TableCell className="text-right">
                       {editable ? (
-                        <Input
-                          aria-label={`Counted quantity for ${l.itemName}`}
-                          type="number"
-                          min={0}
-                          step="0.001"
-                          className="ml-auto w-28 text-right"
-                          placeholder="uncounted"
-                          value={data.countsByKey[key] ?? ''}
-                          onChange={(e) =>
-                            setData('countsByKey', {
-                              ...data.countsByKey,
-                              [key]: e.target.value,
-                            })
-                          }
-                        />
+                        <div className="flex justify-end gap-2">
+                          <Input
+                            aria-label={`Counted quantity for ${l.itemName}`}
+                            type="number"
+                            min={0}
+                            step="any"
+                            className="ml-auto w-28 text-right"
+                            placeholder="uncounted"
+                            value={data.countsByKey[key] ?? ''}
+                            onChange={(e) =>
+                              setData('countsByKey', {
+                                ...data.countsByKey,
+                                [key]: e.target.value,
+                              })
+                            }
+                          />
+                          <Select
+                            value={
+                              data.unitsByKey[key] ?? (l.itemKind === 'product' ? 'pcs' : l.unit)
+                            }
+                            onValueChange={(unit) =>
+                              setData((current) => ({
+                                unitsByKey: { ...current.unitsByKey, [key]: unit },
+                                countsByKey: {
+                                  ...current.countsByKey,
+                                  [key]: current.countsByKey[key]
+                                    ? String(
+                                        Number(
+                                          convertDisplayQuantity(
+                                            Number(current.countsByKey[key]),
+                                            current.unitsByKey[key] ??
+                                              (l.itemKind === 'product' ? 'pcs' : l.unit),
+                                            unit
+                                          ).toFixed(9)
+                                        )
+                                      )
+                                    : '',
+                                },
+                              }))
+                            }
+                          >
+                            <SelectTrigger aria-label={`Count unit for ${l.itemName}`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectGroup>
+                                {compatibleUnits(l.itemKind === 'product' ? 'pcs' : l.unit).map(
+                                  (unit) => (
+                                    <SelectItem key={unit} value={unit}>
+                                      {unit}
+                                    </SelectItem>
+                                  )
+                                )}
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       ) : (
                         <span className="tabular-nums">{l.countedQty ?? '—'}</span>
                       )}

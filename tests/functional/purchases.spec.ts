@@ -64,6 +64,36 @@ async function fixtures() {
 test.group('Purchase shipping and invoice tax', (group) => {
   group.each.setup(() => testUtils.db().withGlobalTransaction())
 
+  test('receives grams into kilogram stock and returns against the original gram price', async ({
+    assert,
+  }) => {
+    const { actor, supplier, first } = await fixtures()
+    const purchase = await createPurchase({
+      supplierId: supplier.id,
+      purchasedAt: DateTime.now(),
+      shippingCharge: 1,
+      items: [{ itemKind: 'material', itemId: first.id, qty: 500, unit: 'g', unitCost: 0.02 }],
+      actor,
+    })
+    const line = await PurchaseItem.findByOrFail('purchase_id', purchase.id)
+    assert.equal(Number(line.qty), 0.5)
+    assert.equal(Number(line.unitCost), 20)
+    assert.equal(Number(line.landedUnitCost), 22)
+    assert.equal(line.measurementSnapshot.unit, 'g')
+    await confirmPurchase(purchase.id, actor)
+    const credit = await returnPurchaseItems({
+      purchaseId: purchase.id,
+      items: [{ purchaseItemId: line.id, qty: 100, unit: 'g' }],
+      actor,
+    })
+    assert.equal(Number(credit.total), 2)
+    const stock = await Inventory.query()
+      .where('item_kind', 'material')
+      .where('item_id', first.id)
+      .firstOrFail()
+    assert.equal(Number(stock.qty), 0.4)
+  })
+
   test('allocates fixed charges exactly and persists four-decimal landed costs', async ({
     assert,
   }) => {

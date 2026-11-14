@@ -13,6 +13,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatDuration } from '@/components/jobs/job-stages-repeater'
+import { useMeasurementUnits } from '@/lib/quantity_units'
+import { QuantityUnitSelect } from '@/components/catalog/quantity-unit-select'
 
 export function ForceDoneDialog({
   jobId,
@@ -31,6 +33,9 @@ export function ForceDoneDialog({
 }) {
   const [open, setOpen] = useState(false)
   const [producedQty, setProducedQty] = useState(plannedQty)
+  const [unit, setUnit] = useState('pcs')
+  const { convertDisplayQuantity } = useMeasurementUnits()
+  const pieces = convertDisplayQuantity(producedQty, unit, 'pcs')
   const [processing, setProcessing] = useState(false)
 
   return (
@@ -52,22 +57,26 @@ export function ForceDoneDialog({
           </p>
           <div className="flex flex-col gap-1">
             <Label htmlFor={`force-done-output-${jobId}`}>
-              Produced quantity (maximum {plannedQty})
+              Produced quantity (maximum {plannedQty} pieces)
             </Label>
-            <Input
-              id={`force-done-output-${jobId}`}
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={plannedQty}
-              step={1}
-              value={producedQty}
-              onChange={(event) =>
-                setProducedQty(
-                  Math.min(plannedQty, Math.max(1, Math.trunc(Number(event.target.value) || 1)))
-                )
-              }
-            />
+            <div className="flex gap-2">
+              <Input
+                id={`force-done-output-${jobId}`}
+                type="number"
+                inputMode="decimal"
+                min={0}
+                step="any"
+                value={producedQty}
+                onChange={(event) => setProducedQty(Number(event.target.value))}
+              />
+              <QuantityUnitSelect
+                value={unit}
+                onChange={(next) => {
+                  setProducedQty(Number(convertDisplayQuantity(producedQty, unit, next).toFixed(9)))
+                  setUnit(next)
+                }}
+              />
+            </div>
           </div>
         </div>
         <DialogFooter>
@@ -76,12 +85,12 @@ export function ForceDoneDialog({
           </Button>
           <Button
             type="button"
-            disabled={processing}
+            disabled={processing || pieces <= 0 || pieces > plannedQty}
             onClick={() => {
               setProcessing(true)
               router.post(
                 `/jobs/${jobId}/force-done`,
-                { ...(setup ?? {}), producedQty },
+                { ...(setup ?? {}), producedQty, unit },
                 {
                   preserveScroll: true,
                   onSuccess: () => setOpen(false),

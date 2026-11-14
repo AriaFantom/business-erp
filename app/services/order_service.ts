@@ -13,6 +13,12 @@ import { applyMovement, invalidateSnapshotCache } from '#services/inventory_serv
 import { DomainError, InvalidStateError } from '#services/domain_errors'
 import { resolveOrderLinePricing, type OrderLineInput } from '#services/pricing'
 import { allocateSaleToProduction } from '#services/production_sales_tracking'
+import {
+  lockMeasurementRegistry,
+  markMeasurementUnitsUsed,
+  measurementIndex,
+  normalizeSalesCount,
+} from '#services/measurement_registry'
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100
@@ -45,25 +51,50 @@ export async function createOrder(input: {
   // Server-side price enforcement for product lines. Free-form lines have
   // nothing to price them from, so their manual unitPrice/taxRatePct stand
   // (same convention as quotation buildLine).
-  const pricedItems = await Promise.all(
-    input.items.map(async (l) => {
-      if (!l.productId) return l
+  return db.transaction(async (trx) => {
+    await lockMeasurementRegistry(trx)
+    const units = await measurementIndex(trx)
+    const pricedItems = []
+    for (const l of input.items) {
+      const count = normalizeSalesCount(units, l.qty, l.unit)
+      if (!l.productId) {
+        pricedItems.push({
+          ...l,
+          qty: count.pieces,
+          unitPrice: l.unitPrice / count.factor,
+          measurementSnapshot: count.snapshot(l.unitPrice),
+          enteredPrice: l.unitPrice,
+          enteredQty: l.qty,
+        })
+        continue
+      }
       const pricing = await resolveOrderLinePricing({
         productId: l.productId,
         requestedUnitPrice: l.unitPrice,
+        priceUnitFactor: count.factor,
         allowOverride: input.allowPriceOverride,
       })
-      return { ...l, unitPrice: pricing.unitPrice, taxRatePct: pricing.taxRatePct }
-    })
-  )
-
-  return db.transaction(async (trx) => {
+      const enteredPrice = pricing.unitPrice * count.factor
+      pricedItems.push({
+        ...l,
+        qty: count.pieces,
+        unitPrice: pricing.unitPrice,
+        taxRatePct: pricing.taxRatePct,
+        measurementSnapshot: count.snapshot(enteredPrice),
+        enteredPrice,
+        enteredQty: l.qty,
+      })
+    }
+    await markMeasurementUnitsUsed(
+      trx,
+      input.items.flatMap((line) => (line.unit ? [line.unit] : []))
+    )
     const number = await nextDocNumber('ORD', trx)
     let subtotal = 0
     let tax = 0
     let total = 0
     const lines = pricedItems.map((l) => {
-      const ls = round2(l.qty * l.unitPrice)
+      const ls = round2(l.enteredQty * l.enteredPrice)
       const lt = round2((ls * l.taxRatePct) / 100)
       const lto = round2(ls + lt)
       subtotal += ls
@@ -92,6 +123,7 @@ export async function createOrder(input: {
       item.description = l.description
       item.qty = l.qty
       item.unitPrice = String(l.unitPrice)
+      item.measurementSnapshot = l.measurementSnapshot
       item.taxRatePct = String(l.taxRatePct)
       item.lineSubtotal = String(l.lineSubtotal)
       item.lineTax = String(l.lineTax)
@@ -153,6 +185,7 @@ export async function convertQuotationToOrder(quotationId: number, actor: User):
       oi.description = it.description
       oi.qty = it.qty
       oi.unitPrice = it.unitPrice
+      oi.measurementSnapshot = it.measurementSnapshot
       oi.taxRatePct = it.taxRatePct
       oi.lineSubtotal = it.lineSubtotal
       oi.lineTax = it.lineTax

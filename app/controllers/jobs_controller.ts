@@ -67,6 +67,7 @@ export default class JobsController {
       const job = await createJob({
         productId: payload.productId,
         plannedQty: payload.plannedQty,
+        unit: payload.unit,
         parentJobId: payload.parentJobId ?? null,
         note: payload.note ?? null,
         actor: auth.user!,
@@ -177,6 +178,7 @@ export default class JobsController {
       await confirmJob({
         jobId: Number(params.id),
         producedQty: payload.producedQty,
+        unit: payload.unit,
         actor: auth.user!,
       })
       session.flash('success', 'Job confirmed.')
@@ -198,6 +200,7 @@ export default class JobsController {
       await forceDoneJob({
         jobId,
         producedQty: payload.producedQty,
+        unit: payload.unit,
         machineId: payload.machineId ?? null,
         workerIds: payload.workerIds ?? [],
         stages: payload.stages,

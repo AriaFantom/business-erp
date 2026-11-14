@@ -1,30 +1,48 @@
-const UNIT_FACTORS: Record<string, { family: string; factor: number }> = {
-  mg: { family: 'mass', factor: 1 },
-  g: { family: 'mass', factor: 1_000 },
-  kg: { family: 'mass', factor: 1_000_000 },
-  ml: { family: 'volume', factor: 1 },
-  l: { family: 'volume', factor: 1_000 },
-  mm: { family: 'length', factor: 1 },
-  cm: { family: 'length', factor: 10 },
-  m: { family: 'length', factor: 1_000 },
-}
+import { usePage } from '@inertiajs/react'
+import { useMemo } from 'react'
 
-export function compatibleUnits(storedUnit: string): string[] {
-  const normalized = storedUnit.trim().toLowerCase()
-  if (!normalized) return []
-  const definition = UNIT_FACTORS[normalized]
-  if (!definition) return [storedUnit]
-  return Object.entries(UNIT_FACTORS)
-    .filter(([, candidate]) => candidate.family === definition.family)
-    .map(([unit]) => unit)
+type Unit = {
+  categoryId: number
+  code: string
+  name: string
+  factor: string
+  active: boolean
+  category: string
 }
+const key = (unit: string) => unit.trim().toLowerCase()
 
-export function convertDisplayQuantity(value: number, fromUnit: string, toUnit: string): number {
-  if (!Number.isFinite(value)) return 0
-  const from = UNIT_FACTORS[fromUnit.trim().toLowerCase()]
-  const to = UNIT_FACTORS[toUnit.trim().toLowerCase()]
-  if (!from || !to || from.family !== to.family) return value
-  return (value * from.factor) / to.factor
+export function useMeasurementUnits() {
+  const { measurementUnits } = usePage<{ measurementUnits?: Unit[] }>().props
+  return useMemo(() => {
+    const units = measurementUnits ?? []
+    const index = new Map(units.map((unit) => [unit.code, unit]))
+    return {
+      units,
+      compatibleUnits(stored: string) {
+        if (!key(stored)) return []
+        const definition = index.get(key(stored))
+        if (!definition) return [stored]
+        return [
+          stored,
+          ...units
+            .filter(
+              (unit) =>
+                unit.active &&
+                unit.categoryId === definition.categoryId &&
+                unit.code !== key(stored)
+            )
+            .map((unit) => unit.code),
+        ]
+      },
+      convertDisplayQuantity(value: number, fromUnit: string, toUnit: string) {
+        if (!Number.isFinite(value)) return 0
+        const from = index.get(key(fromUnit))
+        const to = index.get(key(toUnit))
+        if (!from || !to || from.categoryId !== to.categoryId) return value
+        return (value * Number(from.factor)) / Number(to.factor)
+      },
+    }
+  }, [measurementUnits])
 }
 
 export function formatQuantity(value: number): string {

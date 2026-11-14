@@ -39,6 +39,7 @@ import { CheckCircle2, ExternalLink, Plus, Truck, XCircle } from 'lucide-react'
 import { ColumnVisibilityMenu, type ColumnDef } from '@/components/data-table/column-visibility'
 import { useColumnVisibility } from '@/hooks/use-column-visibility'
 import { formatMoney, useCurrency } from '@/lib/currency'
+import { useMeasurementUnits } from '@/lib/quantity_units'
 
 type PurchaseRow = {
   id: number
@@ -79,6 +80,7 @@ type LineDraft = {
   machineModel?: string
   qty: number
   unitCost: number
+  unit?: string
 }
 
 function NewPurchaseDialog({
@@ -91,6 +93,7 @@ function NewPurchaseDialog({
   components: ItemOpt[]
 }) {
   const currency = useCurrency()
+  const { compatibleUnits, convertDisplayQuantity } = useMeasurementUnits()
   const [open, setOpen] = useState(false)
   const { data, setData, post, processing, errors, reset } = useForm({
     supplierId: '',
@@ -287,15 +290,44 @@ function NewPurchaseDialog({
                                 aria-label={`Line ${i + 1} quantity`}
                                 placeholder="Qty"
                                 type="number"
-                                step={ln.itemKind === 'machine' ? '1' : '0.001'}
-                                min={ln.itemKind === 'machine' ? 1 : 0.001}
+                                step="any"
+                                min={0.001}
                                 value={ln.qty}
                                 onChange={(e) => updateLine(i, { qty: Number(e.target.value) })}
                                 className="w-24"
                               />
-                              <span className="text-xs text-muted-foreground">
-                                {ln.itemKind === 'machine' ? 'pcs' : (it?.unit ?? '')}
-                              </span>
+                              <Select
+                                value={
+                                  ln.unit ?? (ln.itemKind === 'machine' ? 'pcs' : (it?.unit ?? ''))
+                                }
+                                onValueChange={(unit) => {
+                                  const previous =
+                                    ln.unit ??
+                                    (ln.itemKind === 'machine' ? 'pcs' : (it?.unit ?? ''))
+                                  updateLine(i, {
+                                    unit,
+                                    qty: Number(
+                                      convertDisplayQuantity(ln.qty, previous, unit).toFixed(9)
+                                    ),
+                                    unitCost: convertDisplayQuantity(ln.unitCost, unit, previous),
+                                  })
+                                }}
+                              >
+                                <SelectTrigger aria-label={`Line ${i + 1} unit`}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectGroup>
+                                    {compatibleUnits(
+                                      ln.itemKind === 'machine' ? 'pcs' : (it?.unit ?? '')
+                                    ).map((unit) => (
+                                      <SelectItem key={unit} value={unit}>
+                                        {unit}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectGroup>
+                                </SelectContent>
+                              </Select>
                             </div>
                           </TableCell>
                           <TableCell>
@@ -304,7 +336,7 @@ function NewPurchaseDialog({
                                 aria-label={`Line ${i + 1} unit cost`}
                                 placeholder="Cost"
                                 type="number"
-                                step="0.0001"
+                                step="any"
                                 value={ln.unitCost}
                                 onChange={(e) =>
                                   updateLine(i, { unitCost: Number(e.target.value) })
@@ -312,7 +344,7 @@ function NewPurchaseDialog({
                                 className="w-28"
                               />
                               <span className="text-xs text-muted-foreground">
-                                /{ln.itemKind === 'machine' ? 'machine' : (it?.unit ?? '')}
+                                /{ln.unit ?? (ln.itemKind === 'machine' ? 'pcs' : (it?.unit ?? ''))}
                               </span>
                             </div>
                           </TableCell>

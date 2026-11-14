@@ -40,7 +40,8 @@ import { JobStagesList } from '@/components/jobs/job-stages-list'
 import { JobStagesRepeater, type StageDraft } from '@/components/jobs/job-stages-repeater'
 import { JobProgress } from '@/components/jobs/job-progress'
 import { ForceDoneDialog } from '@/components/jobs/force-done-dialog'
-import { compatibleUnits, convertDisplayQuantity, formatQuantity } from '@/lib/quantity_units'
+import { useMeasurementUnits, formatQuantity } from '@/lib/quantity_units'
+import { QuantityUnitSelect } from '@/components/catalog/quantity-unit-select'
 
 type JobStatus =
   | 'draft'
@@ -219,6 +220,7 @@ function PostAction({
 }
 
 function ConsumeDialog({ jobId, items }: { jobId: number; items: InventoryItem[] }) {
+  const { compatibleUnits, convertDisplayQuantity } = useMeasurementUnits()
   const [open, setOpen] = useState(false)
   const [target, setTarget] = useState('')
   const { data, setData, post, processing, errors, reset } = useForm({
@@ -511,10 +513,16 @@ function FailDialog({ jobId }: { jobId: number }) {
 
 function ConfirmJobCard({ jobId, plannedQty }: { jobId: number; plannedQty: number }) {
   const [producedQty, setProducedQty] = useState(plannedQty)
+  const [unit, setUnit] = useState('pcs')
+  const { convertDisplayQuantity } = useMeasurementUnits()
   const [submitting, setSubmitting] = useState(false)
   const submit = () => {
     setSubmitting(true)
-    router.post(`/jobs/${jobId}/confirm`, { producedQty }, { preserveScroll: true })
+    router.post(
+      `/jobs/${jobId}/confirm`,
+      { producedQty, unit },
+      { preserveScroll: true, onFinish: () => setSubmitting(false) }
+    )
   }
   return (
     <Card className="border-primary">
@@ -526,15 +534,24 @@ function ConfirmJobCard({ jobId, plannedQty }: { jobId: number; plannedQty: numb
           The print has finished. Confirm the produced quantity to complete the job (capped at the
           planned quantity of {plannedQty}).
         </p>
-        <Field label={`Produced qty (max ${plannedQty})`}>
-          <Input
-            type="number"
-            min={0}
-            max={plannedQty}
-            placeholder="Units actually produced"
-            value={producedQty}
-            onChange={(e) => setProducedQty(Math.min(plannedQty, Number(e.target.value)))}
-          />
+        <Field label={`Produced qty (max ${plannedQty} pieces)`}>
+          <div className="flex gap-2">
+            <Input
+              type="number"
+              min={0}
+              step="any"
+              placeholder="Units actually produced"
+              value={producedQty}
+              onChange={(e) => setProducedQty(Number(e.target.value))}
+            />
+            <QuantityUnitSelect
+              value={unit}
+              onChange={(next) => {
+                setProducedQty(Number(convertDisplayQuantity(producedQty, unit, next).toFixed(9)))
+                setUnit(next)
+              }}
+            />
+          </div>
         </Field>
         <div className="flex gap-2">
           <Button onClick={submit} disabled={submitting}>
@@ -569,6 +586,7 @@ function StartForm({
   inventoryItems: InventoryItem[]
   productRecipe: RecipeItem[]
 }) {
+  const { compatibleUnits, convertDisplayQuantity } = useMeasurementUnits()
   const { props } = usePage<{
     errors: Record<string, string>
     enabledModules?: string[]
@@ -1067,7 +1085,9 @@ export default function JobShow({
               <dt className="font-medium">Total</dt>
               <dd className="text-right font-medium">{formatMoney(job.totalCost, currency)}</dd>
               <dt className="text-muted-foreground">Unit cost</dt>
-              <dd className="text-right">{formatMoney(job.unitCost, currency, { maximumFractionDigits: 4 })}</dd>
+              <dd className="text-right">
+                {formatMoney(job.unitCost, currency, { maximumFractionDigits: 4 })}
+              </dd>
               <dt className="text-muted-foreground">Reprint chain cost</dt>
               <dd className="text-right">{job.chainCost}</dd>
             </dl>
@@ -1152,7 +1172,9 @@ export default function JobShow({
                     <TableCell className="capitalize">{w.payType}</TableCell>
                     <TableCell className="text-right">{w.hourlyRateAtAssign}</TableCell>
                     <TableCell className="text-right">{formatMinutes(w.minutesWorked)}</TableCell>
-                    <TableCell className="text-right">{formatMoney(w.lineCost, currency)}</TableCell>
+                    <TableCell className="text-right">
+                      {formatMoney(w.lineCost, currency)}
+                    </TableCell>
                     <TableCell>{w.releasedAt ? 'released' : 'on the job'}</TableCell>
                   </TableRow>
                 ))}
@@ -1201,8 +1223,12 @@ export default function JobShow({
                     <TableCell className="text-right">
                       {c.qtyReturned} {c.unit}
                     </TableCell>
-                    <TableCell className="text-right">{formatMoney(c.unitCostAtConsume, currency, { maximumFractionDigits: 4 })}</TableCell>
-                    <TableCell className="text-right">{formatMoney(c.lineCost, currency)}</TableCell>
+                    <TableCell className="text-right">
+                      {formatMoney(c.unitCostAtConsume, currency, { maximumFractionDigits: 4 })}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatMoney(c.lineCost, currency)}
+                    </TableCell>
                     <TableCell>{c.reason}</TableCell>
                   </TableRow>
                 ))}

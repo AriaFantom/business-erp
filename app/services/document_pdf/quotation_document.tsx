@@ -26,6 +26,7 @@ export type QuotationPdfData = {
     description: string
     qty: number
     unitPrice: string
+    measurementSnapshot?: { unit: string; quantity: string; unitPrice: string } | null
     taxRatePct: string
     lineSubtotal: string
     lineTax: string
@@ -127,9 +128,13 @@ export function QuotationDocument({ quotation, items, currency = 'INR' }: Quotat
             {items.map((it) => (
               <View style={styles.tr} key={it.id}>
                 <Text style={[styles.td, styles.colItem, styles.alignLeft]}>{it.description}</Text>
-                <Text style={[styles.td, styles.colQty, styles.alignCenter]}>{num(it.qty)}</Text>
+                <Text style={[styles.td, styles.colQty, styles.alignCenter]}>
+                  {it.measurementSnapshot
+                    ? `${it.measurementSnapshot.quantity} ${it.measurementSnapshot.unit}`
+                    : num(it.qty)}
+                </Text>
                 <Text style={[styles.td, styles.colUnit, styles.alignRight]}>
-                  {money(it.unitPrice, currency)}
+                  {money(it.measurementSnapshot?.unitPrice ?? it.unitPrice, currency)}
                 </Text>
                 <Text style={[styles.td, styles.colDisc, styles.alignRight]}>
                   {num(it.taxRatePct)}%

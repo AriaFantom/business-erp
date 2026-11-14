@@ -68,6 +68,7 @@ export default class QuotationsController {
           productId: i.productId ?? null,
           name: i.name,
           qty: i.qty,
+          unit: i.unit,
           unitPrice: i.unitPrice ?? null,
           profitPctOverride: i.profitPctOverride ?? null,
           taxRatePct: i.taxRatePct ?? null,

@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto'
+import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
+import { measurementIndex } from '#services/measurement_registry'
 import env from '#start/env'
 import Material from '#models/material'
 import Component from '#models/component'
@@ -94,8 +96,11 @@ async function resolveProfit(productId?: number | null) {
 }
 
 export async function estimateQuotationLine(
-  input: QuotationEstimateInput
+  input: QuotationEstimateInput,
+  units?: Awaited<ReturnType<typeof measurementIndex>>,
+  trx?: TransactionClientContract
 ): Promise<QuotationEstimate> {
+  const registry = units ?? (await measurementIndex(trx))
   validateNumber(input.extraCost, 'Extra cost', MAX_MONEY, 4)
   if (input.profitPct !== null && input.profitPct !== undefined) {
     validateNumber(input.profitPct, 'Markup', 1000, 2)
@@ -104,9 +109,17 @@ export async function estimateQuotationLine(
   const materialIds = input.boms.filter((b) => b.itemKind === 'material').map((b) => b.itemId)
   const componentIds = input.boms.filter((b) => b.itemKind === 'component').map((b) => b.itemId)
   const [materials, components, resolvedProfit] = await Promise.all([
-    materialIds.length ? Material.query().whereIn('id', materialIds).where('is_active', true) : [],
+    materialIds.length
+      ? Material.query({ client: trx })
+          .whereIn('id', materialIds)
+          .where('is_active', true)
+          .if(trx, (query) => query.forShare())
+      : [],
     componentIds.length
-      ? Component.query().whereIn('id', componentIds).where('is_active', true)
+      ? Component.query({ client: trx })
+          .whereIn('id', componentIds)
+          .where('is_active', true)
+          .if(trx, (query) => query.forShare())
       : [],
     resolveProfit(input.productId),
   ])
@@ -117,6 +130,7 @@ export async function estimateQuotationLine(
     string,
     { itemKind: 'material' | 'component'; itemId: number; qty: string }
   >()
+  const definitions = []
   for (const bom of input.boms) {
     const item =
       bom.itemKind === 'material' ? materialById.get(bom.itemId) : componentById.get(bom.itemId)
@@ -126,7 +140,10 @@ export async function estimateQuotationLine(
         message: `A selected ${bom.itemKind} is no longer available. Review the estimate.`,
       })
     }
-    const converted = convertConsumptionQuantity(bom.qty, bom.unit, item.unit)
+    const converted = convertConsumptionQuantity(bom.qty, bom.unit, item.unit, registry)
+    const source = registry.get(converted.enteredUnit)
+    const destination = registry.get(item.unit.trim().toLowerCase())
+    definitions.push([source?.id, source?.factor, destination?.id, destination?.factor])
     const key = `${bom.itemKind}:${bom.itemId}`
     const current = merged.get(key)
     const qty = current
@@ -195,6 +212,7 @@ export async function estimateQuotationLine(
         boms.map((bom, index) => [bom.itemKind, bom.itemId, normalized[index].qty, bom.unitCost])
       )
     )
+    .update(JSON.stringify(definitions))
     .digest('hex')
 
   return {

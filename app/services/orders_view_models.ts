@@ -118,6 +118,12 @@ export async function getOrderShowViewModel(id: number) {
       description: it.description,
       qty: it.qty,
       unitPrice: it.unitPrice,
+      measurementSnapshot: it.measurementSnapshot as {
+        unit: string
+        quantity: string
+        unitPrice: string
+        factor: string
+      } | null,
       taxRatePct: it.taxRatePct,
       lineSubtotal: it.lineSubtotal,
       lineTax: it.lineTax,
@@ -248,6 +254,11 @@ export async function getInvoiceShowViewModel(id: number) {
       description: it.description,
       qty: it.qty,
       unitPrice: it.unitPrice,
+      measurementSnapshot: it.measurementSnapshot as {
+        unit: string
+        quantity: string
+        unitPrice: string
+      } | null,
       taxRatePct: it.taxRatePct,
       lineSubtotal: it.lineSubtotal,
       lineTax: it.lineTax,

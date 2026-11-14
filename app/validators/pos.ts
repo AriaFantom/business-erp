@@ -11,6 +11,7 @@ export const posSellValidator = vine.compile(
         vine.object({
           productId: vine.number().positive(),
           qty: vine.number().positive().max(99_999),
+          unit: vine.string().trim().minLength(1).maxLength(16).optional(),
           // Optional: when omitted (or equal to the suggestion) the server
           // charges the suggested price. Tax is always server-derived.
           unitPrice: vine.number().min(0).max(99_999_999_999).optional(),

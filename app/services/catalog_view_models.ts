@@ -106,6 +106,10 @@ export async function getMaterialsViewModel(filters: ListFilters & { type?: stri
     query,
     Material.query()
       .where('is_active', true)
+      .whereIn(
+        'measurement_unit_id',
+        db.from('measurement_units').where('is_active', true).select('id')
+      )
       .preload('defaultSupplier')
       .orderBy('created_at', 'desc')
       .orderBy('id', 'desc')
@@ -174,6 +178,10 @@ export async function getComponentsViewModel(filters: ListFilters = {}) {
     query,
     Component.query()
       .where('is_active', true)
+      .whereIn(
+        'measurement_unit_id',
+        db.from('measurement_units').where('is_active', true).select('id')
+      )
       .preload('defaultSupplier')
       .orderBy('created_at', 'desc')
       .orderBy('id', 'desc')

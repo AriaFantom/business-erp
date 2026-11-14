@@ -3,6 +3,25 @@ import { DomainError } from '#services/domain_errors'
 export const QUANTITY_SCALE = 9
 const SCALE_FACTOR = 1_000_000_000n
 const MAX_SCALED_QUANTITY = 99_999_999_999_999_999_999n
+const FACTOR_SCALE = 12
+
+function decimalFactor(value: string) {
+  const [whole, fraction = ''] = value.split('.')
+  return BigInt(whole + fraction.padEnd(FACTOR_SCALE, '0'))
+}
+
+export function convertUnitMoney(
+  price: number | string,
+  fromFactor: string,
+  toFactor: string,
+  places: number
+) {
+  const value = quantityToScaled(price)
+  const numerator = value * decimalFactor(toFactor) * 10n ** BigInt(places)
+  const denominator = SCALE_FACTOR * decimalFactor(fromFactor)
+  const rounded = (numerator + denominator / 2n) / denominator
+  return Number(rounded) / 10 ** places
+}
 
 const UNIT_FACTORS = {
   mg: { family: 'mass', factor: 1n },
@@ -100,15 +119,31 @@ export function compatibleConsumptionUnits(storedUnit: string): string[] {
 export function convertConsumptionQuantity(
   value: number | string,
   enteredUnit: string | undefined,
-  storedUnit: string
+  storedUnit: string,
+  registry?: ReadonlyMap<string, { categoryId: number; factor: string; active: boolean }>,
+  options: { allowZero?: boolean; wholePieces?: boolean } = {}
 ): { enteredQuantity: string; enteredUnit: string; storedQuantity: string; storedUnit: string } {
   const enteredQuantity = scaledToQuantity(quantityToScaled(value))
   const sourceUnit = (enteredUnit?.trim() || storedUnit).toLowerCase()
   const destinationUnit = normalizeUnit(storedUnit)
-  const source = UNIT_FACTORS[sourceUnit as KnownUnit]
-  const destination = UNIT_FACTORS[destinationUnit as KnownUnit]
+  const definition = (code: string) => {
+    if (!registry)
+      return Object.hasOwn(UNIT_FACTORS, code) ? UNIT_FACTORS[code as KnownUnit] : undefined
+    const unit = registry.get(code)
+    if (!unit) return undefined
+    return { family: unit.categoryId, factor: decimalFactor(unit.factor) }
+  }
+  const source = definition(sourceUnit)
+  const destination = definition(destinationUnit)
 
   let storedScaled: bigint
+  if (sourceUnit !== destinationUnit && registry?.get(sourceUnit)?.active === false) {
+    throw new DomainError({
+      code: 'UNIT_ARCHIVED',
+      field: 'unit',
+      message: 'Choose an active unit.',
+    })
+  }
   if (!source || !destination) {
     if (sourceUnit !== destinationUnit) {
       throw new DomainError({
@@ -137,11 +172,17 @@ export function convertConsumptionQuantity(
     storedScaled = numerator / destination.factor
   }
 
-  if (storedScaled <= 0n) {
+  if (storedScaled < 0n || (storedScaled === 0n && !options.allowZero)) {
     throw new DomainError({
       code: 'INVALID_QUANTITY',
       field: 'qtyConsumed',
       message: 'Consumed quantity must be greater than zero.',
+    })
+  }
+  if (options.wholePieces && storedScaled % SCALE_FACTOR !== 0n) {
+    throw new DomainError({
+      code: 'FRACTIONAL_PIECE',
+      message: 'The quantity must resolve to whole pieces.',
     })
   }
   if (storedScaled > MAX_SCALED_QUANTITY) {
@@ -158,4 +199,28 @@ export function convertConsumptionQuantity(
     storedQuantity: scaledToQuantity(storedScaled),
     storedUnit,
   }
+}
+
+export function convertReturnQuantity(
+  qty: number,
+  unit: string | undefined,
+  snapshot: { unit: string; factor: string; storedUnit?: string; storedFactor?: string } | null,
+  wholePieces = false
+) {
+  const stored = normalizeUnit(snapshot?.storedUnit ?? (wholePieces ? 'pcs' : ''))
+  if (!unit) {
+    return convertConsumptionQuantity(qty, undefined, stored, new Map(), { wholePieces })
+      .storedQuantity
+  }
+  if (!stored || !snapshot) {
+    throw new DomainError({
+      code: 'RETURN_UNIT_UNAVAILABLE',
+      message: 'Use the original stored quantity for this older line.',
+    })
+  }
+  const map = new Map([
+    [normalizeUnit(snapshot.unit), { categoryId: 1, factor: snapshot.factor, active: true }],
+    [stored, { categoryId: 1, factor: snapshot.storedFactor ?? '1', active: true }],
+  ])
+  return convertConsumptionQuantity(qty, unit, stored, map, { wholePieces }).storedQuantity
 }

@@ -14,10 +14,17 @@ import { applyMovement, invalidateSnapshotCache } from '#services/inventory_serv
 import { allocateSaleToProduction } from '#services/production_sales_tracking'
 import { DomainError, InvalidStateError } from '#services/domain_errors'
 import { resolveOrderLinePricing } from '#services/pricing'
+import {
+  lockMeasurementRegistry,
+  markMeasurementUnitsUsed,
+  measurementIndex,
+  normalizeSalesCount,
+} from '#services/measurement_registry'
 
 export type PosLineInput = {
   productId: number
   qty: number
+  unit?: string
   /** Requested price. Omitted → the server-suggested price is used. */
   unitPrice?: number | null
 }
@@ -73,40 +80,44 @@ export async function completePosOrder(input: {
   // Server-side price enforcement: the unit price and tax rate come from the
   // pricing service; a deviating client price is an override that requires
   // the orders.overridePrice permission and is floored at cost.
-  const pricingByLine = await Promise.all(
-    input.items.map((it) =>
-      resolveOrderLinePricing({
-        productId: it.productId,
-        requestedUnitPrice: it.unitPrice,
-        allowOverride: input.allowPriceOverride,
-      })
-    )
-  )
-
   const result = await db.transaction(async (trx) => {
+    await lockMeasurementRegistry(trx)
+    const units = await measurementIndex(trx)
     let subtotal = 0
     let taxTotal = 0
     let total = 0
-    const lines = input.items.map((l, idx) => {
-      const pricing = pricingByLine[idx]
-      const ls = round2(l.qty * pricing.unitPrice)
+    const lines = []
+    for (const l of input.items) {
+      const count = normalizeSalesCount(units, l.qty, l.unit)
+      const pricing = await resolveOrderLinePricing({
+        productId: l.productId,
+        requestedUnitPrice: l.unitPrice,
+        priceUnitFactor: count.factor,
+        allowOverride: input.allowPriceOverride,
+      })
+      const ls = round2(count.pieces * pricing.unitPrice)
       const lt = round2((ls * pricing.taxRatePct) / 100)
       const lto = round2(ls + lt)
       subtotal += ls
       taxTotal += lt
       total += lto
       const p = productById.get(l.productId)!
-      return {
+      lines.push({
         productId: l.productId,
-        qty: l.qty,
+        qty: count.pieces,
+        measurementSnapshot: count.snapshot(pricing.unitPrice * count.factor),
         unitPrice: pricing.unitPrice,
         taxRatePct: pricing.taxRatePct,
         description: `${p.name} (${p.sku})`,
         lineSubtotal: ls,
         lineTax: lt,
         lineTotal: lto,
-      }
-    })
+      })
+    }
+    await markMeasurementUnitsUsed(
+      trx,
+      input.items.flatMap((line) => (line.unit ? [line.unit] : []))
+    )
 
     const now = DateTime.now()
 
@@ -142,6 +153,7 @@ export async function completePosOrder(input: {
       item.description = l.description
       item.qty = l.qty
       item.unitPrice = String(l.unitPrice)
+      item.measurementSnapshot = l.measurementSnapshot
       item.taxRatePct = String(l.taxRatePct)
       item.lineSubtotal = String(l.lineSubtotal)
       item.lineTax = String(l.lineTax)

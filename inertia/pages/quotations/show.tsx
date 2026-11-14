@@ -49,6 +49,7 @@ type Item = {
   description: string
   qty: number
   unitPrice: string
+  measurementSnapshot?: { unit: string; quantity: string; unitPrice: string } | null
   profitPctUsed: string | null
   taxRatePct: string
   lineSubtotal: string
@@ -176,11 +177,17 @@ export default function QuotationShow({ quotation, items }: PageProps) {
                     </div>
                     <div>
                       <span className="text-xs text-muted-foreground">Qty</span>
-                      <p>{it.qty}</p>
+                      <p>
+                        {it.measurementSnapshot
+                          ? `${it.measurementSnapshot.quantity} ${it.measurementSnapshot.unit}`
+                          : it.qty}
+                      </p>
                     </div>
                     <div>
                       <span className="text-xs text-muted-foreground">Unit price</span>
-                      <p>{formatMoney(it.unitPrice, currency)}</p>
+                      <p>
+                        {formatMoney(it.measurementSnapshot?.unitPrice ?? it.unitPrice, currency)}
+                      </p>
                     </div>
                     <div>
                       <span className="text-xs text-muted-foreground">Tax %</span>

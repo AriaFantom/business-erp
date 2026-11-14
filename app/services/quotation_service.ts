@@ -1,4 +1,11 @@
 import db from '@adonisjs/lucid/services/db'
+import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
+import {
+  lockMeasurementRegistry,
+  markMeasurementUnitsUsed,
+  measurementIndex,
+  normalizeSalesCount,
+} from '#services/measurement_registry'
 import { DateTime } from 'luxon'
 import Quotation from '#models/quotation'
 import QuotationItem from '#models/quotation_item'
@@ -27,6 +34,7 @@ export type QuotationLineInput = {
   productId?: number | null
   name: string
   qty: number
+  unit?: string
   /** Manual override; if null/undefined the pricing service derives it. */
   unitPrice?: number | null
   /** When set on a product line, recompute unit price as cost*(1+x/100) and skip the layered ladder. When set on a custom line, persisted as profitPctUsed for record-keeping. */
@@ -47,8 +55,13 @@ function round2(n: number): number {
 
 const MAX_DATABASE_TOTAL = 999_999_999_999.99
 
-async function buildLine(input: QuotationLineInput) {
+async function buildLine(
+  input: QuotationLineInput,
+  units: Awaited<ReturnType<typeof measurementIndex>>,
+  trx: TransactionClientContract
+) {
   let unitPrice: number
+  const count = normalizeSalesCount(units, input.qty, input.unit)
   let profitPctUsed: number | null = null
   let taxRatePct: number = input.taxRatePct ?? 0
   let bomCost = 0
@@ -67,12 +80,16 @@ async function buildLine(input: QuotationLineInput) {
         message: 'Review and apply the cost estimate before creating this quotation.',
       })
     }
-    estimate = await estimateQuotationLine({
-      productId: input.productId,
-      extraCost: input.estimate.extraCost,
-      profitPct: input.estimate.profitPct,
-      boms: input.boms ?? [],
-    })
+    estimate = await estimateQuotationLine(
+      {
+        productId: input.productId,
+        extraCost: input.estimate.extraCost,
+        profitPct: input.estimate.profitPct,
+        boms: input.boms ?? [],
+      },
+      units,
+      trx
+    )
     if (estimate.fingerprint !== input.estimate.expectedFingerprint) {
       throw new DomainError({
         code: 'ESTIMATE_STALE',
@@ -111,11 +128,18 @@ async function buildLine(input: QuotationLineInput) {
     } else {
       const breakdown = computeUnitPrice({
         costPrice: cost,
-        manualUnitPrice: input.unitPrice ?? null,
+        manualUnitPrice:
+          input.unitPrice === null || input.unitPrice === undefined
+            ? null
+            : input.unitPrice / count.factor,
         product,
         category,
       })
       unitPrice = breakdown.unitPrice
+      if (input.unit && input.unitPrice !== null && input.unitPrice !== undefined) {
+        // Preserve the selected-unit selling price; stock accounting uses pieces.
+        unitPrice = input.unitPrice / count.factor
+      }
       profitPctUsed = breakdown.profitPctUsed
       taxRatePct = input.taxRatePct ?? breakdown.taxRatePct
     }
@@ -123,11 +147,15 @@ async function buildLine(input: QuotationLineInput) {
     // Custom line: if BOM entries are provided, calculate cost from them.
     if (input.boms && input.boms.length > 0) {
       const profitPct = input.profitPctOverride ?? 0
-      const normalizedBom = await estimateQuotationLine({
-        extraCost: 0,
-        profitPct,
-        boms: input.boms,
-      })
+      const normalizedBom = await estimateQuotationLine(
+        {
+          extraCost: 0,
+          profitPct,
+          boms: input.boms,
+        },
+        units,
+        trx
+      )
       bomCost = normalizedBom.catalogCost
       for (const b of normalizedBom.boms) {
         bomSnapshots.push({
@@ -137,17 +165,20 @@ async function buildLine(input: QuotationLineInput) {
           unitCost: b.unitCost,
         })
       }
-      unitPrice = round2(bomCost * (1 + profitPct / 100))
+      unitPrice =
+        input.unitPrice === null || input.unitPrice === undefined
+          ? round2(bomCost * (1 + profitPct / 100))
+          : input.unitPrice / count.factor
       profitPctUsed = profitPct
     } else if (input.unitPrice === null || input.unitPrice === undefined) {
       throw new Error('Custom (non-product) lines require a manual unit price or BOM entries.')
     } else {
-      unitPrice = input.unitPrice
+      unitPrice = input.unitPrice / count.factor
       profitPctUsed = input.profitPctOverride ?? null
     }
   }
 
-  const subtotal = round2(unitPrice * input.qty)
+  const subtotal = round2(unitPrice * count.pieces)
   const tax = round2((subtotal * taxRatePct) / 100)
   const total = round2(subtotal + tax)
   if (
@@ -166,7 +197,8 @@ async function buildLine(input: QuotationLineInput) {
   return {
     productId: input.productId ?? null,
     name: input.name,
-    qty: input.qty,
+    qty: count.pieces,
+    measurementSnapshot: count.snapshot(unitPrice * count.factor),
     unitPrice,
     profitPctUsed,
     taxRatePct,
@@ -258,9 +290,18 @@ export async function createQuotation(input: {
       to: 'used in quotation',
     })
   }
-  const builtLines = await Promise.all(input.items.map(buildLine))
-
   return db.transaction(async (trx) => {
+    await lockMeasurementRegistry(trx)
+    const units = await measurementIndex(trx)
+    const builtLines = []
+    for (const item of input.items) builtLines.push(await buildLine(item, units, trx))
+    await markMeasurementUnitsUsed(trx, [
+      ...input.items.flatMap((item) => (item.unit ? [item.unit] : [])),
+      ...input.items.flatMap((item) =>
+        (item.boms ?? []).flatMap((bom) => (bom.unit ? [bom.unit] : []))
+      ),
+      ...builtLines.flatMap((item) => item.estimate?.boms.map((bom) => bom.unit) ?? []),
+    ])
     const number = await nextDocNumber('QT', trx)
 
     const subtotal = builtLines.reduce((s, l) => s + l.lineSubtotal, 0)
@@ -295,6 +336,7 @@ export async function createQuotation(input: {
       item.description = l.name
       item.qty = l.qty
       item.unitPrice = String(l.unitPrice)
+      item.measurementSnapshot = l.measurementSnapshot
       item.profitPctUsed = l.profitPctUsed !== null ? String(l.profitPctUsed) : null
       item.taxRatePct = String(l.taxRatePct)
       item.lineSubtotal = String(l.lineSubtotal)

@@ -32,6 +32,7 @@ import {
 import { StatusBadge } from '@/components/status-badge'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { formatMoney, useCurrency } from '@/lib/currency'
+import { SelectGroup } from '@/components/ui/select'
 
 type Order = {
   id: number
@@ -52,6 +53,7 @@ type Item = {
   description: string
   qty: number
   unitPrice: string
+  measurementSnapshot?: { unit: string; quantity: string; factor: string; unitPrice: string } | null
   taxRatePct: string
   lineSubtotal: string
   lineTax: string
@@ -141,14 +143,21 @@ function ReturnDialog({
   const returnable = items.filter((it) => it.qty - it.returnedQty > 0)
   const { data, setData, post, processing, transform, reset } = useForm<{
     qtyByItem: Record<number, string>
+    originalUnitByItem: Record<number, boolean>
     refundMethod: string
     note: string
-  }>({ qtyByItem: {}, refundMethod: '', note: '' })
+  }>({ qtyByItem: {}, originalUnitByItem: {}, refundMethod: '', note: '' })
 
   transform((d) => ({
     items: Object.entries(d.qtyByItem)
-      .map(([id, qty]) => ({ orderItemId: Number(id), qty: Number(qty) }))
-      .filter((l) => Number.isInteger(l.qty) && l.qty > 0),
+      .map(([id, qty]) => ({
+        orderItemId: Number(id),
+        qty: Number(qty),
+        unit: d.originalUnitByItem[Number(id)]
+          ? items.find((item) => item.id === Number(id))?.measurementSnapshot?.unit
+          : undefined,
+      }))
+      .filter((l) => l.qty > 0),
     refundMethod: d.refundMethod || undefined,
     note: d.note.trim() || undefined,
   }))
@@ -159,7 +168,14 @@ function ReturnDialog({
     returnable.reduce((sum, it) => {
       const qty = Number(data.qtyByItem[it.id] ?? 0)
       if (!(qty > 0)) return sum
-      const subtotal = round2(qty * Number(it.unitPrice))
+      const snapshot = it.measurementSnapshot
+      const subtotal = round2(
+        qty *
+          (snapshot
+            ? Number(snapshot.unitPrice) /
+              (data.originalUnitByItem[it.id] ? 1 : Number(snapshot.factor))
+            : Number(it.unitPrice))
+      )
       const tax = round2((subtotal * Number(it.taxRatePct)) / 100)
       return sum + subtotal + tax
     }, 0)
@@ -211,6 +227,8 @@ function ReturnDialog({
             <TableBody>
               {returnable.map((it) => {
                 const remaining = it.qty - it.returnedQty
+                const snapshot = it.measurementSnapshot
+                const factor = data.originalUnitByItem[it.id] ? Number(snapshot?.factor ?? 1) : 1
                 return (
                   <TableRow key={it.id}>
                     <TableCell>{it.description}</TableCell>
@@ -220,8 +238,8 @@ function ReturnDialog({
                       <Input
                         type="number"
                         min={0}
-                        max={remaining}
-                        step={1}
+                        max={remaining / factor}
+                        step="any"
                         className="ml-auto w-24 text-right"
                         value={data.qtyByItem[it.id] ?? ''}
                         placeholder="0"
@@ -229,6 +247,44 @@ function ReturnDialog({
                           setData('qtyByItem', { ...data.qtyByItem, [it.id]: e.target.value })
                         }
                       />
+                      {snapshot && snapshot.unit !== 'pcs' && (
+                        <Select
+                          value={data.originalUnitByItem[it.id] ? 'original' : 'stored'}
+                          onValueChange={(value) => {
+                            const nextFactor = value === 'original' ? Number(snapshot.factor) : 1
+                            setData((current) => ({
+                              ...current,
+                              originalUnitByItem: {
+                                ...current.originalUnitByItem,
+                                [it.id]: value === 'original',
+                              },
+                              qtyByItem: {
+                                ...current.qtyByItem,
+                                [it.id]: current.qtyByItem[it.id]
+                                  ? String(
+                                      Number(
+                                        (
+                                          (Number(current.qtyByItem[it.id]) * factor) /
+                                          nextFactor
+                                        ).toFixed(9)
+                                      )
+                                    )
+                                  : '',
+                              },
+                            }))
+                          }}
+                        >
+                          <SelectTrigger aria-label="Return quantity unit">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectGroup>
+                              <SelectItem value="stored">pcs</SelectItem>
+                              <SelectItem value="original">{snapshot.unit}</SelectItem>
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                      )}
                     </TableCell>
                   </TableRow>
                 )
@@ -363,12 +419,16 @@ export default function OrderShow({ order, items, invoice, returns }: PageProps)
                 {items.map((it) => (
                   <TableRow key={it.id}>
                     <TableCell>{it.description}</TableCell>
-                    <TableCell className="text-right">{it.qty}</TableCell>
+                    <TableCell className="text-right">
+                      {it.measurementSnapshot
+                        ? `${it.measurementSnapshot.quantity} ${it.measurementSnapshot.unit}`
+                        : it.qty}
+                    </TableCell>
                     <TableCell className="text-right">
                       {it.returnedQty > 0 ? it.returnedQty : '—'}
                     </TableCell>
                     <TableCell className="text-right">
-                      {formatMoney(it.unitPrice, currency)}
+                      {formatMoney(it.measurementSnapshot?.unitPrice ?? it.unitPrice, currency)}
                     </TableCell>
                     <TableCell className="text-right">{it.taxRatePct}</TableCell>
                     <TableCell className="text-right">

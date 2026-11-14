@@ -56,6 +56,7 @@ type Item = {
   description: string
   qty: number
   unitPrice: string
+  measurementSnapshot?: { unit: string; quantity: string; unitPrice: string } | null
   taxRatePct: string
   lineSubtotal: string
   lineTax: string
@@ -300,9 +301,13 @@ export default function InvoiceShow({ invoice, items, payments, creditNotes }: P
               {items.map((it) => (
                 <TableRow key={it.id}>
                   <TableCell>{it.description}</TableCell>
-                  <TableCell className="text-right">{it.qty}</TableCell>
                   <TableCell className="text-right">
-                    {formatMoney(it.unitPrice, currency)}
+                    {it.measurementSnapshot
+                      ? `${it.measurementSnapshot.quantity} ${it.measurementSnapshot.unit}`
+                      : it.qty}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatMoney(it.measurementSnapshot?.unitPrice ?? it.unitPrice, currency)}
                   </TableCell>
                   <TableCell className="text-right">{it.taxRatePct}</TableCell>
                   <TableCell className="text-right">

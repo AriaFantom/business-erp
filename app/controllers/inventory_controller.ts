@@ -38,6 +38,7 @@ export default class InventoryController {
         itemKind: payload.itemKind,
         itemId: payload.itemId,
         qtyDelta: payload.qtyDelta,
+        unit: payload.unit,
         unitCost: payload.unitCost,
         note: payload.note,
         actor: auth.user!,

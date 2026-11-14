@@ -20,6 +20,12 @@ import { effectiveHourlyRate } from '#services/worker_service'
 import { audit } from '#services/audit'
 import { nextDocNumber } from '#services/numbering'
 import { nextStage, type StageLike } from '#services/stage_advancement'
+import {
+  lockMeasurementRegistry,
+  markMeasurementUnitsUsed,
+  measurementIndex,
+  normalizeOutputCount,
+} from '#services/measurement_registry'
 import { DomainError, InsufficientStockError, InvalidStateError } from '#services/domain_errors'
 import {
   addQuantities,
@@ -160,6 +166,7 @@ export async function recomputeJobTotals(
 export async function createJob(input: {
   productId: number
   plannedQty: number
+  unit?: string
   parentJobId?: number | null
   note?: string | null
   actor: User
@@ -168,12 +175,18 @@ export async function createJob(input: {
   if (input.parentJobId) await ProductionJob.findOrFail(input.parentJobId)
 
   return db.transaction(async (trx) => {
+    const count = await normalizeOutputCount(trx, input.plannedQty, input.unit)
+    if (!count.pieces)
+      throw new DomainError({
+        code: 'INVALID_OUTPUT_QUANTITY',
+        message: 'Planned output must be positive.',
+      })
     const number = await nextDocNumber('JOB', trx)
     const job = new ProductionJob()
     job.number = number
     job.productId = input.productId
     job.parentJobId = input.parentJobId ?? null
-    job.plannedQty = input.plannedQty
+    job.plannedQty = count.pieces
     job.producedQty = 0
     job.status = 'draft'
     job.totalMaterialCost = '0'
@@ -191,7 +204,12 @@ export async function createJob(input: {
       action: 'job.create',
       targetType: 'job',
       targetId: job.id,
-      payload: { number, productId: input.productId, plannedQty: input.plannedQty },
+      payload: {
+        number,
+        productId: input.productId,
+        plannedQty: count.pieces,
+        measurement: count.snapshot,
+      },
       trx,
     })
 
@@ -227,8 +245,8 @@ async function storedUnitFor(
 ): Promise<string> {
   const item =
     itemKind === 'material'
-      ? await Material.query({ client: trx }).where('id', itemId).firstOrFail()
-      : await Component.query({ client: trx }).where('id', itemId).firstOrFail()
+      ? await Material.query({ client: trx }).where('id', itemId).forShare().firstOrFail()
+      : await Component.query({ client: trx }).where('id', itemId).forShare().firstOrFail()
   return item.unit
 }
 
@@ -375,6 +393,9 @@ async function startJobInTrx(
 
   // Convert every entered unit to the catalog item's stored unit before
   // merging duplicates, checking stock, costing, or writing a recipe.
+  await lockMeasurementRegistry(trx)
+  const units = await measurementIndex(trx)
+  const usedCodes: string[] = []
   const merged = new Map<
     string,
     StartJobConsumptionInput & {
@@ -384,7 +405,8 @@ async function startJobInTrx(
   >()
   for (const c of input.consumptions) {
     const storedUnit = await storedUnitFor(c.itemKind, c.itemId, trx)
-    const converted = convertConsumptionQuantity(c.qtyConsumed, c.unit, storedUnit)
+    const converted = convertConsumptionQuantity(c.qtyConsumed, c.unit, storedUnit, units)
+    usedCodes.push(converted.enteredUnit, storedUnit)
     const key = `${c.itemKind}:${c.itemId}`
     const prior = merged.get(key)
     if (prior) {
@@ -412,10 +434,12 @@ async function startJobInTrx(
         actor: input.actor,
         enteredQuantities: c.entered,
       },
-      trx
+      trx,
+      units
     )
   }
 
+  await markMeasurementUnitsUsed(trx, usedCodes)
   return job
 }
 
@@ -438,7 +462,8 @@ async function recordConsumptionInTrx(
     actor: User
     enteredQuantities?: { quantity: string; unit: string }[]
   },
-  trx: TransactionClientContract
+  trx: TransactionClientContract,
+  sharedUnits?: Awaited<ReturnType<typeof measurementIndex>>
 ): Promise<JobMaterialConsumption> {
   const job = await ProductionJob.query({ client: trx })
     .where('id', input.jobId)
@@ -453,13 +478,16 @@ async function recordConsumptionInTrx(
   }
 
   const storedUnit = await storedUnitFor(input.itemKind, input.itemId, trx)
-  const converted = convertConsumptionQuantity(input.qtyConsumed, input.unit, storedUnit)
+  if (!sharedUnits) await lockMeasurementRegistry(trx)
+  const units = sharedUnits ?? (await measurementIndex(trx))
+  const converted = convertConsumptionQuantity(input.qtyConsumed, input.unit, storedUnit, units)
+  if (!sharedUnits) await markMeasurementUnitsUsed(trx, [converted.enteredUnit, storedUnit])
   const convertedWaste =
     input.qtyWasted === undefined
       ? '0'
       : input.qtyWasted === 0 || input.qtyWasted === '0'
         ? '0'
-        : convertConsumptionQuantity(input.qtyWasted, input.unit, storedUnit).storedQuantity
+        : convertConsumptionQuantity(input.qtyWasted, input.unit, storedUnit, units).storedQuantity
   if (compareQuantities(convertedWaste, converted.storedQuantity) > 0) {
     throw new DomainError({
       code: 'INVALID_WASTE_QUANTITY',
@@ -777,13 +805,14 @@ export async function completeJobInTrx(
 export async function forceDoneJob(input: {
   jobId: number
   producedQty: number
+  unit?: string
   machineId?: number | null
   workerIds?: number[]
   stages?: StartJobStageInput[]
   consumptions?: StartJobConsumptionInput[]
   actor: User
 }): Promise<ProductionJob> {
-  if (!Number.isInteger(input.producedQty) || input.producedQty <= 0) {
+  if (input.producedQty <= 0) {
     throw new DomainError({
       code: 'INVALID_OUTPUT_QUANTITY',
       field: 'producedQty',
@@ -822,7 +851,8 @@ export async function forceDoneJob(input: {
       )
     }
 
-    const completed = await completeJobInTrx(job, input.producedQty, input.actor, trx, {
+    const count = await normalizeOutputCount(trx, input.producedQty, input.unit)
+    const completed = await completeJobInTrx(job, count.pieces, input.actor, trx, {
       timeBasis: 'forced_configured',
     })
     await audit({
@@ -830,7 +860,7 @@ export async function forceDoneJob(input: {
       action: 'job.force_done',
       targetType: 'job',
       targetId: job.id,
-      payload: { producedQty: input.producedQty, fromStatus },
+      payload: { producedQty: count.pieces, measurement: count.snapshot, fromStatus },
       trx,
     })
     return completed
@@ -843,6 +873,7 @@ export async function forceDoneJob(input: {
 export async function completeJob(input: {
   jobId: number
   producedQty: number
+  unit?: string
   actor: User
 }): Promise<ProductionJob> {
   const result = await db.transaction(async (trx) => {
@@ -850,7 +881,17 @@ export async function completeJob(input: {
       .where('id', input.jobId)
       .forUpdate()
       .firstOrFail()
-    return completeJobInTrx(job, input.producedQty, input.actor, trx)
+    const count = await normalizeOutputCount(trx, input.producedQty, input.unit)
+    const completed = await completeJobInTrx(job, count.pieces, input.actor, trx)
+    await audit({
+      actor: input.actor,
+      action: 'job.output_unit',
+      targetType: 'job',
+      targetId: job.id,
+      payload: count.snapshot,
+      trx,
+    })
+    return completed
   })
 
   await invalidateSnapshotCache()
@@ -860,6 +901,7 @@ export async function completeJob(input: {
 export async function confirmJob(input: {
   jobId: number
   producedQty: number
+  unit?: string
   actor: User
 }): Promise<ProductionJob> {
   const current = await ProductionJob.findOrFail(input.jobId)
@@ -872,6 +914,7 @@ export async function confirmJob(input: {
   return completeJob({
     jobId: input.jobId,
     producedQty: input.producedQty,
+    unit: input.unit,
     actor: input.actor,
   })
 }

@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { formatMoney, useCurrency } from '@/lib/currency'
+import { useMeasurementUnits } from '@/lib/quantity_units'
 import {
   Select,
   SelectContent,
@@ -320,58 +321,19 @@ function PostAction({
   )
 }
 
-const UNIT_FAMILIES: Record<string, { unit: string; factor: number }[]> = {
-  mg: [
-    { unit: 'mg', factor: 0.001 },
-    { unit: 'g', factor: 1 },
-    { unit: 'kg', factor: 1000 },
-  ],
-  g: [
-    { unit: 'mg', factor: 0.001 },
-    { unit: 'g', factor: 1 },
-    { unit: 'kg', factor: 1000 },
-  ],
-  kg: [
-    { unit: 'mg', factor: 0.001 },
-    { unit: 'g', factor: 1 },
-    { unit: 'kg', factor: 1000 },
-  ],
-  ml: [
-    { unit: 'ml', factor: 1 },
-    { unit: 'l', factor: 1000 },
-  ],
-  l: [
-    { unit: 'ml', factor: 1 },
-    { unit: 'l', factor: 1000 },
-  ],
-  mm: [
-    { unit: 'mm', factor: 0.001 },
-    { unit: 'cm', factor: 0.01 },
-    { unit: 'm', factor: 1 },
-  ],
-  cm: [
-    { unit: 'mm', factor: 0.001 },
-    { unit: 'cm', factor: 0.01 },
-    { unit: 'm', factor: 1 },
-  ],
-  m: [
-    { unit: 'mm', factor: 0.001 },
-    { unit: 'cm', factor: 0.01 },
-    { unit: 'm', factor: 1 },
-  ],
-}
-
 function QuantityWithUnit({ quantity, storedUnit }: { quantity: string; storedUnit: string }) {
-  const stored = storedUnit.toLowerCase()
-  const family = UNIT_FAMILIES[stored]
-  const [unit, setUnit] = useState(stored)
-  const storedFactor = family?.find((option) => option.unit === stored)?.factor ?? 1
-  const selectedFactor = family?.find((option) => option.unit === unit)?.factor ?? 1
-  const formatted = ((Number(quantity) * storedFactor) / selectedFactor).toLocaleString(undefined, {
-    maximumFractionDigits: 9,
-  })
+  const { compatibleUnits, convertDisplayQuantity } = useMeasurementUnits()
+  const family = compatibleUnits(storedUnit)
+  const [selected, setUnit] = useState(storedUnit)
+  const unit = family.includes(selected) ? selected : storedUnit
+  const formatted = convertDisplayQuantity(Number(quantity), storedUnit, unit).toLocaleString(
+    undefined,
+    {
+      maximumFractionDigits: 9,
+    }
+  )
 
-  if (!family)
+  if (family.length < 2)
     return (
       <span className="tabular-nums">
         {formatted} {storedUnit}
@@ -387,8 +349,8 @@ function QuantityWithUnit({ quantity, storedUnit }: { quantity: string; storedUn
         <SelectContent>
           <SelectGroup>
             {family.map((option) => (
-              <SelectItem key={option.unit} value={option.unit}>
-                {option.unit}
+              <SelectItem key={option} value={option}>
+                {option}
               </SelectItem>
             ))}
           </SelectGroup>

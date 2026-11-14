@@ -11,12 +11,17 @@ import {
   type ItemKind,
   type MovementReason,
 } from '#services/inventory_service'
-import { InvalidStateError } from '#services/domain_errors'
+import { DomainError, InvalidStateError } from '#services/domain_errors'
+import {
+  getStoredUnits,
+  lockMeasurementRegistry,
+  markMeasurementUnitsUsed,
+  measurementIndex,
+} from '#services/measurement_registry'
 import { audit } from '#services/audit'
 import {
   compareQuantities,
-  quantityToScaled,
-  scaledToQuantity,
+  convertConsumptionQuantity,
   subtractQuantities,
 } from '#services/quantity_units'
 
@@ -81,6 +86,7 @@ export type CountLine = {
   itemKind: StockTakeItemKind
   itemId: number
   countedQty: number | null
+  unit?: string
 }
 
 /**
@@ -105,16 +111,44 @@ export async function saveCounts(opts: {
 
     const items = await StockTakeItem.query({ client: trx }).where('stockTakeId', st.id)
     const byKey = new Map(items.map((i) => [`${i.itemKind}:${i.itemId}`, i]))
+    await lockMeasurementRegistry(trx)
+    const units = await measurementIndex(trx)
+    const storedUnits = await getStoredUnits(trx, opts.counts)
+    const entered = []
+    const used: string[] = []
 
     for (const c of opts.counts) {
       const item = byKey.get(`${c.itemKind}:${c.itemId}`)
       if (!item) continue
-      item.countedQty =
-        c.countedQty === null ? null : scaledToQuantity(quantityToScaled(c.countedQty))
+      if (c.countedQty === null) item.countedQty = null
+      else {
+        const stored = storedUnits.get(`${c.itemKind}:${c.itemId}`)
+        if (!stored)
+          throw new DomainError({
+            code: 'ITEM_NOT_FOUND',
+            message: 'A counted item is unavailable.',
+          })
+        const converted = convertConsumptionQuantity(c.countedQty, c.unit, stored, units, {
+          allowZero: true,
+          wholePieces: c.itemKind === 'product',
+        })
+        item.countedQty = converted.storedQuantity
+        used.push(stored, converted.enteredUnit)
+        entered.push({ itemId: c.itemId, itemKind: c.itemKind, ...converted })
+      }
       item.useTransaction(trx)
       await item.save()
     }
 
+    await markMeasurementUnitsUsed(trx, used)
+    await audit({
+      actor: opts.actor,
+      action: 'stock_take.save_counts',
+      targetType: 'stock_take',
+      targetId: st.id,
+      payload: { counts: entered },
+      trx,
+    })
     return st
   })
 }

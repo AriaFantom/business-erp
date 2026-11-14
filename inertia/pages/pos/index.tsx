@@ -26,6 +26,8 @@ import { Badge } from '@/components/ui/badge'
 import PosLayout from '@/layouts/pos-layout'
 import { ListToolbar } from '@/components/catalog/list-toolbar'
 import { formatMoney, useCurrency } from '@/lib/currency'
+import { useMeasurementUnits } from '@/lib/quantity_units'
+import { QuantityUnitSelect } from '@/components/catalog/quantity-unit-select'
 
 type Product = {
   id: number
@@ -79,6 +81,7 @@ type CartLine = {
   sku: string
   name: string
   qty: number
+  unit?: string
   unitCost: number
   profitPct: number
   taxRatePct: number
@@ -99,6 +102,7 @@ export default function PosPage({
   canManageSession,
 }: PageProps) {
   const currency = useCurrency()
+  const { convertDisplayQuantity } = useMeasurementUnits()
   const { user } = usePage<InertiaProps<PageProps>>().props
   const canOverridePrice = hasPermission(user, 'orders.overridePrice')
   const [cart, setCart] = useState<CartLine[]>([])
@@ -138,6 +142,22 @@ export default function PosPage({
       const existing = prev.find((l) => l.productId === p.id)
       if (existing) {
         const nextQty = Math.min(existing.qty + 1, p.stockQty)
+        if (existing.unit && existing.unit !== 'pcs') {
+          const pieces = Math.min(
+            p.stockQty,
+            Math.round(convertDisplayQuantity(existing.qty, existing.unit, 'pcs')) + 1
+          )
+          return prev.map((line) =>
+            line.productId === p.id
+              ? {
+                  ...line,
+                  unit: 'pcs',
+                  qty: pieces,
+                  unitPrice: convertDisplayQuantity(line.unitPrice, 'pcs', existing.unit!),
+                }
+              : line
+          )
+        }
         return prev.map((l) => (l.productId === p.id ? { ...l, qty: nextQty } : l))
       }
       return [
@@ -167,8 +187,8 @@ export default function PosPage({
       return
     }
     const line = cart.find((l) => l.productId === productId)
-    const clamped = line ? Math.min(qty, line.stockQty) : qty
-    patchLine(productId, { qty: clamped })
+    if (!line || convertDisplayQuantity(qty, line.unit ?? 'pcs', 'pcs') <= line.stockQty + 1e-8)
+      patchLine(productId, { qty })
   }
 
   function changePrice(productId: number, unitPrice: number) {
@@ -201,6 +221,7 @@ export default function PosPage({
       items: cart.map((l) => ({
         productId: l.productId,
         qty: l.qty,
+        unit: l.unit,
         unitPrice: l.unitPrice,
       })),
     }))
@@ -373,12 +394,28 @@ export default function PosPage({
                           <span className="text-[10px] text-muted-foreground">Qty</span>
                           <Input
                             type="number"
-                            step="1"
-                            min="1"
-                            max={l.stockQty}
+                            step="any"
+                            min="0"
                             placeholder="Qty"
                             value={l.qty}
                             onChange={(e) => changeQty(l.productId, Number(e.target.value))}
+                          />
+                          <QuantityUnitSelect
+                            value={l.unit ?? 'pcs'}
+                            label={`Quantity unit for ${l.name}`}
+                            onChange={(unit) =>
+                              patchLine(l.productId, {
+                                unit,
+                                qty: Number(
+                                  convertDisplayQuantity(l.qty, l.unit ?? 'pcs', unit).toFixed(9)
+                                ),
+                                unitPrice: convertDisplayQuantity(
+                                  l.unitPrice,
+                                  unit,
+                                  l.unit ?? 'pcs'
+                                ),
+                              })
+                            }
                           />
                         </div>
                         <div className="flex flex-col gap-1">

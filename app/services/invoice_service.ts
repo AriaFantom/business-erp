@@ -59,6 +59,7 @@ export async function generateInvoiceForOrder(
     it.description = oi.description
     it.qty = oi.qty
     it.unitPrice = oi.unitPrice
+    it.measurementSnapshot = oi.measurementSnapshot
     it.taxRatePct = oi.taxRatePct
     it.lineSubtotal = oi.lineSubtotal
     it.lineTax = oi.lineTax

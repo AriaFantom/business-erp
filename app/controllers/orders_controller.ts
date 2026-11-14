@@ -51,6 +51,7 @@ export default class OrdersController {
           productId: i.productId ?? null,
           description: i.description,
           qty: i.qty,
+          unit: i.unit,
           unitPrice: i.unitPrice,
           taxRatePct: i.taxRatePct,
         })),

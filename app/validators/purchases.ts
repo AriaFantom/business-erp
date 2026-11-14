@@ -2,7 +2,7 @@ import vine from '@vinejs/vine'
 
 const moneyRule = vine.number().min(0).max(99_999_999_999)
 const chargeRule = vine.number().min(0).max(99_999_999_999).decimal([0, 2])
-const qtyRule = vine.number().min(0.001).max(999_999_999)
+const qtyRule = vine.number().positive().max(999_999_999)
 const percentRule = vine.number().min(0).max(100)
 
 const lineRule = vine.object({
@@ -12,6 +12,7 @@ const lineRule = vine.object({
   machineModel: vine.string().trim().maxLength(120).optional(),
   qty: qtyRule,
   unitCost: moneyRule,
+  unit: vine.string().trim().minLength(1).maxLength(16).optional(),
   taxRatePct: percentRule.optional(),
 })
 
@@ -42,6 +43,7 @@ export const returnPurchaseValidator = vine.compile(
         vine.object({
           purchaseItemId: vine.number().positive().withoutDecimals(),
           qty: qtyRule,
+          unit: vine.string().trim().minLength(1).maxLength(16).optional(),
         })
       )
       .minLength(1)

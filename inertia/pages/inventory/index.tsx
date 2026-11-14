@@ -13,9 +13,11 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatMoney, useCurrency } from '@/lib/currency'
+import { useMeasurementUnits } from '@/lib/quantity_units'
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -80,20 +82,24 @@ type PageProps = {
 }
 
 function AdjustDialog({ items }: { items: AdjustableItem[] }) {
+  const { compatibleUnits, convertDisplayQuantity } = useMeasurementUnits()
   const [open, setOpen] = useState(false)
   const [target, setTarget] = useState<string>('')
   const { data, setData, post, processing, errors, reset } = useForm({
     itemKind: '',
     itemId: 0,
     qtyDelta: 0,
+    unit: '',
     note: '',
   })
+  const selected = items.find((it) => `${it.itemKind}:${it.itemId}` === target)
 
   const onTargetChange = (v: string) => {
     setTarget(v)
     const [kind, idStr] = v.split(':')
     setData('itemKind', kind)
     setData('itemId', Number(idStr))
+    setData('unit', items.find((it) => `${it.itemKind}:${it.itemId}` === v)?.unit ?? '')
   }
 
   return (
@@ -146,13 +152,41 @@ function AdjustDialog({ items }: { items: AdjustableItem[] }) {
             }
             error={errors.qtyDelta}
           >
-            <Input
-              type="number"
-              step="0.001"
-              placeholder="+10 to add, -10 to remove"
-              value={data.qtyDelta}
-              onChange={(e) => setData('qtyDelta', Number(e.target.value))}
-            />
+            <div className="flex gap-2">
+              <Input
+                type="number"
+                step="any"
+                placeholder="+10 to add, -10 to remove"
+                value={data.qtyDelta}
+                onChange={(e) => setData('qtyDelta', Number(e.target.value))}
+              />
+              <Select
+                value={data.unit}
+                onValueChange={(unit) =>
+                  setData((current) => ({
+                    ...current,
+                    unit,
+                    qtyDelta: Number(
+                      convertDisplayQuantity(current.qtyDelta, current.unit, unit).toFixed(9)
+                    ),
+                  }))
+                }
+                disabled={!selected}
+              >
+                <SelectTrigger aria-label="Adjustment unit">
+                  <SelectValue placeholder="Unit" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {compatibleUnits(selected?.unit ?? '').map((unit) => (
+                      <SelectItem key={unit} value={unit}>
+                        {unit}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
           </Field>
           <Field label="Note (required)" error={errors.note}>
             <Input

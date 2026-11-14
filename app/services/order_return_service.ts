@@ -12,12 +12,14 @@ import { nextDocNumber } from '#services/numbering'
 import { DomainError, InvalidStateError } from '#services/domain_errors'
 import { invalidatePdf } from '#services/document_pdf/render'
 import { restoreReturnedProduction } from '#services/production_sales_tracking'
+import { convertReturnQuantity } from '#services/quantity_units'
+import type { SalesUnitSnapshot } from '#services/measurement_registry'
 
 export type RefundMethod = 'cash' | 'bank' | 'upi' | 'other'
 
 export type CreateOrderReturnInput = {
   orderId: number
-  items: { orderItemId: number; qty: number }[]
+  items: { orderItemId: number; qty: number; unit?: string }[]
   refundMethod?: RefundMethod | null
   note?: string | null
   actor: User
@@ -77,7 +79,9 @@ export async function createOrderReturn(input: CreateOrderReturnInput): Promise<
     // the whole request, not each line independently.
     const requested = new Map<number, number>()
     for (const l of input.items) {
-      requested.set(l.orderItemId, (requested.get(l.orderItemId) ?? 0) + l.qty)
+      const item = itemById.get(l.orderItemId)
+      const qty = convertReturnQuantity(l.qty, l.unit, item?.measurementSnapshot ?? null, true)
+      requested.set(l.orderItemId, (requested.get(l.orderItemId) ?? 0) + Number(qty))
     }
 
     const returnLines: {
@@ -102,7 +106,10 @@ export async function createOrderReturn(input: CreateOrderReturnInput): Promise<
           message: `Cannot return ${qty}: only ${Math.max(0, remaining)} left returnable on this line.`,
         })
       }
-      const unitPrice = Number(item.unitPrice)
+      const snapshot = item.measurementSnapshot as SalesUnitSnapshot | null
+      const unitPrice = snapshot
+        ? Number(snapshot.unitPrice) / Number(snapshot.factor)
+        : Number(item.unitPrice)
       const taxRatePct = Number(item.taxRatePct)
       const lineSubtotal = round2(qty * unitPrice)
       const lineTax = round2((lineSubtotal * taxRatePct) / 100)

@@ -36,6 +36,7 @@ const ReportsController = () => import('#controllers/reports_controller')
 const PosController = () => import('#controllers/pos_controller')
 const SettingsController = () => import('#controllers/settings_controller')
 const DashboardBrandingController = () => import('#controllers/dashboard_branding_controller')
+const MeasurementUnitsController = () => import('#controllers/measurement_units_controller')
 const RootController = () => import('#controllers/root_controller')
 
 router.get('/health', ({ response }) => response.ok({ status: 'ok' })).as('health')
@@ -66,6 +67,14 @@ router
       .as('system.invitations')
     router.get('system/users', [UsersController, 'index']).as('system.users')
     router.get('system/settings', [DashboardBrandingController, 'show']).as('settings.application')
+    router.get('system/settings/units', [MeasurementUnitsController, 'index']).as('settings.units')
+    router
+      .post('system/settings/units', [MeasurementUnitsController, 'store'])
+      .as('settings.units.store')
+    router
+      .patch('system/settings/units/:id', [MeasurementUnitsController, 'update'])
+      .where('id', router.matchers.number())
+      .as('settings.units.update')
     router
       .post('system/settings', [DashboardBrandingController, 'update'])
       .as('settings.application.update')

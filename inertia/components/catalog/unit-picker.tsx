@@ -1,77 +1,49 @@
-import { useState } from 'react'
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Input } from '@/components/ui/input'
+import { useMeasurementUnits } from '@/lib/quantity_units'
 
-const PRESETS = ['pcs', 'g', 'kg', 'mg', 'ml', 'l', 'm', 'cm', 'mm']
-const CUSTOM = '__custom__'
-
-type Props = {
-  value: string
-  onChange: (v: string) => void
-  placeholder?: string
-}
+type Props = { value: string; onChange: (v: string) => void; placeholder?: string }
 
 export function UnitPicker({ value, onChange, placeholder }: Props) {
-  const isPreset = PRESETS.includes(value) || value === ''
-  const [custom, setCustom] = useState(isPreset)
-
-  if (!custom) {
-    return (
-      <div className="flex w-full items-center gap-2">
-        <Input
-          aria-label="Custom unit"
-          autoFocus
-          value={value}
-          maxLength={16}
-          placeholder="e.g. roll, sheet, ft"
-          onChange={(e) => onChange(e.target.value)}
-        />
-        <button
-          type="button"
-          className="text-xs text-muted-foreground hover:underline"
-          onClick={() => {
-            setCustom(true)
-            onChange('')
-          }}
-        >
-          Use preset
-        </button>
-      </div>
-    )
+  const { units } = useMeasurementUnits()
+  const categories = new Map<string, typeof units>()
+  for (const unit of units) {
+    if (!unit.active) continue
+    const group = categories.get(unit.category) ?? []
+    group.push(unit)
+    categories.set(unit.category, group)
   }
-
+  const selected = value.trim().toLowerCase()
   return (
-    <Select
-      value={PRESETS.includes(value) ? value : ''}
-      onValueChange={(v) => {
-        if (v === CUSTOM) {
-          setCustom(false)
-          onChange('')
-        } else {
-          onChange(v)
-        }
-      }}
-    >
-      <SelectTrigger className="w-full min-w-0">
+    <Select value={selected} onValueChange={onChange}>
+      <SelectTrigger aria-label="Unit of measure" className="w-full min-w-0">
         <SelectValue placeholder={placeholder ?? 'Pick a unit'} />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="pcs">pcs (pieces)</SelectItem>
-        <SelectItem value="g">g (grams)</SelectItem>
-        <SelectItem value="kg">kg (kilograms)</SelectItem>
-        <SelectItem value="mg">mg (milligrams)</SelectItem>
-        <SelectItem value="ml">ml (millilitres)</SelectItem>
-        <SelectItem value="l">l (litres)</SelectItem>
-        <SelectItem value="m">m (metres)</SelectItem>
-        <SelectItem value="cm">cm (centimetres)</SelectItem>
-        <SelectItem value="mm">mm (millimetres)</SelectItem>
-        <SelectItem value={CUSTOM}>Custom…</SelectItem>
+        {selected && !units.some((unit) => unit.code === selected && unit.active) && (
+          <SelectGroup>
+            <SelectItem disabled value={selected}>
+              {value} (not available)
+            </SelectItem>
+          </SelectGroup>
+        )}
+        {[...categories].map(([category, group]) => (
+          <SelectGroup key={category}>
+            <SelectLabel>{category}</SelectLabel>
+            {group.map((unit) => (
+              <SelectItem key={unit.code} value={unit.code}>
+                {unit.code} ({unit.name})
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        ))}
       </SelectContent>
     </Select>
   )

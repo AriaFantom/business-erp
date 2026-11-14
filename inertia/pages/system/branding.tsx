@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type ReactElement } from 'react'
 import { router, useForm, usePage } from '@inertiajs/react'
+import { Link } from '@adonisjs/inertia/react'
 import { Layers, Trash2, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -92,6 +93,14 @@ export default function ApplicationSettings({ branding, currency, currencyOption
         </p>
       </div>
 
+      <nav aria-label="Settings sections" className="flex gap-4 text-sm">
+        <Link href="/system/settings" aria-current="page" className="font-semibold">
+          Application
+        </Link>
+        <Link href="/system/settings/units" className="text-muted-foreground hover:text-foreground">
+          Units
+        </Link>
+      </nav>
       <form onSubmit={submit}>
         <Card>
           <CardHeader>

@@ -24,6 +24,8 @@ import {
 } from '@/components/ui/table'
 import DashboardLayout from '@/layouts/dashboard-layout'
 import { formatMoney, useCurrency } from '@/lib/currency'
+import { useMeasurementUnits } from '@/lib/quantity_units'
+import { QuantityUnitSelect } from '@/components/catalog/quantity-unit-select'
 
 type CustomerOpt = { id: number; name: string }
 type ProductOpt = {
@@ -43,12 +45,14 @@ type LineDraft = {
   productId?: number
   description: string
   qty: number
+  unit?: string
   unitPrice: number
   taxRatePct: number
 }
 
 export default function OrderNew({ customers, products }: PageProps) {
   const currency = useCurrency()
+  const { convertDisplayQuantity } = useMeasurementUnits()
   const { data, setData, post, processing, errors } = useForm({
     customerId: '',
     note: '',
@@ -217,9 +221,23 @@ export default function OrderNew({ customers, products }: PageProps) {
                         aria-label={`Line ${i + 1} quantity`}
                         placeholder="Qty"
                         type="number"
+                        step="any"
                         value={ln.qty}
                         onChange={(e) => updateLine(i, { qty: Number(e.target.value) })}
                         className="w-20"
+                      />
+                      <QuantityUnitSelect
+                        label={`Line ${i + 1} quantity unit`}
+                        value={ln.unit ?? 'pcs'}
+                        onChange={(unit) =>
+                          updateLine(i, {
+                            unit,
+                            qty: Number(
+                              convertDisplayQuantity(ln.qty, ln.unit ?? 'pcs', unit).toFixed(9)
+                            ),
+                            unitPrice: convertDisplayQuantity(ln.unitPrice, unit, ln.unit ?? 'pcs'),
+                          })
+                        }
                       />
                     </TableCell>
                     <TableCell>

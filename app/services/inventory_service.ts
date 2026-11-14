@@ -5,12 +5,20 @@ import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 import Inventory from '#models/inventory'
 import StockMovement from '#models/stock_movement'
 import type User from '#models/user'
-import { InsufficientStockError } from '#services/domain_errors'
+import { DomainError, InsufficientStockError } from '#services/domain_errors'
+import {
+  getStoredUnits,
+  lockMeasurementRegistry,
+  markMeasurementUnitsUsed,
+  measurementIndex,
+} from '#services/measurement_registry'
 import { audit } from '#services/audit'
 import { assertModulesEnabled } from '#services/modules/module_service'
 import {
   addQuantities,
   compareQuantities,
+  convertConsumptionQuantity,
+  convertUnitMoney,
   quantityToScaled,
   scaledToQuantity,
 } from '#services/quantity_units'
@@ -179,6 +187,7 @@ export async function adjustStock(opts: {
   itemKind: ItemKind
   itemId: number
   qtyDelta: number
+  unit?: string
   unitCost?: number
   note: string
   actor: User
@@ -190,11 +199,35 @@ export async function adjustStock(opts: {
 
   return db
     .transaction(async (trx) => {
+      await lockMeasurementRegistry(trx)
+      const units = await measurementIndex(trx)
+      const storedUnits = await getStoredUnits(trx, [opts])
+      const stored = storedUnits.get(`${opts.itemKind}:${opts.itemId}`)
+      if (!stored)
+        throw new DomainError({
+          code: 'ITEM_NOT_FOUND',
+          message: 'The selected stock item is unavailable.',
+        })
+      const converted = convertConsumptionQuantity(
+        Math.abs(opts.qtyDelta),
+        opts.unit,
+        stored,
+        units,
+        { wholePieces: opts.itemKind === 'product' }
+      )
+      await markMeasurementUnitsUsed(trx, [stored, converted.enteredUnit])
+      const source = units.get(converted.enteredUnit)
+      const destination = units.get(stored.trim().toLowerCase())
       const move = await applyMovement({
         itemKind: opts.itemKind,
         itemId: opts.itemId,
-        qty: opts.qtyDelta,
-        unitCost: opts.unitCost ?? 0,
+        qty: opts.qtyDelta < 0 ? `-${converted.storedQuantity}` : converted.storedQuantity,
+        unitCost: convertUnitMoney(
+          opts.unitCost ?? 0,
+          source?.factor ?? '1',
+          destination?.factor ?? '1',
+          4
+        ),
         reason,
         note: opts.note,
         actor: opts.actor,
@@ -203,6 +236,18 @@ export async function adjustStock(opts: {
       if (!move) {
         throw new Error('adjustStock cannot target a machine')
       }
+      await audit({
+        actor: opts.actor,
+        action: 'inventory.adjust_unit',
+        targetType: 'stock_movement',
+        targetId: move.id,
+        payload: {
+          ...converted,
+          enteredDelta: opts.qtyDelta,
+          enteredUnitCost: opts.unitCost ?? null,
+        },
+        trx,
+      })
       return move
     })
     .finally(() => invalidateSnapshotCache())

@@ -174,6 +174,7 @@ export type OrderLineInput = {
   productId?: number | null
   description: string
   qty: number
+  unit?: string
   unitPrice: number
   taxRatePct: number
 }
@@ -200,6 +201,7 @@ export async function resolveOrderLinePricing(opts: {
   productId: number
   requestedUnitPrice?: number | null
   allowOverride: boolean
+  priceUnitFactor?: number
 }): Promise<OrderLinePricing> {
   const product = await Product.findOrFail(opts.productId)
   const category = product.categoryId ? await ProductCategory.find(product.categoryId) : null
@@ -210,11 +212,12 @@ export async function resolveOrderLinePricing(opts: {
     category,
   })
 
+  const factor = opts.priceUnitFactor ?? 1
   const requested = opts.requestedUnitPrice
   const matchesSuggestion =
     requested === null ||
     requested === undefined ||
-    Math.abs(requested - breakdown.unitPrice) < PRICE_MATCH_TOLERANCE
+    Math.abs(requested - breakdown.unitPrice * factor) < PRICE_MATCH_TOLERANCE
 
   if (matchesSuggestion) {
     return {
@@ -234,7 +237,7 @@ export async function resolveOrderLinePricing(opts: {
   }
 
   const costFloor = breakdown.costPrice ?? 0
-  if (requested < costFloor) {
+  if (requested / factor < costFloor) {
     throw new DomainError({
       code: 'PRICE_BELOW_COST',
       field: 'unitPrice',
@@ -243,7 +246,7 @@ export async function resolveOrderLinePricing(opts: {
   }
 
   return {
-    unitPrice: applyRounding(requested, 'none'),
+    unitPrice: applyRounding(requested, 'none') / factor,
     taxRatePct: breakdown.taxRatePct,
     overridden: true,
     costPrice: breakdown.costPrice,

@@ -63,8 +63,9 @@ test.group('machine production sales tracking', (group) => {
         {
           productId: product.id,
           description: product.name,
-          qty: 3,
-          unitPrice: 10,
+          qty: 0.25,
+          unit: 'dozen',
+          unitPrice: 120,
           taxRatePct: 0,
         },
       ],
@@ -74,6 +75,8 @@ test.group('machine production sales tracking', (group) => {
     await confirmOrder(order.id, actor)
 
     const orderItem = await OrderItem.query().where('order_id', order.id).firstOrFail()
+    assert.equal(orderItem.qty, 3)
+    assert.equal(orderItem.measurementSnapshot.unit, 'dozen')
     const allocations = await db
       .from('order_item_production_allocations')
       .where('order_item_id', orderItem.id)

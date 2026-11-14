@@ -70,6 +70,14 @@ type Item = {
   itemSku: string
   qty: string
   unitCost: string
+  measurementSnapshot?: {
+    unit: string
+    quantity: string
+    unitCost: string
+    factor: string
+    storedUnit: string
+    storedFactor: string
+  } | null
   taxRatePct: string
   lineSubtotal: string
   lineTax: string
@@ -138,16 +146,23 @@ function ReturnItemsDialog({ purchaseId, items }: { purchaseId: number; items: I
   const returnable = items.filter(
     (it) =>
       (it.itemKind === 'material' || it.itemKind === 'component') &&
-      Number(it.qty) - it.returnedQty > 0.0005
+      Number(it.qty) - it.returnedQty > 0
   )
   const { data, setData, post, processing, transform, reset } = useForm<{
     qtyByItem: Record<number, string>
+    originalUnitByItem: Record<number, boolean>
     note: string
-  }>({ qtyByItem: {}, note: '' })
+  }>({ qtyByItem: {}, originalUnitByItem: {}, note: '' })
 
   transform((d) => ({
     items: Object.entries(d.qtyByItem)
-      .map(([id, qty]) => ({ purchaseItemId: Number(id), qty: Number(qty) }))
+      .map(([id, qty]) => ({
+        purchaseItemId: Number(id),
+        qty: Number(qty),
+        unit: d.originalUnitByItem[Number(id)]
+          ? items.find((item) => item.id === Number(id))?.measurementSnapshot?.unit
+          : undefined,
+      }))
       .filter((l) => l.qty > 0),
     note: d.note.trim() || undefined,
   }))
@@ -190,6 +205,11 @@ function ReturnItemsDialog({ purchaseId, items }: { purchaseId: number; items: I
             <TableBody>
               {returnable.map((it) => {
                 const remaining = Number(it.qty) - it.returnedQty
+                const snapshot = it.measurementSnapshot
+                const originalFactor = snapshot
+                  ? Number(snapshot.factor) / Number(snapshot.storedFactor)
+                  : 1
+                const factor = data.originalUnitByItem[it.id] ? originalFactor : 1
                 return (
                   <TableRow key={it.id}>
                     <TableCell>
@@ -202,8 +222,8 @@ function ReturnItemsDialog({ purchaseId, items }: { purchaseId: number; items: I
                       <Input
                         type="number"
                         min={0}
-                        max={remaining}
-                        step="0.001"
+                        max={remaining / factor}
+                        step="any"
                         className="ml-auto w-28 text-right"
                         value={data.qtyByItem[it.id] ?? ''}
                         placeholder="0"
@@ -211,6 +231,44 @@ function ReturnItemsDialog({ purchaseId, items }: { purchaseId: number; items: I
                           setData('qtyByItem', { ...data.qtyByItem, [it.id]: e.target.value })
                         }
                       />
+                      {snapshot && snapshot.unit !== snapshot.storedUnit && (
+                        <Select
+                          value={data.originalUnitByItem[it.id] ? 'original' : 'stored'}
+                          onValueChange={(value) => {
+                            const nextFactor = value === 'original' ? originalFactor : 1
+                            setData((current) => ({
+                              ...current,
+                              originalUnitByItem: {
+                                ...current.originalUnitByItem,
+                                [it.id]: value === 'original',
+                              },
+                              qtyByItem: {
+                                ...current.qtyByItem,
+                                [it.id]: current.qtyByItem[it.id]
+                                  ? String(
+                                      Number(
+                                        (
+                                          (Number(current.qtyByItem[it.id]) * factor) /
+                                          nextFactor
+                                        ).toFixed(9)
+                                      )
+                                    )
+                                  : '',
+                              },
+                            }))
+                          }}
+                        >
+                          <SelectTrigger aria-label="Return quantity unit">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectGroup>
+                              <SelectItem value="stored">{snapshot.storedUnit}</SelectItem>
+                              <SelectItem value="original">{snapshot.unit}</SelectItem>
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                      )}
                     </TableCell>
                   </TableRow>
                 )
@@ -412,12 +470,17 @@ export default function PurchaseShow({ purchase, items, returns, payments }: Pag
                         </div>
                       ) : null}
                     </TableCell>
-                    <TableCell className="text-right">{it.qty}</TableCell>
+                    <TableCell className="text-right">
+                      {it.measurementSnapshot
+                        ? `${it.measurementSnapshot.quantity} ${it.measurementSnapshot.unit}`
+                        : it.qty}
+                    </TableCell>
                     <TableCell className="text-right">
                       {it.returnedQty > 0 ? it.returnedQty : '—'}
                     </TableCell>
                     <TableCell className="text-right">
-                      {formatMoney(it.unitCost, currency)}
+                      {formatMoney(it.measurementSnapshot?.unitCost ?? it.unitCost, currency)}
+                      {it.measurementSnapshot ? ` / ${it.measurementSnapshot.unit}` : ''}
                     </TableCell>
                     {purchase.taxEntryMode === 'legacy_line' && (
                       <TableCell className="text-right">{it.taxRatePct}</TableCell>

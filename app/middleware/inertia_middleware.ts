@@ -6,6 +6,7 @@ import BaseInertiaMiddleware from '@adonisjs/inertia/inertia_middleware'
 import { getEnabledModules } from '#services/modules/module_service'
 import { getDashboardBranding } from '#services/dashboard_branding'
 import { getAppCurrency } from '#services/currency'
+import { getMeasurementUnits } from '#services/measurement_registry'
 
 async function serializeUser(user: User) {
   // Owners implicitly hold every active permission; everyone else gets
@@ -51,9 +52,10 @@ export default class InertiaMiddleware extends BaseInertiaMiddleware {
     // Install-wide enabled modules — gates nav visibility and client routing in
     // tandem with per-role permissions. Cached, so cheap on every render.
     const enabledModules = await getEnabledModules()
-    const [{ name, iconUrl }, currency] = await Promise.all([
+    const [{ name, iconUrl }, currency, measurementUnits] = await Promise.all([
       getDashboardBranding(),
       getAppCurrency(),
+      user ? getMeasurementUnits() : [],
     ])
     const branding = { name, iconUrl }
 
@@ -71,6 +73,7 @@ export default class InertiaMiddleware extends BaseInertiaMiddleware {
       enabledModules: ctx.inertia.always(enabledModules),
       branding: ctx.inertia.always(branding),
       currency: ctx.inertia.always(currency),
+      measurementUnits: ctx.inertia.always(measurementUnits),
     }
   }
 

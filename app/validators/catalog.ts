@@ -175,6 +175,7 @@ export const adjustInventoryValidator = vine.compile(
     itemKind: vine.enum(['material', 'component']),
     itemId: vine.number().positive(),
     qtyDelta: vine.number().min(-999_999_999).max(999_999_999),
+    unit: unitRule.optional(),
     unitCost: moneyRule.optional(),
     note: vine.string().trim().minLength(3).maxLength(500),
   })

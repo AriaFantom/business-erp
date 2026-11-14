@@ -35,7 +35,8 @@ import DashboardLayout from '@/layouts/dashboard-layout'
 import { formatMoney, useCurrency } from '@/lib/currency'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
-import { compatibleUnits, convertDisplayQuantity, formatQuantity } from '@/lib/quantity_units'
+import { useMeasurementUnits, formatQuantity } from '@/lib/quantity_units'
+import { QuantityUnitSelect } from '@/components/catalog/quantity-unit-select'
 
 type CustomerOpt = { id: number; name: string }
 type ProductOpt = {
@@ -68,6 +69,7 @@ type LineDraft = {
   productId?: number
   name: string
   qty: number
+  unit?: string
   unitPrice?: number
   unitCost?: number
   profitPctOverride?: number
@@ -111,7 +113,8 @@ function round2(n: number): number {
 function computeBomCost(
   boms: BomDraft[],
   materials: MaterialOpt[],
-  components: ComponentOpt[]
+  components: ComponentOpt[],
+  convertDisplayQuantity: ReturnType<typeof useMeasurementUnits>['convertDisplayQuantity']
 ): number {
   const matById = new Map(materials.map((m) => [m.id, m.unitCost]))
   const compById = new Map(components.map((c) => [c.id, c.unitCost]))
@@ -150,6 +153,7 @@ function EstimateDialog({
   onApply: (result: EstimateResult, boms: BomDraft[]) => void
 }) {
   const currency = useCurrency()
+  const { compatibleUnits, convertDisplayQuantity } = useMeasurementUnits()
   const [open, setOpen] = useState(false)
   const [boms, setBoms] = useState<BomDraft[]>(line.boms)
   const [extraCost, setExtraCost] = useState(String(line.estimate?.extraCost ?? 0))
@@ -442,6 +446,7 @@ function EstimateDialog({
 
 export default function QuotationNew({ customers, products, materials, components }: PageProps) {
   const currency = useCurrency()
+  const { compatibleUnits, convertDisplayQuantity } = useMeasurementUnits()
   const { data, setData, post, processing, errors } = useForm({
     customerId: '',
     validUntil: new Date(Date.now() + 14 * 86400_000).toISOString().slice(0, 10),
@@ -494,7 +499,7 @@ export default function QuotationNew({ customers, products, materials, component
     if (!firstId) return
     const line = data.items[lineIdx]
     const newBoms = [...line.boms, { itemKind, itemId: firstId, qty: 1, unit: items[0]?.unit }]
-    const newCost = computeBomCost(newBoms, materials, components)
+    const newCost = computeBomCost(newBoms, materials, components, convertDisplayQuantity)
     setData(
       'items',
       data.items.map((l, i) =>
@@ -503,7 +508,11 @@ export default function QuotationNew({ customers, products, materials, component
               ...l,
               boms: newBoms,
               unitCost: newCost,
-              unitPrice: computeCustomUnitPrice(newCost, l.profitPctOverride),
+              unitPrice: convertDisplayQuantity(
+                computeCustomUnitPrice(newCost, l.profitPctOverride),
+                l.unit ?? 'pcs',
+                'pcs'
+              ),
               pricingMode: 'manual',
               estimate: undefined,
               estimateTarget: undefined,
@@ -516,7 +525,7 @@ export default function QuotationNew({ customers, products, materials, component
   const updateBom = (lineIdx: number, bomIdx: number, patch: Partial<BomDraft>) => {
     const line = data.items[lineIdx]
     const newBoms = line.boms.map((b, i) => (i === bomIdx ? { ...b, ...patch } : b))
-    const newCost = computeBomCost(newBoms, materials, components)
+    const newCost = computeBomCost(newBoms, materials, components, convertDisplayQuantity)
     setData(
       'items',
       data.items.map((l, i) =>
@@ -525,7 +534,11 @@ export default function QuotationNew({ customers, products, materials, component
               ...l,
               boms: newBoms,
               unitCost: newCost,
-              unitPrice: computeCustomUnitPrice(newCost, l.profitPctOverride),
+              unitPrice: convertDisplayQuantity(
+                computeCustomUnitPrice(newCost, l.profitPctOverride),
+                l.unit ?? 'pcs',
+                'pcs'
+              ),
               pricingMode: 'manual',
               estimate: undefined,
               estimateTarget: undefined,
@@ -538,7 +551,7 @@ export default function QuotationNew({ customers, products, materials, component
   const removeBom = (lineIdx: number, bomIdx: number) => {
     const line = data.items[lineIdx]
     const newBoms = line.boms.filter((_, i) => i !== bomIdx)
-    const newCost = computeBomCost(newBoms, materials, components)
+    const newCost = computeBomCost(newBoms, materials, components, convertDisplayQuantity)
     setData(
       'items',
       data.items.map((l, i) =>
@@ -547,7 +560,11 @@ export default function QuotationNew({ customers, products, materials, component
               ...l,
               boms: newBoms,
               unitCost: newCost,
-              unitPrice: computeCustomUnitPrice(newCost, l.profitPctOverride),
+              unitPrice: convertDisplayQuantity(
+                computeCustomUnitPrice(newCost, l.profitPctOverride),
+                l.unit ?? 'pcs',
+                'pcs'
+              ),
               pricingMode: 'manual',
               estimate: undefined,
               estimateTarget: undefined,
@@ -714,7 +731,7 @@ export default function QuotationNew({ customers, products, materials, component
                               <div className="flex flex-wrap items-center gap-2">
                                 <EstimateDialog
                                   line={ln}
-                                  quantity={ln.qty}
+                                  quantity={convertDisplayQuantity(ln.qty, ln.unit ?? 'pcs', 'pcs')}
                                   materials={materials}
                                   components={components}
                                   onApply={(estimate, estimateBoms) =>
@@ -722,14 +739,22 @@ export default function QuotationNew({ customers, products, materials, component
                                       boms: estimateBoms,
                                       unitCost: estimate.estimatedUnitCost,
                                       profitPctOverride: estimate.profitPct,
-                                      unitPrice: estimate.suggestedUnitPrice,
+                                      unitPrice: convertDisplayQuantity(
+                                        estimate.suggestedUnitPrice,
+                                        ln.unit ?? 'pcs',
+                                        'pcs'
+                                      ),
                                       pricingMode: 'estimated',
                                       estimate: {
                                         extraCost: estimate.extraCost,
                                         profitPct: estimate.profitPct,
                                         expectedFingerprint: estimate.fingerprint,
                                       },
-                                      estimateTarget: estimate.suggestedUnitPrice,
+                                      estimateTarget: convertDisplayQuantity(
+                                        estimate.suggestedUnitPrice,
+                                        ln.unit ?? 'pcs',
+                                        'pcs'
+                                      ),
                                     })
                                   }
                                 />
@@ -888,9 +913,40 @@ export default function QuotationNew({ customers, products, materials, component
                               aria-label={`Line ${i + 1} quantity`}
                               placeholder="Qty"
                               type="number"
+                              step="any"
                               value={ln.qty}
                               onChange={(e) => updateLine(i, { qty: Number(e.target.value) })}
                               className="w-20"
+                            />
+                            <QuantityUnitSelect
+                              label={`Line ${i + 1} quantity unit`}
+                              value={ln.unit ?? 'pcs'}
+                              onChange={(unit) =>
+                                updateLine(i, {
+                                  unit,
+                                  qty: Number(
+                                    convertDisplayQuantity(ln.qty, ln.unit ?? 'pcs', unit).toFixed(
+                                      9
+                                    )
+                                  ),
+                                  unitPrice:
+                                    ln.unitPrice === undefined
+                                      ? undefined
+                                      : convertDisplayQuantity(
+                                          ln.unitPrice,
+                                          unit,
+                                          ln.unit ?? 'pcs'
+                                        ),
+                                  estimateTarget:
+                                    ln.estimateTarget === undefined
+                                      ? undefined
+                                      : convertDisplayQuantity(
+                                          ln.estimateTarget,
+                                          unit,
+                                          ln.unit ?? 'pcs'
+                                        ),
+                                })
+                              }
                             />
                           </TableCell>
                           <TableCell className="align-top">
@@ -917,7 +973,11 @@ export default function QuotationNew({ customers, products, materials, component
                                   const profit = e.target.value ? Number(e.target.value) : undefined
                                   updateLine(i, {
                                     profitPctOverride: profit,
-                                    unitPrice: computeCustomUnitPrice(ln.unitCost, profit),
+                                    unitPrice: convertDisplayQuantity(
+                                      computeCustomUnitPrice(ln.unitCost, profit),
+                                      ln.unit ?? 'pcs',
+                                      'pcs'
+                                    ),
                                     pricingMode: 'manual',
                                     estimate: undefined,
                                     estimateTarget: undefined,

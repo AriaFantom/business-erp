@@ -171,6 +171,11 @@ export async function getQuotationShowViewModel(id: number) {
       description: it.description,
       qty: it.qty,
       unitPrice: it.unitPrice,
+      measurementSnapshot: it.measurementSnapshot as {
+        unit: string
+        quantity: string
+        unitPrice: string
+      } | null,
       profitPctUsed: it.profitPctUsed,
       taxRatePct: it.taxRatePct,
       lineSubtotal: it.lineSubtotal,

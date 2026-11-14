@@ -3,7 +3,8 @@ import vine from '@vinejs/vine'
 export const createJobValidator = vine.compile(
   vine.object({
     productId: vine.number().positive(),
-    plannedQty: vine.number().min(1).max(1_000_000),
+    plannedQty: vine.number().positive().max(1_000_000),
+    unit: vine.string().trim().minLength(1).maxLength(16).optional(),
     parentJobId: vine.number().positive().optional(),
     note: vine.string().trim().maxLength(2000).optional(),
   })
@@ -78,12 +79,14 @@ export const startJobValidator = vine.compile(
 export const confirmJobValidator = vine.compile(
   vine.object({
     producedQty: vine.number().min(0).max(1_000_000),
+    unit: vine.string().trim().minLength(1).maxLength(16).optional(),
   })
 )
 
 export const forceDoneJobValidator = vine.compile(
   vine.object({
-    producedQty: vine.number().positive().max(1_000_000).withoutDecimals(),
+    producedQty: vine.number().positive().max(1_000_000),
+    unit: vine.string().trim().minLength(1).maxLength(16).optional(),
     machineId: vine.number().positive().nullable().optional(),
     workerIds: vine.array(vine.number().positive()).distinct().maxLength(50).optional(),
     stages: vine
