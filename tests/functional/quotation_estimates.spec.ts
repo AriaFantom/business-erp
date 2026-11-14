@@ -7,6 +7,7 @@ import Component from '#models/component'
 import Product from '#models/product'
 import ProductCategory from '#models/product_category'
 import QuotationItem from '#models/quotation_item'
+import QuotationItemBom from '#models/quotation_item_bom'
 import Inventory from '#models/inventory'
 import { createQuotation } from '#services/quotation_service'
 import { estimateQuotationLine } from '#services/quotation_estimate_service'
@@ -57,7 +58,8 @@ test.group('Quotation cost estimates', (group) => {
       isActive: true,
     })
     const boms = [
-      { itemKind: 'material' as const, itemId: material.id, qty: 2 },
+      { itemKind: 'material' as const, itemId: material.id, qty: 1_000, unit: 'g' },
+      { itemKind: 'material' as const, itemId: material.id, qty: 1, unit: 'kg' },
       { itemKind: 'component' as const, itemId: component.id, qty: 1 },
     ]
 
@@ -71,6 +73,8 @@ test.group('Quotation cost estimates', (group) => {
     assert.equal(estimate.profitFrom, 'category')
     assert.equal(estimate.estimatedUnitCost, 7.6666)
     assert.equal(estimate.suggestedUnitPrice, 9.59)
+    assert.equal(estimate.boms.find((bom) => bom.itemId === material.id)?.qty, 2)
+    assert.equal(estimate.boms.find((bom) => bom.itemId === material.id)?.unit, 'kg')
     assert.isTrue(estimate.boms.find((bom) => bom.itemId === component.id)?.zeroCost)
 
     const stockBefore = await Inventory.query().count('* as total').first()
@@ -95,12 +99,17 @@ test.group('Quotation cost estimates', (group) => {
       ],
     })
     const item = await QuotationItem.query().where('quotation_id', quotation.id).firstOrFail()
+    const materialBom = await QuotationItemBom.query()
+      .where('quotation_item_id', item.id)
+      .where('item_kind', 'material')
+      .firstOrFail()
     const stockAfter = await Inventory.query().count('* as total').first()
 
     assert.equal(item.pricingBasis, 'estimated')
     assert.equal(item.estimatedUnitCost, '7.6666')
     assert.equal(item.estimatedSuggestedUnitPrice, '9.59')
     assert.equal(Number(item.unitPrice), 9.59)
+    assert.equal(Number(materialBom.qty), 2)
     assert.equal(stockAfter?.$extras.total ?? 0, stockBefore?.$extras.total ?? 0)
   })
 

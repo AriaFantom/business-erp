@@ -35,6 +35,7 @@ import DashboardLayout from '@/layouts/dashboard-layout'
 import { formatMoney, useCurrency } from '@/lib/currency'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
+import { compatibleUnits, convertDisplayQuantity, formatQuantity } from '@/lib/quantity_units'
 
 type CustomerOpt = { id: number; name: string }
 type ProductOpt = {
@@ -60,6 +61,7 @@ type BomDraft = {
   itemKind: 'material' | 'component'
   itemId: number
   qty: number
+  unit?: string
 }
 
 type LineDraft = {
@@ -115,9 +117,12 @@ function computeBomCost(
   const compById = new Map(components.map((c) => [c.id, c.unitCost]))
   let cost = 0
   for (const b of boms) {
+    const items = b.itemKind === 'material' ? materials : components
+    const item = items.find((candidate) => candidate.id === b.itemId)
     const unitCost =
       b.itemKind === 'material' ? (matById.get(b.itemId) ?? 0) : (compById.get(b.itemId) ?? 0)
-    cost += b.qty * unitCost
+    const storedQty = item ? convertDisplayQuantity(b.qty, b.unit || item.unit, item.unit) : b.qty
+    cost += storedQty * unitCost
   }
   return round2(cost)
 }
@@ -155,7 +160,10 @@ function EstimateDialog({
   const addBom = (itemKind: 'material' | 'component') => {
     const options = itemKind === 'material' ? materials : components
     if (!options[0]) return
-    setBoms((current) => [...current, { itemKind, itemId: options[0].id, qty: 1 }])
+    setBoms((current) => [
+      ...current,
+      { itemKind, itemId: options[0].id, qty: 1, unit: options[0].unit },
+    ])
     setResult(null)
   }
 
@@ -239,15 +247,22 @@ function EstimateDialog({
                 return (
                   <div
                     key={`${bom.itemKind}-${index}`}
-                    className="grid gap-2 rounded-lg border p-3 sm:grid-cols-[1fr_9rem_auto] sm:items-end"
+                    className="grid gap-2 rounded-lg border p-3 sm:grid-cols-[minmax(0,1fr)_9rem_7rem_auto] sm:items-end"
                   >
                     <Field label={bom.itemKind === 'material' ? 'Material' : 'Component'}>
                       <Select
                         value={String(bom.itemId)}
                         onValueChange={(value) => {
+                          const nextItem = options.find((item) => item.id === Number(value))
                           setBoms((current) =>
                             current.map((entry, i) =>
-                              i === index ? { ...entry, itemId: Number(value) } : entry
+                              i === index
+                                ? {
+                                    ...entry,
+                                    itemId: Number(value),
+                                    unit: nextItem?.unit,
+                                  }
+                                : entry
                             )
                           )
                           setResult(null)
@@ -267,11 +282,11 @@ function EstimateDialog({
                         </SelectContent>
                       </Select>
                     </Field>
-                    <Field label={`Quantity (${selected?.unit ?? 'unit'})`}>
+                    <Field label="Quantity">
                       <Input
                         type="number"
-                        min={0.0001}
-                        step="0.0001"
+                        min={0.000000001}
+                        step="any"
                         value={bom.qty}
                         onChange={(event) => {
                           setBoms((current) =>
@@ -282,6 +297,41 @@ function EstimateDialog({
                           setResult(null)
                         }}
                       />
+                    </Field>
+                    <Field label="Unit">
+                      <Select
+                        value={bom.unit || selected?.unit || ''}
+                        onValueChange={(nextUnit) => {
+                          const currentUnit = bom.unit || selected?.unit || nextUnit
+                          setBoms((current) =>
+                            current.map((entry, i) =>
+                              i === index
+                                ? {
+                                    ...entry,
+                                    qty: convertDisplayQuantity(entry.qty, currentUnit, nextUnit),
+                                    unit: nextUnit,
+                                  }
+                                : entry
+                            )
+                          )
+                          setResult(null)
+                        }}
+                        disabled={!selected}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Unit" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            {selected &&
+                              compatibleUnits(selected.unit).map((unit) => (
+                                <SelectItem key={unit} value={unit}>
+                                  {unit}
+                                </SelectItem>
+                              ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
                     </Field>
                     <Button
                       type="button"
@@ -296,6 +346,16 @@ function EstimateDialog({
                     >
                       <X />
                     </Button>
+                    {selected && (
+                      <p className="text-xs text-muted-foreground sm:col-span-4">
+                        {formatQuantity(bom.qty)} {bom.unit || selected.unit} ={' '}
+                        {formatQuantity(
+                          convertDisplayQuantity(bom.qty, bom.unit || selected.unit, selected.unit)
+                        )}{' '}
+                        {selected.unit} for costing at {formatMoney(selected.unitCost, currency)}{' '}
+                        per {selected.unit}.
+                      </p>
+                    )}
                   </div>
                 )
               })}
@@ -368,14 +428,7 @@ function EstimateDialog({
             disabled={!result}
             onClick={() => {
               if (!result) return
-              onApply(
-                result,
-                result.boms.map((bom) => ({
-                  itemKind: bom.itemKind,
-                  itemId: bom.itemId,
-                  qty: bom.qty,
-                }))
-              )
+              onApply(result, boms)
               setOpen(false)
             }}
           >
@@ -440,7 +493,7 @@ export default function QuotationNew({ customers, products, materials, component
     const firstId = items[0]?.id
     if (!firstId) return
     const line = data.items[lineIdx]
-    const newBoms = [...line.boms, { itemKind, itemId: firstId, qty: 1 }]
+    const newBoms = [...line.boms, { itemKind, itemId: firstId, qty: 1, unit: items[0]?.unit }]
     const newCost = computeBomCost(newBoms, materials, components)
     setData(
       'items',
@@ -559,11 +612,13 @@ export default function QuotationNew({ customers, products, materials, component
                   <SelectValue placeholder="Pick customer" />
                 </SelectTrigger>
                 <SelectContent>
-                  {customers.map((c) => (
-                    <SelectItem key={c.id} value={String(c.id)}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
+                  <SelectGroup>
+                    {customers.map((c) => (
+                      <SelectItem key={c.id} value={String(c.id)}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </Field>
@@ -723,20 +778,33 @@ export default function QuotationNew({ customers, products, materials, component
                                         const itemList =
                                           bom.itemKind === 'material' ? materials : components
                                         const item = itemList.find((it) => it.id === bom.itemId)
-                                        const lineCost = bom.qty * (item?.unitCost ?? 0)
+                                        const storedQty = item
+                                          ? convertDisplayQuantity(
+                                              bom.qty,
+                                              bom.unit || item.unit,
+                                              item.unit
+                                            )
+                                          : bom.qty
+                                        const lineCost = storedQty * (item?.unitCost ?? 0)
                                         return (
                                           <div
                                             key={bi}
-                                            className="grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-2"
+                                            className="grid grid-cols-[auto_minmax(8rem,1fr)_auto_auto_auto_auto] items-center gap-2"
                                           >
                                             <span className="text-[10px] font-medium uppercase text-muted-foreground">
                                               {bom.itemKind === 'material' ? 'Mat' : 'Cmp'}
                                             </span>
                                             <Select
                                               value={String(bom.itemId)}
-                                              onValueChange={(v) =>
-                                                updateBom(i, bi, { itemId: Number(v) })
-                                              }
+                                              onValueChange={(v) => {
+                                                const nextItem = itemList.find(
+                                                  (candidate) => candidate.id === Number(v)
+                                                )
+                                                updateBom(i, bi, {
+                                                  itemId: Number(v),
+                                                  unit: nextItem?.unit,
+                                                })
+                                              }}
                                             >
                                               <SelectTrigger className="h-8 text-xs">
                                                 <SelectValue />
@@ -764,6 +832,36 @@ export default function QuotationNew({ customers, products, materials, component
                                               }
                                               className="h-8 w-20 text-xs"
                                             />
+                                            <Select
+                                              value={bom.unit || item?.unit || ''}
+                                              onValueChange={(nextUnit) => {
+                                                const currentUnit =
+                                                  bom.unit || item?.unit || nextUnit
+                                                updateBom(i, bi, {
+                                                  qty: convertDisplayQuantity(
+                                                    bom.qty,
+                                                    currentUnit,
+                                                    nextUnit
+                                                  ),
+                                                  unit: nextUnit,
+                                                })
+                                              }}
+                                              disabled={!item}
+                                            >
+                                              <SelectTrigger className="h-8 w-20 text-xs">
+                                                <SelectValue placeholder="Unit" />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                <SelectGroup>
+                                                  {item &&
+                                                    compatibleUnits(item.unit).map((unit) => (
+                                                      <SelectItem key={unit} value={unit}>
+                                                        {unit}
+                                                      </SelectItem>
+                                                    ))}
+                                                </SelectGroup>
+                                              </SelectContent>
+                                            </Select>
                                             <span className="w-16 text-right text-xs text-muted-foreground">
                                               {formatMoney(lineCost, currency)}
                                             </span>

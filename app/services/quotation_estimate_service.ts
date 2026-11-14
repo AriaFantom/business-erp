@@ -5,6 +5,11 @@ import Component from '#models/component'
 import Product from '#models/product'
 import ProductCategory from '#models/product_category'
 import { DomainError } from '#services/domain_errors'
+import {
+  addQuantities,
+  compareQuantities,
+  convertConsumptionQuantity,
+} from '#services/quantity_units'
 
 export type QuotationEstimateInput = {
   productId?: number | null
@@ -14,6 +19,7 @@ export type QuotationEstimateInput = {
     itemKind: 'material' | 'component'
     itemId: number
     qty: number
+    unit?: string
   }>
 }
 
@@ -95,23 +101,8 @@ export async function estimateQuotationLine(
     validateNumber(input.profitPct, 'Markup', 1000, 2)
   }
 
-  const merged = new Map<string, QuotationEstimateInput['boms'][number]>()
-  for (const bom of input.boms) {
-    validateNumber(bom.qty, 'Item quantity', 1_000_000, 4)
-    if (bom.qty <= 0) {
-      throw new DomainError({
-        code: 'INVALID_ESTIMATE',
-        message: 'Item quantities must be greater than zero.',
-      })
-    }
-    const key = `${bom.itemKind}:${bom.itemId}`
-    const current = merged.get(key)
-    merged.set(key, { ...bom, qty: round4((current?.qty ?? 0) + bom.qty) })
-  }
-
-  const normalized = [...merged.values()]
-  const materialIds = normalized.filter((b) => b.itemKind === 'material').map((b) => b.itemId)
-  const componentIds = normalized.filter((b) => b.itemKind === 'component').map((b) => b.itemId)
+  const materialIds = input.boms.filter((b) => b.itemKind === 'material').map((b) => b.itemId)
+  const componentIds = input.boms.filter((b) => b.itemKind === 'component').map((b) => b.itemId)
   const [materials, components, resolvedProfit] = await Promise.all([
     materialIds.length ? Material.query().whereIn('id', materialIds).where('is_active', true) : [],
     componentIds.length
@@ -121,6 +112,36 @@ export async function estimateQuotationLine(
   ])
   const materialById = new Map(materials.map((item) => [item.id, item]))
   const componentById = new Map(components.map((item) => [item.id, item]))
+
+  const merged = new Map<
+    string,
+    { itemKind: 'material' | 'component'; itemId: number; qty: string }
+  >()
+  for (const bom of input.boms) {
+    const item =
+      bom.itemKind === 'material' ? materialById.get(bom.itemId) : componentById.get(bom.itemId)
+    if (!item) {
+      throw new DomainError({
+        code: 'ESTIMATE_ITEM_UNAVAILABLE',
+        message: `A selected ${bom.itemKind} is no longer available. Review the estimate.`,
+      })
+    }
+    const converted = convertConsumptionQuantity(bom.qty, bom.unit, item.unit)
+    const key = `${bom.itemKind}:${bom.itemId}`
+    const current = merged.get(key)
+    const qty = current
+      ? addQuantities(current.qty, converted.storedQuantity)
+      : converted.storedQuantity
+    if (compareQuantities(qty, 1_000_000) > 0) {
+      throw new DomainError({
+        code: 'INVALID_ESTIMATE',
+        message: `Item quantity exceeds 1,000,000 ${item.unit}.`,
+      })
+    }
+    merged.set(key, { itemKind: bom.itemKind, itemId: bom.itemId, qty })
+  }
+
+  const normalized = [...merged.values()]
 
   let materialCost = 0
   let componentCost = 0
@@ -134,7 +155,8 @@ export async function estimateQuotationLine(
       })
     }
     const unitCost = Number(item.defaultUnitCost)
-    const lineCost = round4(bom.qty * unitCost)
+    const normalizedQty = Number(bom.qty)
+    const lineCost = round4(normalizedQty * unitCost)
     if (bom.itemKind === 'material') materialCost += lineCost
     else componentCost += lineCost
     return {
@@ -142,7 +164,7 @@ export async function estimateQuotationLine(
       itemId: bom.itemId,
       name: item.name,
       unit: item.unit,
-      qty: bom.qty,
+      qty: normalizedQty,
       unitCost,
       lineCost,
       zeroCost: unitCost === 0,
@@ -168,7 +190,11 @@ export async function estimateQuotationLine(
     })
   }
   const fingerprint = createHash('sha256')
-    .update(JSON.stringify(boms.map((bom) => [bom.itemKind, bom.itemId, bom.qty, bom.unitCost])))
+    .update(
+      JSON.stringify(
+        boms.map((bom, index) => [bom.itemKind, bom.itemId, normalized[index].qty, bom.unitCost])
+      )
+    )
     .digest('hex')
 
   return {

@@ -7,8 +7,6 @@ import Customer from '#models/customer'
 import Product from '#models/product'
 import ProductCategory from '#models/product_category'
 import ProductRecipe from '#models/product_recipe'
-import Material from '#models/material'
-import Component from '#models/component'
 import type User from '#models/user'
 import { audit } from '#services/audit'
 import { nextDocNumber } from '#services/numbering'
@@ -22,6 +20,7 @@ export type BomLineInput = {
   itemKind: 'material' | 'component'
   itemId: number
   qty: number
+  unit?: string
 }
 
 export type QuotationLineInput = {
@@ -123,24 +122,21 @@ async function buildLine(input: QuotationLineInput) {
   } else {
     // Custom line: if BOM entries are provided, calculate cost from them.
     if (input.boms && input.boms.length > 0) {
-      const materialIds = input.boms.filter((b) => b.itemKind === 'material').map((b) => b.itemId)
-      const componentIds = input.boms.filter((b) => b.itemKind === 'component').map((b) => b.itemId)
-
-      const [materials, components] = await Promise.all([
-        materialIds.length ? Material.query().whereIn('id', materialIds) : [],
-        componentIds.length ? Component.query().whereIn('id', componentIds) : [],
-      ])
-      const matById = new Map(materials.map((m) => [m.id, Number(m.defaultUnitCost)]))
-      const compById = new Map(components.map((c) => [c.id, Number(c.defaultUnitCost)]))
-
-      for (const b of input.boms) {
-        const unitCost =
-          b.itemKind === 'material' ? (matById.get(b.itemId) ?? 0) : (compById.get(b.itemId) ?? 0)
-        bomCost += b.qty * unitCost
-        bomSnapshots.push({ itemKind: b.itemKind, itemId: b.itemId, qty: b.qty, unitCost })
-      }
-
       const profitPct = input.profitPctOverride ?? 0
+      const normalizedBom = await estimateQuotationLine({
+        extraCost: 0,
+        profitPct,
+        boms: input.boms,
+      })
+      bomCost = normalizedBom.catalogCost
+      for (const b of normalizedBom.boms) {
+        bomSnapshots.push({
+          itemKind: b.itemKind,
+          itemId: b.itemId,
+          qty: b.qty,
+          unitCost: b.unitCost,
+        })
+      }
       unitPrice = round2(bomCost * (1 + profitPct / 100))
       profitPctUsed = profitPct
     } else if (input.unitPrice === null || input.unitPrice === undefined) {
@@ -184,7 +180,11 @@ async function buildLine(input: QuotationLineInput) {
           itemId: bom.itemId,
           qty: bom.qty,
         }))
-      : (input.boms ?? []),
+      : bomSnapshots.map((bom) => ({
+          itemKind: bom.itemKind,
+          itemId: bom.itemId,
+          qty: bom.qty,
+        })),
     pricingBasis: input.pricingMode ?? null,
     estimate,
   }

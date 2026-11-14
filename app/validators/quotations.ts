@@ -3,7 +3,8 @@ import vine from '@vinejs/vine'
 const bomLineRule = vine.object({
   itemKind: vine.enum(['material', 'component']),
   itemId: vine.number().positive(),
-  qty: vine.number().min(0).max(1_000_000),
+  qty: vine.number().min(0),
+  unit: vine.string().trim().maxLength(30).optional(),
 })
 
 const lineRule = vine.object({
